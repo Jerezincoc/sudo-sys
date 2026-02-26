@@ -1,0 +1,11 @@
+{
+  "name": "sudo-sys",
+  "private": true,
+  "version": "0.0.1",
+  "packageManager": "pnpm@8.15.0",
+  "scripts": {
+    "dev:ui": "pnpm --filter ui dev",
+    "dev:app": "pnpm --filter app-host dev",
+    "build": "pnpm -r build"
+  }
+}
