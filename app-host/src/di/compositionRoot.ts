@@ -1,4 +1,4 @@
-import type Database from "better-sqlite3";
+import type sqlite3 from "sqlite3";
 
 import type { BancoPaths } from "../../../packages/infrastructure/src/bootstrap/ensureBancoFolder";
 import { ensureBancoFolderStructure } from "../../../packages/infrastructure/src/bootstrap/ensureBancoFolder";
@@ -7,10 +7,10 @@ import { runMigrations } from "../../../packages/infrastructure/src/bootstrap/ru
 
 export type AppServices = {
   banco: BancoPaths;
-  db: Database.Database;
+  db: sqlite3.Database;
 };
 
-let singleton: AppServices | null = null;
+let singleton: AppServices | undefined;
 
 /**
  * Composition Root do SUDO SYS
@@ -37,6 +37,6 @@ export function shutdownAppServices(): void {
   try {
     singleton.db.close();
   } finally {
-    singleton = null;
+    singleton = undefined;
   }
 }

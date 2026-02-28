@@ -1,5 +1,5 @@
 // packages/ui/src/api/ipcClient.ts
-import type { IpcChannel } from "../../../app-host/src/ipc/channels";
+import type { IpcChannel } from "@shared/ipc/channels";
 
 export type IpcOk<T> = { ok: true; data: T };
 export type IpcFail = {

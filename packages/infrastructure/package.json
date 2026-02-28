@@ -1,0 +1,17 @@
+{
+  "name": "@sudo/infrastructure",
+  "private": true,
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@sudo/application": "workspace:*",
+    "@sudo/domain": "workspace:*",
+    "@sudo/shared": "workspace:*",
+    "better-sqlite3": "^11.0.0",
+    "sqlite3": "^5.1.7"
+  }
+}

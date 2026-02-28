@@ -1,6 +1,6 @@
 // packages/ui/src/api/useCasesClient.ts
 import { ipcInvoke } from "./ipcClient";
-import { IPC_CHANNELS } from "../../../app-host/src/ipc/channels";
+import { IPC_CHANNELS } from "@shared/ipc/channels";
 
 /**
  * Tipos de retorno mínimos pra UI (por enquanto).

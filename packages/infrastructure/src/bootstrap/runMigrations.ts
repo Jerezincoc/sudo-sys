@@ -1,5 +1,5 @@
 import path from "node:path";
-import type Database from "better-sqlite3";
+import type sqlite3 from "sqlite3";
 import { runMigrations as run } from "../db/migrations/MigrationRunner";
 
 function resolveSchemaDir(): string {
@@ -14,6 +14,6 @@ function resolveSchemaDir(): string {
   return path.join(process.cwd(), "packages", "infrastructure", "src", "db", "schema");
 }
 
-export function runMigrations(db: Database.Database): void {
+export function runMigrations(db: sqlite3.Database): void {
   run(db, { schemaDir: resolveSchemaDir() });
 }

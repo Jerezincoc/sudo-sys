@@ -1,0 +1,21 @@
+{
+  "name": "sudo-sys",
+  "private": true,
+  "version": "0.0.1",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev:ui": "pnpm --filter ui dev",
+    "dev:app": "pnpm --filter app-host dev",
+    "build": "pnpm -r build"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/sqlite3": "^5.1.0",
+    "electron-rebuild": "^3.2.9",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "electron": "28"
+  }
+}

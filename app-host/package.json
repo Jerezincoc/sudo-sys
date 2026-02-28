@@ -1,0 +1,13 @@
+{
+  "name": "app-host",
+  "private": true,
+  "version": "0.0.1",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "pnpm run build && electron ."
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.7"
+  }
+}

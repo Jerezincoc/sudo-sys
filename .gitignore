@@ -1,0 +1,13 @@
+node_modules
+# runtime
+app-host/BANCO/
+
+# build
+app-host/dist/
+dist/
+
+# compiled js in src
+**/*.js
+
+# node
+node_modules/

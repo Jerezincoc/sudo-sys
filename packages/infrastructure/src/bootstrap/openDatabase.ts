@@ -1,13 +1,15 @@
-import Database from "better-sqlite3";
+import sqlite3 from "sqlite3";
+import path from "path";
 
-export type SqliteConnection = Database.Database;
+export function openDatabase(dbPath: string) {
+  const resolvedPath = path.resolve(dbPath);
 
-export function openDatabase(dbFilePath: string): SqliteConnection {
-  const db = new Database(dbFilePath);
-
-  db.pragma("foreign_keys = ON");
-  db.pragma("journal_mode = WAL");
-  db.pragma("busy_timeout = 5000");
+  const db = new sqlite3.Database(resolvedPath, (err: Error | null) => {
+    if (err) {
+      console.error("Erro ao abrir banco:", err);
+      throw err;
+    }
+  });
 
   return db;
 }
