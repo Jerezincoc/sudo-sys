@@ -1,19 +1,11 @@
-import path from "node:path";
+// packages/infrastructure/src/bootstrap/runMigrations.ts
 import type sqlite3 from "sqlite3";
 import { runMigrations as run } from "../db/migrations/MigrationRunner";
 
-function resolveSchemaDir(): string {
-  const isProd = process.env.NODE_ENV === "production";
-
-  // PROD (empacotado): schema copiado como recurso do app
-  if (isProd) {
-    return path.join(process.resourcesPath, "schema");
-  }
-
-  // DEV: usa os .sql direto do repo
-  return path.join(process.cwd(), "packages", "infrastructure", "src", "db", "schema");
-}
-
-export function runMigrations(db: sqlite3.Database): void {
-  run(db, { schemaDir: resolveSchemaDir() });
+/**
+ * Infrastructure NÃO deve depender de Electron (process.resourcesPath).
+ * O schemaDir deve ser resolvido no app-host (Electron main) e passado pra cá.
+ */
+export async function runMigrations(db: sqlite3.Database, schemaDir: string): Promise<void> {
+  await run(db, { schemaDir });
 }

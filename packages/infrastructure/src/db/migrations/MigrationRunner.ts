@@ -34,7 +34,11 @@ export async function runMigrations(
   db: sqlite3.Database,
   options: RunMigrationsOptions
 ): Promise<void> {
-  // tabela de controle
+  // Garante pragmas importantes mesmo se alguém abrir o DB fora do openDatabase()
+  await exec(db, "PRAGMA foreign_keys = ON;");
+
+  // Primeiro, checa o que já foi aplicado (fora da transação é ok).
+  // A criação da tabela (DDL) vamos garantir também dentro da transação.
   await exec(
     db,
     `
@@ -52,9 +56,22 @@ export async function runMigrations(
   const pending = MIGRATIONS.filter((m) => !applied.has(m.id));
   if (pending.length === 0) return;
 
-  // transação manual
+  // Transação manual:
+  // IMMEDIATE pega write-lock cedo e evita "surpresas" no meio das migrações.
   await exec(db, "BEGIN IMMEDIATE TRANSACTION;");
   try {
+    // Reforça a tabela de controle dentro da transação (DDL idempotente)
+    await exec(
+      db,
+      `
+      CREATE TABLE IF NOT EXISTS __migrations (
+        id TEXT PRIMARY KEY,
+        filename TEXT NOT NULL,
+        applied_at TEXT NOT NULL
+      );
+    `
+    );
+
     for (const m of pending) {
       const filePath = path.join(options.schemaDir, m.filename);
       const sql = fs.readFileSync(filePath, "utf-8");

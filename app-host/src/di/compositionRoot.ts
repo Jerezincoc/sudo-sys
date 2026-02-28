@@ -1,9 +1,9 @@
+// app-host/src/di/compositionRoot.ts
 import type sqlite3 from "sqlite3";
+import path from "node:path";
 
-import type { BancoPaths } from "../../../packages/infrastructure/src/bootstrap/ensureBancoFolder";
-import { ensureBancoFolderStructure } from "../../../packages/infrastructure/src/bootstrap/ensureBancoFolder";
-import { openDatabase } from "../../../packages/infrastructure/src/bootstrap/openDatabase";
-import { runMigrations } from "../../../packages/infrastructure/src/bootstrap/runMigrations";
+import type { BancoPaths } from "@sudo/infrastructure";
+import { ensureBancoFolderStructure, openDatabase, runMigrations } from "@sudo/infrastructure";
 
 export type AppServices = {
   banco: BancoPaths;
@@ -11,32 +11,67 @@ export type AppServices = {
 };
 
 let singleton: AppServices | undefined;
+let initializing: Promise<AppServices> | undefined;
 
-/**
- * Composition Root do SUDO SYS
- * - Cria ./BANCO/
- * - Abre SQLite
- * - Roda migrações
- * - Retorna serviços (singleton)
- */
-export function getAppServices(): AppServices {
-  if (singleton) return singleton;
+function resolveRepoRootFromCwd(): string {
+  const cwd = process.cwd();
 
-  const banco = ensureBancoFolderStructure();
-  const db = openDatabase(banco.dbFile);
+  // Se o Electron foi iniciado a partir de /app-host, volta pra raiz do monorepo
+  if (path.basename(cwd) === "app-host") {
+    return path.resolve(cwd, "..");
+  }
 
-  runMigrations(db);
-
-  singleton = { banco, db };
-  return singleton;
+  return cwd;
 }
 
-export function shutdownAppServices(): void {
-  if (!singleton) return;
+function resolveSchemaDir(): string {
+  const isProd = process.env.NODE_ENV === "production";
+
+  // PROD (Electron empacotado): schema copiado como recurso do app
+  if (isProd) {
+    return path.join(process.resourcesPath, "schema");
+  }
+
+  // DEV: usa os .sql direto do repo (raiz do monorepo)
+  const repoRoot = resolveRepoRootFromCwd();
+  return path.join(repoRoot, "packages", "infrastructure", "src", "db", "schema");
+}
+
+// Helper: sqlite3.Database.close é callback-based
+function closeDb(db: sqlite3.Database): Promise<void> {
+  return new Promise((resolve, reject) => {
+    db.close((err) => (err ? reject(err) : resolve()));
+  });
+}
+
+export async function getAppServices(): Promise<AppServices> {
+  if (singleton) return singleton;
+  if (initializing) return initializing;
+
+  initializing = (async () => {
+    const banco = ensureBancoFolderStructure();
+
+    const db = await openDatabase(banco.dbFile);
+
+    const schemaDir = resolveSchemaDir();
+    await runMigrations(db, schemaDir);
+
+    singleton = { banco, db };
+    return singleton;
+  })();
 
   try {
-    singleton.db.close();
+    return await initializing;
   } finally {
-    singleton = undefined;
+    initializing = undefined;
   }
+}
+
+export async function shutdownAppServices(): Promise<void> {
+  if (!singleton) return;
+
+  const { db } = singleton;
+  singleton = undefined;
+
+  await closeDb(db);
 }

@@ -3,7 +3,7 @@ import { ipcMain } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
 
 import { IPC_CHANNELS } from "./channels";
-import { getAppServices } from "../di/compositionRoot";
+import type { AppServices } from "../di/compositionRoot";
 
 export type IpcOk<T> = { ok: true; data: T };
 export type IpcFail = {
@@ -40,13 +40,15 @@ function toIpcError(err: unknown): IpcFail {
 
 /**
  * Wrapper padrão para handlers IPC.
+ * - Injeta ctx (services) já inicializado
+ * - Normaliza resposta ok/fail
  */
 function handler<TArgs, TResult>(
-  fn: (args: TArgs, ctx: ReturnType<typeof getAppServices>) => TResult | Promise<TResult>
+  ctx: AppServices,
+  fn: (args: TArgs, ctx: AppServices) => TResult | Promise<TResult>
 ) {
   return async (_event: IpcMainInvokeEvent, args: TArgs): Promise<IpcResponse<TResult>> => {
     try {
-      const ctx = getAppServices();
       const data = await fn(args, ctx);
       return { ok: true, data };
     } catch (e) {
@@ -57,14 +59,13 @@ function handler<TArgs, TResult>(
 
 /**
  * Registra todos os handlers IPC.
- * Por enquanto deixamos “stubs” (retornos dummy) só para testar o pipeline IPC.
- * Depois vamos implementando módulo por módulo.
+ * Registra somente após o bootstrap (BANCO/ + DB + migrations).
  */
-export function registerIpcHandlers(): void {
+export function registerIpcHandlers(ctx: AppServices): void {
   // AUTH (stub)
   ipcMain.handle(
     IPC_CHANNELS.AUTH_ME,
-    handler(async () => {
+    handler(ctx, async () => {
       return { user: null };
     })
   );
@@ -72,16 +73,16 @@ export function registerIpcHandlers(): void {
   // EMPRESAS (stub)
   ipcMain.handle(
     IPC_CHANNELS.EMPRESAS_LIST,
-    handler(async (_args, ctx) => {
-      // ctx.db já existe; listagem real virá com repositório/use case
-      return { items: [], dbIsOpen: !!ctx.db };
+    handler(ctx, async (_args, services) => {
+      // services.db já existe; listagem real virá com repositório/use case
+      return { items: [], dbIsOpen: !!services.db };
     })
   );
 
   // RUBRICAS (stub)
   ipcMain.handle(
     IPC_CHANNELS.RUBRICAS_VARIABLES_DICTIONARY,
-    handler(async () => {
+    handler(ctx, async () => {
       // Depois vamos puxar do domain/formula/VariableDictionary
       return {
         variables: [

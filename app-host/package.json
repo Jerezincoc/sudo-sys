@@ -5,9 +5,10 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "pnpm run build && electron ."
+    "dev": "pnpm -w -r --filter @sudo/infrastructure --filter app-host build && electron ."
   },
   "dependencies": {
+    "@sudo/infrastructure": "workspace:*",
     "sqlite3": "^5.1.7"
   }
 }

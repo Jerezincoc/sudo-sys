@@ -1,3 +1,4 @@
+// app-host/src/main.ts
 import { app, BrowserWindow } from "electron";
 import path from "node:path";
 
@@ -20,30 +21,65 @@ function createMainWindow(): void {
   const isDev = process.env.NODE_ENV !== "production";
 
   if (isDev) {
-    // UI em dev (Vite)
     mainWindow.loadURL("http://localhost:5173");
   } else {
-    // UI empacotada (ajuste conforme seu build do renderer)
     mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
 }
 
-app.whenReady().then(() => {
-  // ✅ bootstrap completo: BANCO/ + DB + migrations
-  const { banco } = getAppServices();
+function ensureSingleInstance(): boolean {
+  const gotLock = app.requestSingleInstanceLock();
+  if (!gotLock) {
+    app.quit();
+    return false;
+  }
 
-  // ✅ IPC pronto antes da UI
-  registerIpcHandlers();
+  app.on("second-instance", () => {
+    // Se já tiver janela aberta, foca nela
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+
+  return true;
+}
+
+async function bootstrapAndStart(): Promise<void> {
+  // ✅ bootstrap completo: BANCO/ + DB + migrations
+  const services = await getAppServices();
+
+  // ✅ IPC pronto antes da UI (e com services injetado)
+  registerIpcHandlers(services);
 
   console.log("SUDO SYS iniciado.");
-  console.log("DB:", banco.dbFile);
+  console.log("DB:", services.banco.dbFile);
 
   createMainWindow();
-});
+}
+
+if (ensureSingleInstance()) {
+  app.whenReady().then(async () => {
+    try {
+      await bootstrapAndStart();
+    } catch (err) {
+      console.error("Bootstrap failed:", err);
+      app.quit();
+    }
+  });
+}
 
 // Fecha DB de forma limpa
-app.on("before-quit", () => {
-  shutdownAppServices();
+app.on("before-quit", async (event) => {
+  // garante chance de finalizar o close async
+  event.preventDefault();
+  try {
+    await shutdownAppServices();
+  } catch (err) {
+    console.error("Shutdown failed:", err);
+  } finally {
+    app.exit(0);
+  }
 });
 
 // Windows/Linux: encerra quando fechar todas as janelas
