@@ -1,62 +1,63 @@
 // packages/ui/src/api/ipcClient.ts
-import type { IpcChannel } from "@shared/ipc/channels";
+//
+// Wrapper tipado em volta de window.electron.ipcRenderer.invoke
+// Nunca chame ipcRenderer diretamente nas páginas — use este client.
 
-export type IpcOk<T> = { ok: true; data: T };
-export type IpcFail = {
-  ok: false;
-  error: {
-    code: string;
-    message: string;
-    details?: unknown;
-  };
-};
+import { Channels } from '@sudo-sys/shared';
+import type {
+  EmpresaDTO, CreateEmpresaDTO, UpdateEmpresaDTO,
+  FuncionarioDTO, CreateFuncionarioDTO, UpdateFuncionarioDTO,
+} from '@sudo-sys/application';
 
-export type IpcResponse<T> = IpcOk<T> | IpcFail;
-
-export class IpcError extends Error {
-  public readonly code: string;
-  public readonly details?: unknown;
-
-  constructor(code: string, message: string, details?: unknown) {
-    super(message);
-    this.code = code;
-    this.details = details;
-  }
-}
-
-/**
- * Interface exposta pelo preload no window.
- * (Vamos implementar no próximo arquivo: app-host/src/preload.ts)
- */
+// O preload expõe window.electron com invoke tipado
 declare global {
   interface Window {
-    sudoSysIpc?: {
-      invoke<TArgs, TResult>(channel: IpcChannel, args: TArgs): Promise<IpcResponse<TResult>>;
+    electron: {
+      invoke<T = unknown>(channel: string, ...args: unknown[]): Promise<T>;
     };
   }
 }
 
-function getBridge() {
-  if (!window.sudoSysIpc) {
-    throw new IpcError(
-      "IPC_BRIDGE_MISSING",
-      "IPC bridge não está disponível. Verifique o preload/contextIsolation."
-    );
-  }
-  return window.sudoSysIpc;
-}
+const invoke = <T>(channel: string, ...args: unknown[]): Promise<T> =>
+  window.electron.invoke<T>(channel, ...args);
 
-/**
- * Invoke tipado + padrão de erro.
- */
-export async function ipcInvoke<TArgs, TResult>(
-  channel: IpcChannel,
-  args: TArgs
-): Promise<TResult> {
-  const bridge = getBridge();
-  const res = await bridge.invoke<TArgs, TResult>(channel, args);
+// ─── Empresas ─────────────────────────────────────────────────────────────────
+export const empresaClient = {
+  list:   ()                      => invoke<EmpresaDTO[]>(Channels.EMPRESA_LIST),
+  create: (dto: CreateEmpresaDTO) => invoke<EmpresaDTO>(Channels.EMPRESA_CREATE, dto),
+  update: (dto: UpdateEmpresaDTO) => invoke<EmpresaDTO>(Channels.EMPRESA_UPDATE, dto),
+  delete: (id: string)            => invoke<void>(Channels.EMPRESA_DELETE, id),
+};
 
-  if (res.ok) return res.data;
+// ─── Funcionários ─────────────────────────────────────────────────────────────
+export const funcionarioClient = {
+  list: (params: {
+    empresaId: string;
+    regime?:   'A' | 'B';
+    ativo?:    boolean;
+    search?:   string;
+  }) => invoke<FuncionarioDTO[]>(Channels.FUNC_LIST, params),
 
-  throw new IpcError(res.error.code, res.error.message, res.error.details);
-}
+  create: (dto: CreateFuncionarioDTO) =>
+    invoke<FuncionarioDTO>(Channels.FUNC_CREATE, dto),
+
+  update: (dto: UpdateFuncionarioDTO) =>
+    invoke<FuncionarioDTO>(Channels.FUNC_UPDATE, dto),
+
+  delete: (id: string) =>
+    invoke<void>(Channels.FUNC_DELETE, id),
+};
+
+// ─── Folha ────────────────────────────────────────────────────────────────────
+export const folhaClient = {
+  list:              (empresaId: string) =>
+    invoke(Channels.FOLHA_LIST, empresaId),
+  createCompetencia: (dto: unknown) =>
+    invoke(Channels.FOLHA_CREATE_COMPETENCIA, dto),
+  addLancamento:     (dto: unknown) =>
+    invoke(Channels.FOLHA_ADD_LANCAMENTO, dto),
+  removeLancamento:  (id: string) =>
+    invoke(Channels.FOLHA_REMOVE_LANCAMENTO, id),
+  generatePdf:       (folhaId: string) =>
+    invoke(Channels.FOLHA_GENERATE_PDF, folhaId),
+};
