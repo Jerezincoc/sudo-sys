@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
+    "dev": "concurrently \"pnpm dev:ui\" \"pnpm dev:app\"",
     "dev:ui": "pnpm --filter ui dev",
     "dev:app": "pnpm --filter app-host dev",
     "build": "pnpm -r build"
@@ -12,6 +13,7 @@
     "@electron/rebuild": "^4.0.3",
     "@types/node": "^25.3.2",
     "@types/sqlite3": "^5.1.0",
+    "concurrently": "^9.2.1",
     "electron-rebuild": "^3.2.9",
     "typescript": "^5.9.3"
   },

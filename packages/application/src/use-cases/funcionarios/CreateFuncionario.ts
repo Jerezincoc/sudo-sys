@@ -1,7 +1,7 @@
 // packages/application/src/use-cases/funcionarios/CreateFuncionario.ts
 import type { FuncionarioRepository } from '../../ports/repositories/FuncionarioRepository';
 import type { CreateFuncionarioDTO, FuncionarioDTO } from '../../dto/FuncionarioDTO';
-import { ValidationError } from '@sudo-sys/shared';
+import { ValidationError } from '@sudo/shared';
 import { v4 as uuid } from 'uuid';
 
 export class CreateFuncionario {

@@ -11,25 +11,34 @@ declare global {
   }
 }
 
+async function invokeSafe<T = any>(channel: string, args?: any): Promise<T> {
+  const result = await window.sudoSysIpc.invoke(channel, args);
+  if (result && typeof result === 'object' && 'ok' in result) {
+    if (!result.ok) throw new Error(result.error?.message || 'Erro IPC');
+    return result.data;
+  }
+  return result;
+}
+
 export const ipcClient = {
   // Chamadas relacionadas a "banco" / healthcheck
   banco: {
-    getInfo: () => window.sudoSysIpc.invoke("banco:info"),
+    getInfo: () => invokeSafe("banco:info"),
   },
   
   // Chamadas relacionadas a Empresas (exemplo de implementação)
   empresas: {
-    list: () => window.sudoSysIpc.invoke("empresas:list"),
-    create: (dto: any) => window.sudoSysIpc.invoke("empresas:create", dto),
-    update: (dto: any) => window.sudoSysIpc.invoke("empresas:update", dto),
-    delete: (id: string) => window.sudoSysIpc.invoke("empresas:delete", id),
+    list: () => invokeSafe("empresas:list"),
+    create: (dto: any) => invokeSafe("empresas:create", dto),
+    update: (dto: any) => invokeSafe("empresas:update", dto),
+    delete: (id: string) => invokeSafe("empresas:delete", id),
   },
 
   // Chamadas relacionadas a Funcionários
   funcionarios: {
-    listByEmpresa: (empresaId: string) => window.sudoSysIpc.invoke("funcionarios:listByEmpresa", empresaId),
-    create: (dto: any) => window.sudoSysIpc.invoke("funcionarios:create", dto),
-    update: (dto: any) => window.sudoSysIpc.invoke("funcionarios:update", dto),
-    delete: (id: string) => window.sudoSysIpc.invoke("funcionarios:delete", id),
+    listByEmpresa: (empresaId: string) => invokeSafe("funcionarios:listByEmpresa", empresaId),
+    create: (dto: any) => invokeSafe("funcionarios:create", dto),
+    update: (dto: any) => invokeSafe("funcionarios:update", dto),
+    delete: (id: string) => invokeSafe("funcionarios:delete", id),
   }
 };

@@ -4,14 +4,14 @@
 // O container injeta os use-cases via DI (compositionRoot).
 
 import { ipcMain } from 'electron';
-import type { CreateFuncionario }  from '@sudo-sys/application';
-import type { UpdateFuncionario }  from '@sudo-sys/application';
-import type { DeleteFuncionario }  from '@sudo-sys/application';
-import type { ListFuncionariosByEmpresa } from '@sudo-sys/application';
+import type { CreateFuncionario }  from '@sudo/application';
+import type { UpdateFuncionario }  from '@sudo/application';
+import type { DeleteFuncionario }  from '@sudo/application';
+import type { ListFuncionariosByEmpresa } from '@sudo/application';
 import type {
   CreateFuncionarioDTO,
   UpdateFuncionarioDTO,
-} from '@sudo-sys/application';
+} from '@sudo/application';
 
 interface Deps {
   createFuncionario:        CreateFuncionario;

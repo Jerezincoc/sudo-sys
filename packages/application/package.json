@@ -1,4 +1,3 @@
-
 {
   "name": "@sudo/application",
   "private": true,
@@ -10,6 +9,10 @@
   },
   "dependencies": {
     "@sudo/domain": "workspace:*",
-    "@sudo/shared": "workspace:*"
+    "@sudo/shared": "workspace:*",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^11.0.0"
   }
 }

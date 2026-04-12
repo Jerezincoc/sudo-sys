@@ -17,17 +17,17 @@ export function AppShell() {
         </div>
 
         <nav className="sidebar-nav">
-          <NavLink to="/" className={({ isActive }) => \`nav-item \${isActive ? 'active' : ''}\`} end>
+          <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end>
             <LayoutDashboard size={20} />
             <span>Dashboard</span>
           </NavLink>
           
-          <NavLink to="/empresas" className={({ isActive }) => \`nav-item \${isActive ? 'active' : ''}\`}>
+          <NavLink to="/empresas" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <Building2 size={20} />
             <span>Empresas</span>
           </NavLink>
           
-          <NavLink to="/funcionarios" className={({ isActive }) => \`nav-item \${isActive ? 'active' : ''}\`}>
+          <NavLink to="/funcionarios" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <Users size={20} />
             <span>Funcionários</span>
           </NavLink>

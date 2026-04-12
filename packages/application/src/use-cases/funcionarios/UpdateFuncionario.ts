@@ -1,7 +1,7 @@
 // packages/application/src/use-cases/funcionarios/UpdateFuncionario.ts
 import type { FuncionarioRepository } from '../../ports/repositories/FuncionarioRepository';
 import type { UpdateFuncionarioDTO, FuncionarioDTO } from '../../dto/FuncionarioDTO';
-import { ValidationError } from '@sudo-sys/shared';
+import { ValidationError } from '@sudo/shared';
 
 export class UpdateFuncionario {
   constructor(private readonly repo: FuncionarioRepository) {}

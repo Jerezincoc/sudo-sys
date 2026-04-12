@@ -62,6 +62,17 @@ function handler<TArgs, TResult>(
  * Registra somente após o bootstrap (BANCO/ + DB + migrations).
  */
 export function registerIpcHandlers(ctx: AppServices): void {
+  // BANCO INFO
+  ipcMain.handle(
+    "banco:info",
+    handler(ctx, async (_args, services) => {
+      return { 
+        dbFile: services.banco.dbFile, 
+        version: "v3" // Simplificado
+      };
+    })
+  );
+
   // AUTH (stub)
   ipcMain.handle(
     IPC_CHANNELS.AUTH_ME,

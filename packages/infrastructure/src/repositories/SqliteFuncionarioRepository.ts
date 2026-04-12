@@ -1,6 +1,6 @@
 // packages/infrastructure/src/repositories/SqliteFuncionarioRepository.ts
-import type { FuncionarioRepository, FuncionarioFilters } from '@sudo-sys/application';
-import type { FuncionarioDTO, DadosCLTDTO } from '@sudo-sys/application';
+import type { FuncionarioRepository, FuncionarioFilters } from '@sudo/application';
+import type { FuncionarioDTO, DadosCLTDTO } from '@sudo/application';
 import type { SqliteClient } from '../db/sqlite/SqliteClient';
 
 // ─── linha raw do SQLite ──────────────────────────────────────────────────────
