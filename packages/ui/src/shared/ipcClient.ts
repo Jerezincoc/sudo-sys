@@ -21,6 +21,23 @@ async function invokeSafe<T = any>(channel: string, args?: any): Promise<T> {
 }
 
 export const ipcClient = {
+  // Autenticação
+  auth: {
+    login: (email: string, passwordRaw: string) => invokeSafe("auth:login", { email, passwordRaw }),
+  },
+  
+  // Gestão de Usuários
+  users: {
+    list: () => invokeSafe("users:list"),
+    create: (dto: any) => invokeSafe("users:create", dto),
+  },
+
+  // Chamados / Demandas
+  chamados: {
+    listByEmpresa: (empresaId: string, filters?: any) => invokeSafe("chamados:listByEmpresa", { empresaId, filters }),
+    create: (dto: any) => invokeSafe("chamados:create", dto),
+  },
+
   // Chamadas relacionadas a "banco" / healthcheck
   banco: {
     getInfo: () => invokeSafe("banco:info"),

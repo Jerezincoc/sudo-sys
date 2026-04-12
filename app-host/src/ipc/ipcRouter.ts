@@ -106,4 +106,10 @@ export function registerIpcHandlers(ctx: AppServices): void {
 
   // (Os demais handlers serão adicionados em arquivos separados por módulo,
   // e registrados aqui, pra não virar um monolito.)
+  
+  const { registerUsersHandlers } = require('./handlers/usersHandlers');
+  const { registerChamadosHandlers } = require('./handlers/chamadosHandlers');
+  
+  registerUsersHandlers(ctx);
+  registerChamadosHandlers(ctx);
 }

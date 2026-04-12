@@ -56,7 +56,7 @@ export class SqliteFuncionarioRepository implements FuncionarioRepository {
 
   async create(f: FuncionarioDTO): Promise<void> {
     const clt = f.dadosClt;
-    this.db.run(
+    await this.db.run(
       `INSERT INTO funcionarios
          (id, empresa_id, regime, nome,
           cpf, email, cargo, ctps, ctps_serie, pis,
@@ -83,7 +83,7 @@ export class SqliteFuncionarioRepository implements FuncionarioRepository {
 
   async update(f: FuncionarioDTO): Promise<void> {
     const clt = f.dadosClt;
-    this.db.run(
+    await this.db.run(
       `UPDATE funcionarios SET
          nome = ?, cpf = ?, email = ?, cargo = ?,
          ctps = ?, ctps_serie = ?, pis = ?,
@@ -109,13 +109,13 @@ export class SqliteFuncionarioRepository implements FuncionarioRepository {
   }
 
   async delete(id: string): Promise<void> {
-    this.db.run(`UPDATE funcionarios SET ativo = 0 WHERE id = ?`, [id]);
+    await this.db.run(`UPDATE funcionarios SET ativo = 0 WHERE id = ?`, [id]);
     // soft-delete: marca como inativo ao invés de remover
     // Para hard-delete use: this.db.run(`DELETE FROM funcionarios WHERE id = ?`, [id]);
   }
 
   async findById(id: string): Promise<FuncionarioDTO | null> {
-    const row = this.db.get<FuncionarioRow>(
+    const row = await this.db.get<FuncionarioRow>(
       `SELECT * FROM funcionarios WHERE id = ?`, [id]
     );
     return row ? rowToDTO(row) : null;
@@ -143,7 +143,7 @@ export class SqliteFuncionarioRepository implements FuncionarioRepository {
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const rows = this.db.all<FuncionarioRow>(
+    const rows = await this.db.all<FuncionarioRow>(
       `SELECT * FROM funcionarios ${where} ORDER BY nome ASC`,
       params
     );

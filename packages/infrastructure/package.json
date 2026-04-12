@@ -11,6 +11,10 @@
     "@sudo/application": "workspace:*",
     "@sudo/domain": "workspace:*",
     "@sudo/shared": "workspace:*",
+    "bcryptjs": "^3.0.3",
     "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^3.0.0"
   }
 }

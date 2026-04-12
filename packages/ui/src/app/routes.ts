@@ -1,5 +1,7 @@
 // packages/ui/src/app/routes.ts
 import { DashboardPage } from '../pages/dashboard/DashboardPage';
+import { UsersPage } from '../pages/admin/UsersPage';
+import { AgendasPage } from '../pages/demandas/AgendasPage';
 
 export const routes = [
   {
@@ -7,5 +9,14 @@ export const routes = [
     element: DashboardPage,
     title: 'Dashboard',
   },
-  // As outras rotas como /empresas, /funcionarios serão adicionadas aqui futuramente
+  {
+    path: '/usuarios',
+    element: UsersPage,
+    title: 'Gestão de Usuários',
+  },
+  {
+    path: '/agendas',
+    element: AgendasPage,
+    title: 'Agenda / Chamados',
+  }
 ];
