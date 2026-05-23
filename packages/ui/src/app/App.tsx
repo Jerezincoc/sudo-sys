@@ -9,7 +9,7 @@ export default function App() {
   const [state, setState] = useState<AppState>('loading')
 
   useEffect(() => {
-    ipcClient.checkInitialized().then((initialized) => {
+    ipcClient.checkInitialized().then((initialized: boolean) => {
       setState(initialized ? 'main' : 'setup')
     }).catch(() => {
       // Se não há Electron (dev browser), vai direto pro setup
