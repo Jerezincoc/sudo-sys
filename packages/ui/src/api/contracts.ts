@@ -1,4 +1,4 @@
-﻿// Reexporta os tipos do pacote shared para uso no renderer
+// Reexporta os tipos do pacote shared para uso no renderer
 export type {
   IpcResponse,
   DbType,

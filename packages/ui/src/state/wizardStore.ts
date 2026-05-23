@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand'
+import { create } from 'zustand'
 import type { DbType } from '@sudo-sys/shared'
 
 // ── Tipos ──────────────────────────────────────────────────────────────────

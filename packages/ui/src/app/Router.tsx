@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import SetupWizardPage from '@/pages/setup/SetupWizardPage'
 import DashboardPage from '@/pages/dashboard/DashboardPage'

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ipcClient.ts
  * Abstrai as chamadas IPC para o Electron.
  * Em modo browser (sem Electron), retorna valores mockados para facilitar dev.
