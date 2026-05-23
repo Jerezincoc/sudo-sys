@@ -1,2 +1,40 @@
-.claude
-node_modules
+# ── Dependências ──────────────────────────────────────────
+node_modules/
+.pnpm-store/
+
+# ── Build outputs ─────────────────────────────────────────
+dist/
+app-host/dist/
+packages/*/dist/
+*.tsbuildinfo
+
+# ── Electron ──────────────────────────────────────────────
+release/
+out/
+
+# ── Env / Secrets ─────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+.npmrc
+
+# ── Editor / OS ───────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.suo
+*.user
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs ──────────────────────────────────────────────────
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# ── Testes / Coverage ─────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ── Claude Code ───────────────────────────────────────────
+.claude/
