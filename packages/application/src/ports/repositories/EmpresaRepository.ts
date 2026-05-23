@@ -1,0 +1,1 @@
+﻿import type { Empresa } from '@sudo-sys/domain'; export interface EmpresaRepository { findAll(): Promise<Empresa[]>; findById(id: string): Promise<Empresa | null>; save(e: Omit<Empresa,'id'|'criadoEm'|'atualizadoEm'>): Promise<Empresa>; update(id: string, e: Partial<Empresa>): Promise<Empresa>; delete(id: string): Promise<void> }
