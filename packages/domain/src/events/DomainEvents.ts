@@ -1,1 +1,1 @@
-﻿export class DomainEvents { static raise(_event: unknown) {} }
+export class DomainEvents { static raise(_event: unknown) {} }

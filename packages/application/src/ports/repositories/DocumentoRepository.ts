@@ -1,1 +1,1 @@
-﻿export interface DocumentoRepository { save(d: unknown): Promise<unknown>; findAll(): Promise<unknown[]> }
+export interface DocumentoRepository { save(d: unknown): Promise<unknown>; findAll(): Promise<unknown[]> }

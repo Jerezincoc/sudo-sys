@@ -1,4 +1,4 @@
-﻿export class Money {
+export class Money {
   private constructor(private readonly _cents: number) {}
   static fromCents(cents: number): Money { return new Money(cents) }
   static fromReais(reais: number): Money { return new Money(Math.round(reais * 100)) }

@@ -1,10 +1,11 @@
-﻿/**
+/**
  * setupHandlers.ts
  * IPC handlers para o Setup Wizard (setup:*).
+ * src/ipc/handlers/ -> src/setup/ = ../../setup/
  */
 import { ipcMain } from 'electron'
-import { isInitialized, readConfig, writeConfig } from '../setup/configManager'
-import { testDatabase } from '../setup/dbTester'
+import { isInitialized, readConfig, writeConfig } from '../../setup/configManager'
+import { testDatabase } from '../../setup/dbTester'
 import type { TestDbPayload, SaveConfigPayload } from '@sudo-sys/shared'
 
 export function registerSetupHandlers(): void {

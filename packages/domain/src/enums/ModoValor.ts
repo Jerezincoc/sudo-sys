@@ -1,1 +1,1 @@
-﻿export enum ModoValor { FIXO = 'FIXO', PERCENTUAL = 'PERCENTUAL', FORMULA = 'FORMULA' }
+export enum ModoValor { FIXO = 'FIXO', PERCENTUAL = 'PERCENTUAL', FORMULA = 'FORMULA' }

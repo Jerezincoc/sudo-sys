@@ -1,1 +1,1 @@
-﻿export interface UserDTO { id?: string; email: string; nome: string }
+export interface UserDTO { id?: string; email: string; nome: string }

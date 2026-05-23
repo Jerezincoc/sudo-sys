@@ -1,4 +1,4 @@
-﻿/**
+/**
  * channels.ts
  * Centraliza todos os nomes de canal IPC para evitar typos.
  */

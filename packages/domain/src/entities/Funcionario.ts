@@ -1,4 +1,4 @@
-﻿export type RegimeTributario = 'CLT' | 'PJ'
+export type RegimeTributario = 'CLT' | 'PJ'
 
 export interface Funcionario {
   id: string

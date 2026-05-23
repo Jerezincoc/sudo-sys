@@ -1,4 +1,4 @@
-﻿/**
+/**
  * main.ts - Electron Main Process
  * Ponto de entrada do processo principal.
  */

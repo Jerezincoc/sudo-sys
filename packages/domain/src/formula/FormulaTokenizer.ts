@@ -1,1 +1,1 @@
-﻿export class FormulaTokenizer { tokenize(_input: string) { return [] } }
+export class FormulaTokenizer { tokenize(_input: string) { return [] } }

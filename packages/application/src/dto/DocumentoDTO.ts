@@ -1,1 +1,1 @@
-﻿export interface DocumentoDTO { id?: string; tipo: string; url: string }
+export interface DocumentoDTO { id?: string; tipo: string; url: string }

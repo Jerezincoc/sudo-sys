@@ -1,1 +1,1 @@
-﻿export type FormulaNode = { type: string }
+export type FormulaNode = { type: string }

@@ -1,4 +1,4 @@
-﻿// Entidades
+// Entidades
 export * from './entities/Empresa'
 export * from './entities/Funcionario'
 export * from './entities/Rubrica'

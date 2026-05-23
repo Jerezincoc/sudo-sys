@@ -1,4 +1,4 @@
-﻿// Ports
+// Ports
 export * from './ports'
 
 // Use cases

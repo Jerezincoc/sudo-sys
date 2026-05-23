@@ -1,4 +1,4 @@
-﻿/**
+/**
  * configManager.ts
  * Le e grava o config.json no userData do Electron.
  * O arquivo e criado so apos o wizard ser concluido.

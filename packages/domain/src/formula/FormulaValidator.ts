@@ -1,1 +1,1 @@
-﻿export class FormulaValidator { validate(_ast: unknown) { return { valid: true } } }
+export class FormulaValidator { validate(_ast: unknown) { return { valid: true } } }

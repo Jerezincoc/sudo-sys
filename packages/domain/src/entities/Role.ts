@@ -1,1 +1,1 @@
-﻿export interface Role { id: string; nome: string; permissoes: string[] }
+export interface Role { id: string; nome: string; permissoes: string[] }

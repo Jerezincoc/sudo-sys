@@ -1,4 +1,4 @@
-﻿/**
+/**
  * compositionRoot.ts
  * Conecta repositorios e casos de uso (implementar pos-setup).
  */

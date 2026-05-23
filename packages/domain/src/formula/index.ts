@@ -1,1 +1,1 @@
-﻿export * from './FormulaEvaluator'
+export * from './FormulaEvaluator'

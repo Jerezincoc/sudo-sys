@@ -1,1 +1,1 @@
-﻿export class DocumentoBuilder { build(_data: unknown) { return {} } }
+export class DocumentoBuilder { build(_data: unknown) { return {} } }

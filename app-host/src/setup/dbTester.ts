@@ -1,4 +1,4 @@
-﻿/**
+/**
  * dbTester.ts
  * Testa conexao com SQLite ou PostgreSQL sem criar schema.
  */

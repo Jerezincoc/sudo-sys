@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ipcRouter.ts
  * Registra todos os handlers de IPC (exceto setup, que e registrado antes).
  */

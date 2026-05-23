@@ -1,1 +1,1 @@
-﻿export class VariableDictionary { get(_name: string) { return 0 } }
+export class VariableDictionary { get(_name: string) { return 0 } }

@@ -1,4 +1,4 @@
-﻿import { SqliteClient } from '../db/sqlite/SqliteClient'
+import { SqliteClient } from '../db/sqlite/SqliteClient'
 import path from 'path'
 import fs from 'fs'
 

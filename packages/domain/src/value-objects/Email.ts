@@ -1,1 +1,1 @@
-﻿export class Email { constructor(private value: string) {} toString() { return this.value } }
+export class Email { constructor(private value: string) {} toString() { return this.value } }

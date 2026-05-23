@@ -1,4 +1,4 @@
-﻿export * from './repositories/EmpresaRepository'
+export * from './repositories/EmpresaRepository'
 export * from './repositories/FuncionarioRepository'
 export * from './repositories/UsuarioRepository'
 export * from './repositories/RubricaRepository'

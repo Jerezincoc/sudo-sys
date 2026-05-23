@@ -1,4 +1,4 @@
-﻿/**
+/**
  * container.ts
  * Continer de dependencias simples (sem framework IoC).
  */

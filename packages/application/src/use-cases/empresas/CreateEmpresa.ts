@@ -1,1 +1,1 @@
-﻿import type { EmpresaRepository } from '../../ports'; export class CreateEmpresa { constructor(private repo: EmpresaRepository) {} async execute(data: unknown) { return this.repo.save(data as any) } }
+import type { EmpresaRepository } from '../../ports'; export class CreateEmpresa { constructor(private repo: EmpresaRepository) {} async execute(data: unknown) { return this.repo.save(data as any) } }
