@@ -1,0 +1,25 @@
+{
+  "name": "sudo-sys",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema de Gestão de Folha de Pagamento",
+  "scripts": {
+    "dev": "concurrently --kill-others \"pnpm --filter @sudo-sys/ui dev\" \"wait-on http://localhost:5173 && pnpm --filter @sudo-sys/app-host electron:dev\"",
+    "build": "pnpm --filter @sudo-sys/ui build && pnpm --filter @sudo-sys/app-host build",
+    "dist": "pnpm build && pnpm --filter @sudo-sys/app-host dist",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1",
+    "typescript": "^5.5.4",
+    "wait-on": "^8.0.1"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["better-sqlite3", "electron", "esbuild"]
+  }
+}
