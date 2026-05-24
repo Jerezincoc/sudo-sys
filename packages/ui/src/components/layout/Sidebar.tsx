@@ -1,162 +1,89 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard,
-  Building2,
-  FileText,
-  Tag,
-  Umbrella,
-  LogOut,
-  Clock,
-  Calculator,
-  Zap,
-  BarChart2,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
+  LayoutDashboard, Building2, FileText, Tag, Umbrella,
+  LogOut, Clock, Calculator, Zap, BarChart2, Settings,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { useUiStore } from '@/state/uiSlice'
 import { ROUTES } from '@/app/routes'
 
-interface NavItem {
-  label: string
-  icon: React.ElementType
-  to: string
-}
-
-interface NavGroup {
-  group: string
-  items: NavItem[]
-}
+interface NavItem { label: string; icon: React.ElementType; to: string }
+interface NavGroup { group: string; items: NavItem[] }
 
 const NAV: NavGroup[] = [
-  {
-    group: 'GERAL',
-    items: [
-      { label: 'Dashboard',        icon: LayoutDashboard, to: ROUTES.DASHBOARD },
-    ],
-  },
-  {
-    group: 'CADASTROS',
-    items: [
-      { label: 'Empresas',         icon: Building2,       to: ROUTES.EMPRESAS },
-    ],
-  },
-  {
-    group: 'FOLHA',
-    items: [
-      { label: 'Folha de Pagamento', icon: FileText,       to: ROUTES.FOLHA },
-      { label: 'Rubricas',           icon: Tag,            to: ROUTES.RUBRICAS },
-    ],
-  },
-  {
-    group: 'OPERAÇÕES',
-    items: [
-      { label: 'Férias',           icon: Umbrella,         to: ROUTES.FERIAS },
-      { label: 'Rescisão',         icon: LogOut,           to: ROUTES.RESCISAO },
-      { label: 'Ponto',            icon: Clock,            to: ROUTES.PONTO },
-      { label: 'Custo / Simulador',icon: Calculator,       to: ROUTES.CUSTOS },
-      { label: 'QuickCalc',        icon: Zap,              to: ROUTES.QUICKCALC },
-    ],
-  },
-  {
-    group: 'RELATÓRIOS',
-    items: [
-      { label: 'Relatórios',       icon: BarChart2,        to: ROUTES.RELATORIOS },
-    ],
-  },
-  {
-    group: 'ADMIN',
-    items: [
-      { label: 'Administração',    icon: Settings,         to: ROUTES.ADMIN },
-    ],
-  },
+  { group: 'GERAL', items: [
+    { label: 'Dashboard',          icon: LayoutDashboard, to: ROUTES.DASHBOARD  },
+  ]},
+  { group: 'CADASTROS', items: [
+    { label: 'Empresas',           icon: Building2,       to: ROUTES.EMPRESAS   },
+  ]},
+  { group: 'FOLHA', items: [
+    { label: 'Folha de Pagamento', icon: FileText,        to: ROUTES.FOLHA      },
+    { label: 'Rubricas',           icon: Tag,             to: ROUTES.RUBRICAS   },
+  ]},
+  { group: 'OPERAÇÕES', items: [
+    { label: 'Férias',             icon: Umbrella,        to: ROUTES.FERIAS     },
+    { label: 'Rescisão',           icon: LogOut,          to: ROUTES.RESCISAO   },
+    { label: 'Ponto',              icon: Clock,           to: ROUTES.PONTO      },
+    { label: 'Custo / Simulador',  icon: Calculator,      to: ROUTES.CUSTOS     },
+    { label: 'QuickCalc',          icon: Zap,             to: ROUTES.QUICKCALC  },
+  ]},
+  { group: 'RELATÓRIOS', items: [
+    { label: 'Relatórios',         icon: BarChart2,       to: ROUTES.RELATORIOS },
+  ]},
+  { group: 'ADMIN', items: [
+    { label: 'Administração',      icon: Settings,        to: ROUTES.ADMIN      },
+  ]},
 ]
 
-const COLLAPSED_W = 56
-const EXPANDED_W  = 240
+const EXP_W = 200
+const COL_W = 48
 
 export default function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useUiStore()
-  const w = sidebarCollapsed ? COLLAPSED_W : EXPANDED_W
+  const w = sidebarCollapsed ? COL_W : EXP_W
 
   return (
-    <aside
-      style={{
-        width: w,
-        minWidth: w,
-        background: 'var(--sidebar-bg)',
-        borderRight: '1px solid var(--sidebar-border)',
-        display: 'flex',
-        flexDirection: 'column',
-        transition: 'width 220ms ease, min-width 220ms ease',
-        overflow: 'hidden',
-        position: 'relative',
-        zIndex: 10,
-      }}
-    >
-      {/* ── Logo ─────────────────────────────────────────────────────── */}
-      <div
-        style={{
-          height: 48,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: sidebarCollapsed ? '0 12px' : '0 16px',
-          borderBottom: '1px solid var(--sidebar-border)',
-          flexShrink: 0,
-          overflow: 'hidden',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        <div
-          style={{
-            width: 28,
-            height: 28,
-            flexShrink: 0,
-            borderRadius: 6,
-            background: 'var(--brand-600)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <svg viewBox="0 0 24 24" fill="none" style={{ width: 16, height: 16, color: '#fff' }} stroke="currentColor" strokeWidth={2}>
-            <rect x={3} y={3} width={7} height={7} rx={1} />
-            <rect x={14} y={3} width={7} height={7} rx={1} />
-            <rect x={3} y={14} width={7} height={7} rx={1} />
-            <rect x={14} y={14} width={7} height={7} rx={1} />
-          </svg>
-        </div>
-        {!sidebarCollapsed && (
-          <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 14, letterSpacing: '-0.01em' }}>
-            SudoSys
-          </span>
-        )}
-      </div>
-
-      {/* ── Nav ──────────────────────────────────────────────────────── */}
-      <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '8px 0' }}>
+    <aside style={{
+      width: w,
+      minWidth: w,
+      background: 'var(--color-bg-white)',
+      borderRight: '1px solid var(--color-border-main)',
+      display: 'flex',
+      flexDirection: 'column',
+      transition: 'width 180ms linear, min-width 180ms linear',
+      overflow: 'hidden',
+      flexShrink: 0,
+    }}>
+      {/* ── Nav ─────────────────────────────────────────────────── */}
+      <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
         {NAV.map(({ group, items }) => (
-          <div key={group} style={{ marginBottom: 4 }}>
-            {/* Group label */}
-            {!sidebarCollapsed && (
-              <div
-                style={{
-                  padding: '8px 16px 4px',
-                  fontSize: 10,
-                  fontWeight: 600,
-                  letterSpacing: '0.08em',
-                  color: 'var(--text-muted)',
-                  textTransform: 'uppercase',
-                  userSelect: 'none',
-                }}
-              >
+          <div key={group}>
+            {/* Group header */}
+            {!sidebarCollapsed ? (
+              <div style={{
+                height: 18,
+                padding: '0 8px',
+                display: 'flex',
+                alignItems: 'center',
+                background: 'var(--color-bg-ribbon)',
+                borderBottom: '1px solid var(--color-border-light)',
+                borderTop: '1px solid var(--color-border-light)',
+                fontSize: 10,
+                fontWeight: 600,
+                color: 'var(--color-text-muted)',
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                userSelect: 'none',
+              }}>
                 {group}
               </div>
-            )}
-            {sidebarCollapsed && (
-              <div style={{ height: 8 }} />
+            ) : (
+              <div style={{
+                height: 6,
+                background: 'var(--color-border-light)',
+              }} />
             )}
 
             {/* Items */}
@@ -164,47 +91,45 @@ export default function Sidebar() {
               <NavLink
                 key={to}
                 to={to}
+                title={sidebarCollapsed ? label : undefined}
                 style={({ isActive }) => ({
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 10,
-                  padding: sidebarCollapsed ? '8px 14px' : '7px 16px',
-                  margin: '1px 6px',
-                  borderRadius: 6,
+                  gap: 6,
+                  height: 24,
+                  padding: sidebarCollapsed ? '0 14px' : '0 12px',
                   textDecoration: 'none',
-                  fontSize: 13,
-                  fontWeight: isActive ? 500 : 400,
-                  color: isActive ? 'var(--sidebar-item-active-text)' : 'var(--text-secondary)',
-                  background: isActive ? 'var(--sidebar-item-active-bg)' : 'transparent',
-                  transition: 'background 150ms, color 150ms',
-                  whiteSpace: 'nowrap',
+                  fontSize: 12,
+                  fontWeight: isActive ? 600 : 400,
+                  color: isActive ? '#ffffff' : 'var(--color-text-primary)',
+                  background: isActive ? 'var(--color-brand)' : 'transparent',
+                  borderLeft: isActive ? '2px solid var(--color-brand)' : '2px solid transparent',
                   overflow: 'hidden',
+                  whiteSpace: 'nowrap',
                 })}
                 onMouseEnter={(e) => {
-                  const el = e.currentTarget as HTMLAnchorElement
-                  if (!el.getAttribute('data-active')) {
-                    el.style.background = 'var(--sidebar-item-hover)'
+                  const el = e.currentTarget
+                  if (!el.getAttribute('aria-current')) {
+                    el.style.background = 'var(--color-bg-row-hover)'
                   }
                 }}
                 onMouseLeave={(e) => {
-                  const el = e.currentTarget as HTMLAnchorElement
-                  if (!el.getAttribute('data-active')) {
+                  const el = e.currentTarget
+                  if (!el.getAttribute('aria-current')) {
                     el.style.background = ''
                   }
                 }}
-                title={sidebarCollapsed ? label : undefined}
               >
                 {({ isActive }) => (
                   <>
                     <Icon
-                      size={16}
-                      style={{
-                        flexShrink: 0,
-                        color: isActive ? 'var(--sidebar-item-active-text)' : 'var(--text-secondary)',
-                      }}
+                      size={14}
+                      style={{ flexShrink: 0, color: isActive ? '#fff' : 'var(--color-text-secondary)' }}
                     />
                     {!sidebarCollapsed && (
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {label}
+                      </span>
                     )}
                   </>
                 )}
@@ -214,42 +139,38 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* ── Toggle button ─────────────────────────────────────────────── */}
-      <div
-        style={{
-          borderTop: '1px solid var(--sidebar-border)',
-          padding: '8px 6px',
-          flexShrink: 0,
-        }}
-      >
+      {/* ── Toggle ──────────────────────────────────────────────── */}
+      <div style={{
+        borderTop: '1px solid var(--color-border-main)',
+        flexShrink: 0,
+      }}>
         <button
           onClick={toggleSidebar}
-          title={sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'}
+          title={sidebarCollapsed ? 'Expandir' : 'Recolher'}
           style={{
             width: '100%',
+            height: 22,
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
-            padding: sidebarCollapsed ? '8px 14px' : '7px 10px',
-            borderRadius: 6,
+            gap: 6,
+            padding: sidebarCollapsed ? '0 14px' : '0 10px',
             border: 'none',
-            background: 'transparent',
-            color: 'var(--text-muted)',
+            background: 'var(--color-bg-panel)',
+            color: 'var(--color-text-muted)',
+            fontSize: 11,
             cursor: 'pointer',
-            fontSize: 13,
-            transition: 'background 150ms, color 150ms',
           }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'var(--sidebar-item-hover)'
-            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'
+            (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-bg-row-hover)'
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = ''
-            ;(e.currentTarget as HTMLButtonElement).style.color = ''
+            (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-bg-panel)'
           }}
         >
-          {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-          {!sidebarCollapsed && <span>Recolher</span>}
+          {sidebarCollapsed
+            ? <ChevronRight size={12} />
+            : <><ChevronLeft size={12} /><span>Recolher</span></>
+          }
         </button>
       </div>
     </aside>

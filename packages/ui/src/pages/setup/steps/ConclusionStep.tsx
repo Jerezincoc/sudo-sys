@@ -2,27 +2,40 @@ import React from 'react'
 import { useWizardStore } from '@/state/wizardStore'
 import { ipcClient } from '@/api/ipcClient'
 
-// ── InfoRow ──────────────────────────────────────────────────────────────────
-
 function InfoRow({ label, value, faded }: { label: string; value: string; faded?: boolean }) {
   return (
-    <div className="flex items-start justify-between py-3 border-b border-surface-600 last:border-0">
-      <span className="text-gray-500 text-xs font-medium uppercase tracking-wide">{label}</span>
-      <span className={[
-        'text-sm text-right max-w-xs font-mono',
-        faded ? 'text-gray-600 italic' : 'text-gray-200',
-      ].join(' ')}>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: '140px 1fr',
+      borderBottom: '1px solid var(--color-border-light)',
+    }}>
+      <div style={{ padding: '3px 8px', fontSize: 10, textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600, letterSpacing: '0.04em', background: 'var(--color-bg-ribbon)', borderRight: '1px solid var(--color-border-light)' }}>
+        {label}
+      </div>
+      <div style={{ padding: '3px 8px', fontSize: 11, color: faded ? 'var(--color-text-muted)' : 'var(--color-text-primary)', fontFamily: faded ? 'inherit' : 'Consolas, monospace', fontStyle: faded ? 'italic' : 'normal' }}>
         {value}
-      </span>
+      </div>
     </div>
   )
 }
 
-// ── Componente principal ─────────────────────────────────────────────────────
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      padding: '3px 8px',
+      background: 'var(--color-bg-ribbon)',
+      borderBottom: '2px solid var(--color-brand)',
+      fontSize: 11,
+      fontWeight: 700,
+      color: 'var(--color-text-primary)',
+    }}>
+      {children}
+    </div>
+  )
+}
 
 export default function ConclusionStep() {
-  const { db, empresa, saving, savedOk, saveError, setSaving, setSavedOk, setSaveError, prevStep } =
-    useWizardStore()
+  const { db, empresa, saving, savedOk, saveError, setSaving, setSavedOk, setSaveError, prevStep } = useWizardStore()
 
   async function handleStart() {
     setSaving(true)
@@ -35,18 +48,13 @@ export default function ConclusionStep() {
         },
         empresa: empresa.skipped
           ? { razaoSocial: '', cnpj: '', endereco: '', responsavel: '' }
-          : {
-              razaoSocial: empresa.razaoSocial,
-              cnpj: empresa.cnpj,
-              endereco: empresa.endereco,
-              responsavel: empresa.responsavel,
-            },
+          : { razaoSocial: empresa.razaoSocial, cnpj: empresa.cnpj, endereco: empresa.endereco, responsavel: empresa.responsavel },
       })
       if (result.success) {
         setSavedOk(true)
         setTimeout(() => window.location.reload(), 1800)
       } else {
-        setSaveError(result.error ?? 'Erro desconhecido ao salvar configuracao.')
+        setSaveError(result.error ?? 'Erro desconhecido ao salvar configuração.')
       }
     } catch (err) {
       setSaveError(String(err))
@@ -55,157 +63,113 @@ export default function ConclusionStep() {
     }
   }
 
-  // ── Tela de sucesso ────────────────────────────────────────────────────────
+  /* ── Sucesso ───────────────────────────────────────────────────── */
   if (savedOk) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-full px-12 py-16 text-center">
-        <div className="w-20 h-20 rounded-full bg-green-600/20 border-2 border-green-500 flex items-center justify-center mb-6">
-          <svg viewBox="0 0 24 24" fill="none" className="w-10 h-10 text-green-400" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+      <div style={{ padding: '40px 32px', textAlign: 'center' }}>
+        <div style={{ fontSize: 32, color: 'var(--color-btn-add)', marginBottom: 12 }}>✓</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 6 }}>
+          Configuração concluída!
         </div>
-        <h2 className="text-3xl font-bold text-white mb-3">Configuracao concluida!</h2>
-        <p className="text-gray-400 text-sm max-w-sm mb-4">
-          O SudoSys foi configurado com sucesso. Iniciando o sistema...
-        </p>
-        <div className="flex items-center gap-2 text-green-400 text-sm">
-          <span className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
-          Carregando...
+        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+          SudoSys foi configurado com sucesso. Iniciando o sistema...
         </div>
       </div>
     )
   }
 
-  // ── Resumo ─────────────────────────────────────────────────────────────────
+  /* ── Resumo ────────────────────────────────────────────────────── */
   return (
-    <div className="flex flex-col min-h-full px-12 py-12">
+    <div style={{ padding: '24px 32px', maxWidth: 620 }}>
 
       {/* Header */}
-      <div className="mb-10">
-        <h2 className="text-2xl font-bold text-white mb-2">Revisao das configuracoes</h2>
-        <p className="text-gray-400 text-sm leading-relaxed max-w-lg">
-          Verifique as configuracoes antes de iniciar o sistema.
-          Tudo pode ser alterado posteriormente nas Configuracoes.
-        </p>
+      <div style={{ marginBottom: 20, paddingBottom: 12, borderBottom: '2px solid var(--color-brand)' }}>
+        <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em', marginBottom: 4 }}>
+          Revisão / Passo 4 de 4
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-brand)' }}>
+          Revisão das Configurações
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4, lineHeight: 1.6 }}>
+          Verifique as configurações antes de iniciar o sistema.
+          Tudo pode ser alterado posteriormente nas Configurações.
+        </div>
       </div>
 
-      <div className="max-w-2xl space-y-6">
+      {/* DB section */}
+      <div style={{ border: '1px solid var(--color-border-main)', marginBottom: 12 }}>
+        <SectionTitle>Banco de Dados</SectionTitle>
+        <InfoRow label="Tipo" value={db.type === 'sqlite' ? 'SQLite local' : 'PostgreSQL externo'} />
+        {db.type === 'sqlite'   && <InfoRow label="Arquivo"    value="{userData}/banco/sudosys.db" />}
+        {db.type === 'postgres' && <InfoRow label="Connection" value={db.connectionString.replace(/:[^:@]+@/, ':***@')} />}
+      </div>
 
-        {/* Banco de dados */}
-        <div className="bg-surface-800 border border-surface-500 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-brand-600/20 border border-brand-600/30 flex items-center justify-center">
-              <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-brand-400">
-                <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" />
-                <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" />
-                <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" />
-              </svg>
-            </div>
-            <p className="text-white font-semibold text-sm">Banco de dados</p>
-          </div>
-          <InfoRow
-            label="Tipo"
-            value={db.type === 'sqlite' ? 'SQLite local' : 'PostgreSQL externo'}
-          />
-          {db.type === 'postgres' && (
-            <InfoRow
-              label="Connection"
-              value={db.connectionString.replace(/:[^:@]+@/, ':***@')}
-            />
+      {/* Empresa section */}
+      <div style={{ border: '1px solid var(--color-border-main)', marginBottom: 16 }}>
+        <SectionTitle>
+          Empresa
+          {empresa.skipped && (
+            <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 400, color: '#7a4f00' }}>
+              (não configurada)
+            </span>
           )}
-          {db.type === 'sqlite' && (
-            <InfoRow label="Arquivo" value="{userData}/banco/sudosys.db" />
-          )}
-        </div>
+        </SectionTitle>
 
-        {/* Empresa */}
-        <div className="bg-surface-800 border border-surface-500 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-brand-600/20 border border-brand-600/30 flex items-center justify-center">
-              <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-brand-400">
-                <path fillRule="evenodd" d="M4 16.5v-13h-.25a.75.75 0 010-1.5h12.5a.75.75 0 010 1.5H16v13h.25a.75.75 0 010 1.5h-3.5a.75.75 0 01-.75-.75v-2.5a.75.75 0 00-.75-.75h-2.5a.75.75 0 00-.75.75v2.5a.75.75 0 01-.75.75h-3.5a.75.75 0 010-1.5H4zm3-11a.75.75 0 01.75-.75h.5a.75.75 0 010 1.5h-.5A.75.75 0 017 5.5zm.75 2.25a.75.75 0 000 1.5h.5a.75.75 0 000-1.5h-.5zM7 11.5a.75.75 0 01.75-.75h.5a.75.75 0 010 1.5h-.5a.75.75 0 01-.75-.75zm4.75-5.25a.75.75 0 000 1.5h.5a.75.75 0 000-1.5h-.5zm-.75 4.25a.75.75 0 01.75-.75h.5a.75.75 0 010 1.5h-.5a.75.75 0 01-.75-.75z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="flex items-center gap-2">
-              <p className="text-white font-semibold text-sm">Empresa</p>
-              {empresa.skipped && (
-                <span className="px-2 py-0.5 rounded-full bg-yellow-900/30 border border-yellow-700/50 text-yellow-500 text-xs font-medium">
-                  Nao configurada
-                </span>
-              )}
-            </div>
+        {empresa.skipped ? (
+          <div style={{ padding: '8px 10px', background: '#fff8e1', fontSize: 11, color: '#7a4f00' }}>
+            ⚠ Dados da empresa não informados. Será solicitado ao gerar o primeiro documento.
           </div>
-
-          {empresa.skipped ? (
-            <div className="flex items-start gap-3 py-3">
-              <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5">
-                <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <p className="text-yellow-400 text-sm font-medium">Dados da empresa nao informados</p>
-                <p className="text-gray-600 text-xs mt-0.5">
-                  Sera solicitado ao gerar o primeiro documento. Voce tambem pode configurar em
-                  Configuracoes {'>'} Empresa apos iniciar o sistema.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <>
-              <InfoRow label="Razao social"  value={empresa.razaoSocial || '—'} faded={!empresa.razaoSocial} />
-              <InfoRow label="CNPJ"          value={empresa.cnpj        || '—'} faded={!empresa.cnpj} />
-              <InfoRow label="Endereco"      value={empresa.endereco    || '—'} faded={!empresa.endereco} />
-              <InfoRow label="Responsavel"   value={empresa.responsavel || '—'} faded={!empresa.responsavel} />
-            </>
-          )}
-        </div>
-
-        {/* Erro */}
-        {saveError && (
-          <div className="p-4 bg-red-900/20 border border-red-700/50 rounded-xl">
-            <p className="text-red-400 text-sm font-medium mb-1">Erro ao salvar configuracao</p>
-            <p className="text-red-400/70 text-xs font-mono">{saveError}</p>
-          </div>
+        ) : (
+          <>
+            <InfoRow label="Razão Social" value={empresa.razaoSocial || '—'} faded={!empresa.razaoSocial} />
+            <InfoRow label="CNPJ"         value={empresa.cnpj        || '—'} faded={!empresa.cnpj}        />
+            <InfoRow label="Endereço"     value={empresa.endereco    || '—'} faded={!empresa.endereco}    />
+            <InfoRow label="Responsável"  value={empresa.responsavel || '—'} faded={!empresa.responsavel} />
+          </>
         )}
       </div>
 
-      {/* Rodape */}
-      <div className="mt-auto pt-8 flex items-center justify-between border-t border-surface-500">
+      {/* Error */}
+      {saveError && (
+        <div style={{ marginBottom: 12, padding: '6px 10px', background: '#fdf2f2', border: '1px solid var(--color-btn-del)', fontSize: 11, color: 'var(--color-btn-del)' }}>
+          <strong>Erro:</strong> {saveError}
+        </div>
+      )}
+
+      {/* Footer */}
+      <div style={{
+        marginTop: 20,
+        paddingTop: 12,
+        borderTop: '1px solid var(--color-border-main)',
+        display: 'flex',
+        justifyContent: 'space-between',
+      }}>
         <button
           onClick={prevStep}
           disabled={saving}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-surface-700 transition-all duration-150 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{ height: 26, padding: '0 14px', border: '1px solid var(--color-border-main)', background: 'var(--color-bg-panel)', color: 'var(--color-text-secondary)', fontSize: 12, cursor: 'pointer', opacity: saving ? 0.4 : 1 }}
         >
-          <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-            <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
-          </svg>
-          Anterior
+          ← Anterior
         </button>
-
         <button
           onClick={handleStart}
           disabled={saving}
-          className="
-            flex items-center gap-3 px-8 py-3 rounded-lg
-            bg-green-700 hover:bg-green-600
-            text-white font-bold text-sm
-            disabled:opacity-40 disabled:cursor-not-allowed
-            shadow-lg shadow-green-700/30
-            transition-all duration-150 active:scale-95
-          "
+          style={{
+            height: 28,
+            padding: '0 20px',
+            border: '1px solid var(--color-btn-add)',
+            background: 'var(--color-btn-add)',
+            color: '#fff',
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: saving ? 'wait' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            opacity: saving ? 0.7 : 1,
+          }}
         >
-          {saving ? (
-            <>
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Salvando...
-            </>
-          ) : (
-            <>
-              <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-              </svg>
-              Iniciar sistema
-            </>
-          )}
+          {saving ? 'Salvando...' : '▶  Iniciar Sistema'}
         </button>
       </div>
     </div>

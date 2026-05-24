@@ -1,190 +1,159 @@
 import React from 'react'
-import { Users, FileText, DollarSign, AlertCircle } from 'lucide-react'
 import { useSelectedEmpresaStore } from '@/state/selectedEmpresaSlice'
 
-interface SummaryCard {
-  icon: React.ElementType
+const MONTHS_LONG = [
+  'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro',
+]
+
+interface SummaryPanel {
   label: string
   value: string
   sub: string
   accent: string
 }
 
-const CARDS: SummaryCard[] = [
-  {
-    icon:   Users,
-    label:  'Funcionários ativos',
-    value:  '—',
-    sub:    'Nenhuma empresa selecionada',
-    accent: 'var(--brand-600)',
-  },
-  {
-    icon:   FileText,
-    label:  'Folhas abertas',
-    value:  '—',
-    sub:    'Nenhuma competência processada',
-    accent: 'var(--info)',
-  },
-  {
-    icon:   DollarSign,
-    label:  'Total bruto da folha',
-    value:  'R$ —',
-    sub:    'Competência atual',
-    accent: 'var(--success)',
-  },
-  {
-    icon:   AlertCircle,
-    label:  'Pendências',
-    value:  '—',
-    sub:    'Documentos e lançamentos',
-    accent: 'var(--warning)',
-  },
+const PANELS: SummaryPanel[] = [
+  { label: 'FUNCIONÁRIOS ATIVOS',  value: '—',     sub: 'Nenhuma empresa selecionada', accent: 'var(--color-brand)'    },
+  { label: 'FOLHAS ABERTAS',       value: '—',     sub: 'Competência atual',            accent: '#1e7e34'               },
+  { label: 'TOTAL BRUTO DA FOLHA', value: 'R$ —',  sub: 'Valores calculados',           accent: '#8b5e00'               },
+  { label: 'PENDÊNCIAS',           value: '—',     sub: 'Documentos e lançamentos',     accent: 'var(--color-btn-del)'  },
+]
+
+const ACTIVITY_ROWS = [
+  { data: '24/05/2026', usuario: 'admin',     acao: 'Cálculo de folha', competencia: 'Mai/2026', status: 'OK'       },
+  { data: '23/05/2026', usuario: 'operador1', acao: 'Importação AFD',   competencia: 'Mai/2026', status: 'OK'       },
+  { data: '22/05/2026', usuario: 'admin',     acao: 'Geração PDF',      competencia: 'Abr/2026', status: 'OK'       },
+  { data: '20/05/2026', usuario: 'operador1', acao: 'Transmissão eSoc', competencia: 'Abr/2026', status: 'PENDENTE' },
 ]
 
 export default function DashboardPage() {
   const { empresaNome, competencia } = useSelectedEmpresaStore()
-
-  const [year, month] = competencia.split('-')
-  const months = [
-    'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-    'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro',
-  ]
-  const monthName = months[parseInt(month, 10) - 1] ?? month
+  const [cYear, cMonth] = competencia.split('-')
+  const monthName = MONTHS_LONG[parseInt(cMonth, 10) - 1] ?? cMonth
 
   return (
-    <div style={{ padding: 24, maxWidth: 960, margin: '0 auto' }}>
-      {/* ── Cabeçalho ────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: 24 }}>
-        <h1
-          style={{
-            color: 'var(--text-primary)',
-            fontSize: 20,
-            fontWeight: 600,
-            margin: '0 0 4px',
-          }}
-        >
-          Dashboard
-        </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: 0 }}>
-          {empresaNome
-            ? `${empresaNome} · ${monthName} ${year}`
-            : `${monthName} ${year} · Selecione uma empresa na barra superior`}
-        </p>
+    <div style={{ padding: 8 }}>
+
+      {/* ── Page header ──────────────────────────────────────────── */}
+      <div style={{
+        marginBottom: 8,
+        paddingBottom: 4,
+        borderBottom: '1px solid var(--color-border-main)',
+      }}>
+        <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em' }}>
+          Módulo / Geral
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+          Dashboard — {empresaNome ?? 'Nenhuma empresa selecionada'}
+          <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--color-text-muted)', marginLeft: 8 }}>
+            {monthName} {cYear}
+          </span>
+        </div>
       </div>
 
-      {/* ── Cards de resumo ───────────────────────────────────────────── */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-          gap: 16,
-          marginBottom: 32,
-        }}
-      >
-        {CARDS.map(({ icon: Icon, label, value, sub, accent }) => (
+      {/* ── Summary panels (4 colunas) ───────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 8 }}>
+        {PANELS.map((p) => (
           <div
-            key={label}
+            key={p.label}
             style={{
-              background: 'var(--surface-800)',
-              border: '1px solid var(--border)',
-              borderRadius: 10,
-              padding: '18px 20px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-              transition: 'border-color 200ms',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLDivElement).style.borderColor = accent
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border)'
+              background: 'var(--color-bg-white)',
+              border: '1px solid var(--color-border-main)',
+              padding: '6px 10px',
             }}
           >
-            {/* Icon + label */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: `${accent}1a`,
-                  flexShrink: 0,
-                }}
-              >
-                <Icon size={18} style={{ color: accent }} />
-              </div>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 500,
-                  color: 'var(--text-secondary)',
-                  lineHeight: 1.3,
-                }}
-              >
-                {label}
-              </span>
+            <div style={{
+              fontSize: 10,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              color: 'var(--color-text-muted)',
+              marginBottom: 4,
+            }}>
+              {p.label}
             </div>
-
-            {/* Value */}
-            <div>
-              <p
-                style={{
-                  fontSize: 26,
-                  fontWeight: 700,
-                  color: 'var(--text-primary)',
-                  margin: '0 0 2px',
-                  fontVariantNumeric: 'tabular-nums',
-                  letterSpacing: '-0.02em',
-                }}
-              >
-                {value}
-              </p>
-              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>
-                {sub}
-              </p>
+            <div style={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: p.accent,
+              fontVariantNumeric: 'tabular-nums',
+              lineHeight: 1.1,
+              marginBottom: 2,
+            }}>
+              {p.value}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+              {p.sub}
             </div>
           </div>
         ))}
       </div>
 
-      {/* ── Atividade recente (placeholder) ──────────────────────────── */}
-      <div
-        style={{
-          background: 'var(--surface-800)',
-          border: '1px solid var(--border)',
-          borderRadius: 10,
-          padding: '18px 20px',
-        }}
-      >
-        <h2
-          style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: 'var(--text-primary)',
-            margin: '0 0 16px',
-          }}
-        >
-          Atividade recente
-        </h2>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '32px 0',
-            gap: 8,
-          }}
-        >
-          <FileText size={32} style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
-          <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: 0 }}>
-            Nenhuma atividade recente
-          </p>
+      {/* ── Atividade recente (DataTable style) ──────────────────── */}
+      <div style={{
+        background: 'var(--color-bg-white)',
+        border: '1px solid var(--color-border-main)',
+      }}>
+        {/* Panel title */}
+        <div style={{
+          padding: '3px 8px',
+          background: 'var(--color-bg-ribbon)',
+          borderBottom: '1px solid var(--color-border-main)',
+          fontSize: 11,
+          fontWeight: 600,
+          color: 'var(--color-text-primary)',
+        }}>
+          Atividade Recente
         </div>
+
+        {/* Table header */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '20px 90px 100px 1fr 100px 80px',
+          background: 'var(--color-bg-ribbon)',
+          borderBottom: '2px solid var(--color-brand)',
+          fontSize: 11,
+          fontWeight: 700,
+          color: 'var(--color-text-primary)',
+        }}>
+          {['', 'Data', 'Usuário', 'Ação', 'Competência', 'Status'].map((h) => (
+            <div key={h} style={{ padding: '3px 4px', borderRight: '1px solid var(--color-border-light)' }}>
+              {h}
+            </div>
+          ))}
+        </div>
+
+        {/* Table rows */}
+        {ACTIVITY_ROWS.map((row, i) => (
+          <div
+            key={i}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '20px 90px 100px 1fr 100px 80px',
+              background: i % 2 === 0 ? 'var(--color-bg-white)' : 'var(--color-bg-row-even)',
+              fontSize: 11,
+              color: 'var(--color-text-primary)',
+              borderBottom: '1px solid var(--color-border-light)',
+              cursor: 'default',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--color-bg-row-hover)' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = i % 2 === 0 ? 'var(--color-bg-white)' : 'var(--color-bg-row-even)' }}
+          >
+            {/* Row indicator */}
+            <div style={{ padding: '3px 4px', borderRight: '1px solid var(--color-border-light)', color: 'var(--color-brand)', fontWeight: 700 }}>▶</div>
+            <div style={{ padding: '3px 4px', borderRight: '1px solid var(--color-border-light)', fontFamily: 'monospace' }}>{row.data}</div>
+            <div style={{ padding: '3px 4px', borderRight: '1px solid var(--color-border-light)' }}>{row.usuario}</div>
+            <div style={{ padding: '3px 4px', borderRight: '1px solid var(--color-border-light)' }}>{row.acao}</div>
+            <div style={{ padding: '3px 4px', borderRight: '1px solid var(--color-border-light)' }}>{row.competencia}</div>
+            <div style={{
+              padding: '3px 4px',
+              color: row.status === 'OK' ? 'var(--color-btn-add)' : 'var(--color-btn-del)',
+              fontWeight: 600,
+            }}>
+              {row.status}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )

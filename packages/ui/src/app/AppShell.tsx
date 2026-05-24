@@ -1,58 +1,309 @@
-import React from 'react'
-import { Outlet } from 'react-router-dom'
+import React, { useState } from 'react'
+import { Outlet, useLocation } from 'react-router-dom'
+import { Minus, Square, X, Sun, Moon } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
-import Topbar  from '@/components/layout/Topbar'
+import RibbonBar from '@/components/layout/RibbonBar'
+import { useTheme } from '@/app/theme/ThemeContext'
+import { useSelectedEmpresaStore } from '@/state/selectedEmpresaSlice'
+import { useSessionStore } from '@/state/sessionSlice'
+import { ROUTES } from '@/app/routes'
+
+const PAGE_NAMES: Record<string, string> = {
+  [ROUTES.DASHBOARD]:  'Dashboard',
+  [ROUTES.EMPRESAS]:   'Empresas',
+  [ROUTES.FOLHA]:      'Folha de Pagamento',
+  [ROUTES.RUBRICAS]:   'Rubricas',
+  [ROUTES.FERIAS]:     'Férias',
+  [ROUTES.RESCISAO]:   'Rescisão',
+  [ROUTES.PONTO]:      'Ponto',
+  [ROUTES.CUSTOS]:     'Custo / Simulador',
+  [ROUTES.QUICKCALC]:  'QuickCalc',
+  [ROUTES.RELATORIOS]: 'Relatórios',
+  [ROUTES.ADMIN]:      'Administração',
+}
+
+const MENU_ITEMS = ['Arquivo', 'Editar', 'Exibir', 'Ferramentas', 'Janela', 'Ajuda']
+
+const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
 export default function AppShell() {
+  const location = useLocation()
+  const { theme, toggle } = useTheme()
+  const { empresaNome, competencia } = useSelectedEmpresaStore()
+  const user = useSessionStore((s) => s.user)
+  const [menuHover, setMenuHover] = useState<string | null>(null)
+
+  const [cYear, cMonth] = competencia.split('-')
+  const compLabel = `${MONTHS[parseInt(cMonth, 10) - 1] ?? cMonth}/${cYear}`
+
+  const pageName = PAGE_NAMES[location.pathname] ?? 'SudoSys'
+
   return (
-    <div
-      style={{
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--color-bg-app)', overflow: 'hidden' }}>
+
+      {/* ── TITLEBAR 22px ───────────────────────────────────────── */}
+      <div style={{
+        height: 22,
+        flexShrink: 0,
+        background: 'var(--color-brand)',
         display: 'flex',
-        height: '100vh',
-        width: '100vw',
-        overflow: 'hidden',
-        background: 'var(--surface-900)',
-      }}
-    >
-      {/* ── Sidebar ────────────────────────────────────────────────── */}
-      <Sidebar />
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 0 0 8px',
+        userSelect: 'none',
+      }}>
+        <span style={{ color: '#fff', fontSize: 11, fontWeight: 600 }}>
+          SudoSys — Gestão de Folha de Pagamento
+          {empresaNome && (
+            <span style={{ fontWeight: 400, opacity: 0.75, marginLeft: 8 }}>
+              | {empresaNome}
+            </span>
+          )}
+        </span>
 
-      {/* ── Coluna direita: topbar + conteúdo + status bar ─────────── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar />
+        {/* Window controls */}
+        <div style={{ display: 'flex' }}>
+          <button
+            onClick={toggle}
+            title={theme === 'dark' ? 'Tema claro' : 'Tema escuro'}
+            style={winBtn}
+          >
+            {theme === 'dark' ? <Sun size={10} /> : <Moon size={10} />}
+          </button>
+          <button style={winBtn} title="Minimizar"><Minus size={10} /></button>
+          <button style={winBtn} title="Maximizar"><Square size={10} /></button>
+          <button
+            style={{ ...winBtn, width: 32 }}
+            title="Fechar"
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#c0392b' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '' }}
+          >
+            <X size={10} />
+          </button>
+        </div>
+      </div>
 
-        {/* ── Área de conteúdo ─────────────────────────────────── */}
-        <main
-          style={{
-            flex: 1,
-            overflow: 'auto',
-            background: 'var(--surface-900)',
-          }}
-        >
-          <Outlet />
-        </main>
+      {/* ── MENUBAR 22px ────────────────────────────────────────── */}
+      <div style={{
+        height: 22,
+        flexShrink: 0,
+        background: 'var(--color-bg-panel)',
+        borderBottom: '1px solid var(--color-border-main)',
+        display: 'flex',
+        alignItems: 'center',
+        userSelect: 'none',
+      }}>
+        {MENU_ITEMS.map((item) => (
+          <button
+            key={item}
+            onMouseEnter={() => setMenuHover(item)}
+            onMouseLeave={() => setMenuHover(null)}
+            style={{
+              height: '100%',
+              padding: '0 10px',
+              border: 'none',
+              background: menuHover === item ? 'var(--color-brand)' : 'transparent',
+              color: menuHover === item ? '#fff' : 'var(--color-text-primary)',
+              fontSize: 12,
+              cursor: 'pointer',
+            }}
+          >
+            {item}
+          </button>
+        ))}
+        <div style={{ flex: 1 }} />
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0,
+          padding: '0 8px',
+          fontSize: 11,
+          color: 'var(--color-text-secondary)',
+        }}>
+          <span>{user?.name ?? 'Usuário'}</span>
+          <span style={{ margin: '0 8px', color: 'var(--color-border-main)' }}>|</span>
+          <span>{empresaNome ?? 'Nenhuma empresa selecionada'}</span>
+        </div>
+      </div>
 
-        {/* ── Status bar ────────────────────────────────────────── */}
-        <footer
-          style={{
+      {/* ── RIBBON ──────────────────────────────────────────────── */}
+      <RibbonBar />
+
+      {/* ── BODY: Sidebar + Content ──────────────────────────────── */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+
+        <Sidebar />
+
+        {/* Content column */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+          {/* ── TAB BAR 24px ─────────────────────────────── */}
+          <div style={{
             height: 24,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 12px',
-            background: 'var(--brand-600)',
-            color: 'rgba(255,255,255,0.85)',
-            fontSize: 11,
             flexShrink: 0,
-            userSelect: 'none',
-          }}
-        >
-          <span>SudoSys v1.0.0</span>
-          <span style={{ color: 'rgba(255,255,255,0.6)' }}>
-            Gestão de Folha de Pagamento
-          </span>
-        </footer>
+            background: 'var(--color-bg-panel)',
+            borderBottom: '1px solid var(--color-border-main)',
+            display: 'flex',
+            alignItems: 'flex-end',
+            padding: '0 0 0 4px',
+          }}>
+            {/* Active tab */}
+            <div style={{
+              height: 22,
+              padding: '0 16px',
+              background: 'var(--color-bg-white)',
+              border: '1px solid var(--color-border-main)',
+              borderBottom: '1px solid var(--color-bg-white)',
+              borderTop: '2px solid var(--color-brand)',
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: 11,
+              fontWeight: 500,
+              color: 'var(--color-text-primary)',
+              gap: 8,
+              whiteSpace: 'nowrap',
+            }}>
+              {pageName}
+            </div>
+          </div>
+
+          {/* ── ACTION TOOLBAR 26px ──────────────────────── */}
+          <ActionToolbar />
+
+          {/* ── PAGE CONTENT ─────────────────────────────── */}
+          <div style={{ flex: 1, overflow: 'auto', background: 'var(--color-bg-app)' }}>
+            <Outlet />
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── STATUS BAR 20px ─────────────────────────────────────── */}
+      <div style={{
+        height: 20,
+        flexShrink: 0,
+        background: 'var(--color-status-bar)',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 8px',
+        fontSize: 11,
+        color: 'rgba(255,255,255,0.9)',
+        userSelect: 'none',
+        gap: 0,
+      }}>
+        <span>Sistema</span>
+        <StatusSep />
+        <span>Aplicação</span>
+        <StatusSep />
+        <span>Mensagens</span>
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          Período: {compLabel}
+          <span style={{ margin: '0 8px', opacity: 0.35 }}>·</span>
+          Empresa: {empresaNome ?? '—'}
+          <span style={{ margin: '0 8px', opacity: 0.35 }}>·</span>
+          Folha: 1 - Mensal
+        </div>
+        <span style={{ opacity: 0.75 }}>SudoSys v1.0.0</span>
       </div>
     </div>
   )
+}
+
+function StatusSep() {
+  return <div style={{ width: 1, height: 12, background: 'rgba(255,255,255,0.25)', margin: '0 8px' }} />
+}
+
+const winBtn: React.CSSProperties = {
+  width: 28,
+  height: 22,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  border: 'none',
+  background: 'transparent',
+  color: 'rgba(255,255,255,0.8)',
+  cursor: 'pointer',
+}
+
+/* ── Action Toolbar ─────────────────────────────────────────────────── */
+function ActionToolbar() {
+  return (
+    <div style={{
+      height: 26,
+      flexShrink: 0,
+      background: 'var(--color-bg-panel)',
+      borderBottom: '1px solid var(--color-border-main)',
+      display: 'flex',
+      alignItems: 'center',
+      padding: '0 4px',
+      gap: 1,
+    }}>
+      <TBtn color="var(--color-btn-add)" title="Novo (Ins)">+</TBtn>
+      <TBtn color="var(--color-btn-del)" title="Excluir (Del)">✕</TBtn>
+      <TBtn color="var(--color-text-secondary)" title="Editar (F2)">✎</TBtn>
+      <TBtn color="var(--color-text-secondary)" title="Atualizar (F5)">⟳</TBtn>
+      <TDivider />
+      <TDrop>Anexos ▾</TDrop>
+      <TDrop>Processos ▾</TDrop>
+      <TDivider />
+      <TDrop>Filtro: Todos ▾</TDrop>
+      <div style={{ flex: 1 }} />
+      <span style={{ fontSize: 11, color: 'var(--color-text-muted)', padding: '0 6px' }}>
+        🔍 1/48
+      </span>
+    </div>
+  )
+}
+
+function TBtn({ children, color, title }: { children: React.ReactNode; color: string; title?: string }) {
+  const [h, setH] = useState(false)
+  return (
+    <button
+      title={title}
+      onMouseEnter={() => setH(true)}
+      onMouseLeave={() => setH(false)}
+      style={{
+        width: 20,
+        height: 20,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        border: `1px solid ${h ? 'var(--color-border-main)' : 'transparent'}`,
+        background: h ? 'var(--color-bg-row-hover)' : 'transparent',
+        color,
+        fontSize: 13,
+        cursor: 'pointer',
+        lineHeight: 1,
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function TDrop({ children }: { children: React.ReactNode }) {
+  const [h, setH] = useState(false)
+  return (
+    <button
+      onMouseEnter={() => setH(true)}
+      onMouseLeave={() => setH(false)}
+      style={{
+        height: 20,
+        padding: '0 7px',
+        display: 'flex',
+        alignItems: 'center',
+        border: `1px solid ${h ? 'var(--color-border-main)' : 'transparent'}`,
+        background: h ? 'var(--color-bg-row-hover)' : 'transparent',
+        color: 'var(--color-text-primary)',
+        fontSize: 11,
+        cursor: 'pointer',
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function TDivider() {
+  return <div style={{ width: 1, height: 18, background: 'var(--color-border-main)', margin: '0 2px', flexShrink: 0 }} />
 }

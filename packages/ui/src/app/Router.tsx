@@ -2,59 +2,33 @@ import React, { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ROUTES } from './routes'
 import AppShell from './AppShell'
-
-// ── Setup ──────────────────────────────────────────────────────────────────
 import SetupWizardPage from '@/pages/setup/SetupWizardPage'
 
-// ── Páginas principais (lazy) ──────────────────────────────────────────────
-const DashboardPage        = lazy(() => import('@/pages/dashboard/DashboardPage'))
-const EmpresasPage         = lazy(() => import('@/pages/empresas/EmpresasPage'))
-const FolhaPage            = lazy(() => import('@/pages/folha/FolhaPage'))
-const RubricasPage         = lazy(() => import('@/pages/rubricas/RubricasPage'))
-const FeriasPage           = lazy(() => import('@/pages/ferias/FeriasPage'))
-const RescisaoPage         = lazy(() => import('@/pages/rescisao/RescisaoPage'))
-const PontoPage            = lazy(() => import('@/pages/ponto/PontoPage'))
-const CustosSimuladorPage  = lazy(() => import('@/pages/custos/CustosSimuladorPage'))
-const QuickCalcPage        = lazy(() => import('@/pages/quickcalc/QuickCalcPage'))
-const AdminPage            = lazy(() => import('@/pages/admin/AdminPage'))
+const DashboardPage       = lazy(() => import('@/pages/dashboard/DashboardPage'))
+const EmpresasPage        = lazy(() => import('@/pages/empresas/EmpresasPage'))
+const FolhaPage           = lazy(() => import('@/pages/folha/FolhaPage'))
+const RubricasPage        = lazy(() => import('@/pages/rubricas/RubricasPage'))
+const FeriasPage          = lazy(() => import('@/pages/ferias/FeriasPage'))
+const RescisaoPage        = lazy(() => import('@/pages/rescisao/RescisaoPage'))
+const PontoPage           = lazy(() => import('@/pages/ponto/PontoPage'))
+const CustosSimuladorPage = lazy(() => import('@/pages/custos/CustosSimuladorPage'))
+const QuickCalcPage       = lazy(() => import('@/pages/quickcalc/QuickCalcPage'))
+const AdminPage           = lazy(() => import('@/pages/admin/AdminPage'))
 
-// ── Relatórios (placeholder) ───────────────────────────────────────────────
+import PlaceholderPage from '@/components/layout/PlaceholderPage'
 function RelatoriosPage() {
-  return <PlaceholderPage title="Relatórios" />
-}
-
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ textAlign: 'center' }}>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 4 }}>Em desenvolvimento</p>
-        <h2 style={{ color: 'var(--text-primary)', fontSize: 20, fontWeight: 600, margin: 0 }}>{title}</h2>
-      </div>
-    </div>
-  )
+  return <PlaceholderPage module="Relatórios" name="Relatórios" />
 }
 
 function PageLoader() {
   return (
     <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-      <div
-        style={{
-          width: 28,
-          height: 28,
-          border: '2px solid var(--brand-600)',
-          borderTopColor: 'transparent',
-          borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite',
-        }}
-      />
-      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Carregando...</span>
     </div>
   )
 }
 
-interface Props {
-  initialState: 'setup' | 'main'
-}
+interface Props { initialState: 'setup' | 'main' }
 
 export default function AppRouter({ initialState }: Props) {
   if (initialState === 'setup') {
@@ -69,7 +43,6 @@ export default function AppRouter({ initialState }: Props) {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
-        {/* Layout principal com AppShell */}
         <Route element={<AppShell />}>
           <Route path={ROUTES.DASHBOARD}  element={<DashboardPage />} />
           <Route path={ROUTES.EMPRESAS}   element={<EmpresasPage />} />
