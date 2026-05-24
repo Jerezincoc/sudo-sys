@@ -1,21 +1,42 @@
 /**
  * main.ts - Electron Main Process
- * Ponto de entrada do processo principal.
+ * Dev:  carregado via electron-dev.cjs (tsx/cjs bootstrap)
+ * Prod: carregado via dist/main/main.js (compilado pelo tsc)
  */
 import { app, BrowserWindow, shell } from 'electron'
 import path from 'path'
 import { registerSetupHandlers } from './ipc/handlers/setupHandlers'
 import { registerAllHandlers } from './ipc/ipcRouter'
 
-// Seguranca: desabilita navegacao para origens externas
+// ── Dev vs Prod ──────────────────────────────────────────────────────────────
+const isDev = !!process.env['VITE_DEV_SERVER_URL']
+
+/**
+ * Resolve o caminho do preload de acordo com o modo de execucao.
+ *
+ * Dev  (tsx via electron-dev.cjs): __dirname = app-host/src/
+ *   -> app-host/src/../dist/main/preload.js = app-host/dist/main/preload.js
+ *
+ * Prod (tsc compilado):            __dirname = app-host/dist/main/
+ *   -> app-host/dist/main/preload.js
+ */
+function resolvePreload(): string {
+  return isDev
+    ? path.join(__dirname, '../dist/main/preload.js')
+    : path.join(__dirname, 'preload.js')
+}
+
+// ── Seguranca ────────────────────────────────────────────────────────────────
 app.on('web-contents-created', (_, contents) => {
   contents.on('will-navigate', (event, url) => {
     const allowedOrigins = new Set([
       'http://localhost:5173',
       `file://${app.getAppPath()}`,
     ])
-    const { origin } = new URL(url)
-    if (!allowedOrigins.has(origin)) {
+    try {
+      const { origin } = new URL(url)
+      if (!allowedOrigins.has(origin)) event.preventDefault()
+    } catch {
       event.preventDefault()
     }
   })
@@ -28,8 +49,9 @@ app.on('web-contents-created', (_, contents) => {
   })
 })
 
+// ── Janela principal ──────────────────────────────────────────────────────────
 async function createWindow(): Promise<void> {
-  const preloadPath = path.join(__dirname, 'preload.js')
+  const preloadPath = resolvePreload()
 
   const win = new BrowserWindow({
     width: 1280,
@@ -50,39 +72,37 @@ async function createWindow(): Promise<void> {
 
   win.once('ready-to-show', () => {
     win.show()
-    if (!app.isPackaged) {
-      win.webContents.openDevTools({ mode: 'detach' })
-    }
+    if (isDev) win.webContents.openDevTools({ mode: 'detach' })
   })
 
-  const devServerUrl = process.env['VITE_DEV_SERVER_URL']
-  if (devServerUrl) {
-    await win.loadURL(devServerUrl)
-  } else {
-    await win.loadFile(
-      path.join(__dirname, '../renderer/index.html')
-    )
+  const devUrl = process.env['VITE_DEV_SERVER_URL']
+  try {
+    if (devUrl) {
+      await win.loadURL(devUrl)
+    } else {
+      await win.loadFile(path.join(__dirname, '../renderer/index.html'))
+    }
+  } catch (err) {
+    console.error('[main] Falha ao carregar o renderer:', err)
   }
 }
 
+// ── IPC ───────────────────────────────────────────────────────────────────────
 function setupIpc(): void {
   registerSetupHandlers()
   registerAllHandlers()
 }
 
+// ── App lifecycle ─────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
   setupIpc()
   await createWindow()
 
   app.on('activate', async () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      await createWindow()
-    }
+    if (BrowserWindow.getAllWindows().length === 0) await createWindow()
   })
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+  if (process.platform !== 'darwin') app.quit()
 })
