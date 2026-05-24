@@ -4,29 +4,53 @@ export default {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50:  '#e8f1fb',
-          100: '#c5d9f4',
-          200: '#9ebfec',
-          300: '#77a5e4',
-          400: '#5991de',
-          500: '#3b7dd8',
-          600: '#1e6bb8',   // primary
-          700: '#185895',
-          800: '#114471',
-          900: '#0a304e',
-        },
+        // ── Superfícies (mapeadas para CSS vars — suportam light/dark) ──────
         surface: {
-          900: '#0f1117',   // app background
-          800: '#1a1d27',   // card / sidebar
-          700: '#222536',   // input / panel
-          600: '#2d3148',   // hover
-          500: '#3d4260',   // border
+          900: 'var(--surface-900)',
+          800: 'var(--surface-800)',
+          700: 'var(--surface-700)',
+          600: 'var(--surface-600)',
+          500: 'var(--surface-500)',
         },
+        // ── Paleta de marca ───────────────────────────────────────────────
+        brand: {
+          50:  'var(--brand-50)',
+          100: 'var(--brand-100)',
+          400: 'var(--brand-400)',
+          500: 'var(--brand-500)',
+          600: 'var(--brand-600)',
+          700: 'var(--brand-700)',
+          800: 'var(--brand-800)',
+          900: 'var(--brand-900)',
+        },
+        // ── Texto semântico ───────────────────────────────────────────────
+        text: {
+          primary:   'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          muted:     'var(--text-muted)',
+          inverse:   'var(--text-inverse)',
+        },
+        // ── Bordas ────────────────────────────────────────────────────────
+        border: {
+          DEFAULT: 'var(--border)',
+          focus:   'var(--border-focus)',
+        },
+        // ── Status ────────────────────────────────────────────────────────
+        success: 'var(--success)',
+        warning: 'var(--warning)',
+        danger:  'var(--danger)',
+        info:    'var(--info)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+      },
+      fontSize: {
+        base: ['13px', { lineHeight: '1.5' }],
+      },
+      boxShadow: {
+        card:  '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
+        brand: '0 4px 14px rgba(30,107,184,0.35)',
       },
     },
   },

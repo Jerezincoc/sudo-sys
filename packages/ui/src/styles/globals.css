@@ -2,19 +2,112 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Tema escuro (padrão) ──────────────────────────────────────────────── */
+:root {
+  /* Brand */
+  --brand-50:  #e8f1fb;
+  --brand-100: #c5d9f4;
+  --brand-400: #5991de;
+  --brand-500: #3b7dd8;
+  --brand-600: #1e6bb8;
+  --brand-700: #185895;
+  --brand-800: #114471;
+  --brand-900: #0a304e;
+
+  /* Superfícies */
+  --surface-900: #0f1117;
+  --surface-800: #1a1d27;
+  --surface-700: #222536;
+  --surface-600: #2d3148;
+  --surface-500: #3d4260;
+
+  /* Texto */
+  --text-primary:   #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted:     #64748b;
+  --text-inverse:   #0f172a;
+
+  /* Bordas */
+  --border:       #3d4260;
+  --border-focus: #3b7dd8;
+
+  /* Status */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger:  #ef4444;
+  --info:    #38bdf8;
+
+  /* Sidebar */
+  --sidebar-bg:              #1a1d27;
+  --sidebar-border:          #3d4260;
+  --sidebar-item-hover:      #2d3148;
+  --sidebar-item-active-bg:  #1e3a5f;
+  --sidebar-item-active-text:#60a5fa;
+
+  /* Topbar */
+  --topbar-bg:     #1a1d27;
+  --topbar-border: #3d4260;
+}
+
+/* ── Tema claro ────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --brand-50:  #eff6ff;
+  --brand-100: #dbeafe;
+  --brand-400: #60a5fa;
+  --brand-500: #3b82f6;
+  --brand-600: #1e6bb8;
+  --brand-700: #1d4ed8;
+  --brand-800: #1e40af;
+  --brand-900: #1e3a8a;
+
+  --surface-900: #f1f5f9;
+  --surface-800: #ffffff;
+  --surface-700: #f8fafc;
+  --surface-600: #e2e8f0;
+  --surface-500: #cbd5e1;
+
+  --text-primary:   #0f172a;
+  --text-secondary: #475569;
+  --text-muted:     #94a3b8;
+  --text-inverse:   #f1f5f9;
+
+  --border:       #e2e8f0;
+  --border-focus: #3b82f6;
+
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger:  #dc2626;
+  --info:    #0284c7;
+
+  --sidebar-bg:              #ffffff;
+  --sidebar-border:          #e2e8f0;
+  --sidebar-item-hover:      #f1f5f9;
+  --sidebar-item-active-bg:  #dbeafe;
+  --sidebar-item-active-text:#1d4ed8;
+
+  --topbar-bg:     #ffffff;
+  --topbar-border: #e2e8f0;
+}
+
+/* ── Base global ───────────────────────────────────────────────────────── */
 @layer base {
-  * {
+  *, *::before, *::after {
     box-sizing: border-box;
   }
-  
+
+  html {
+    font-size: 13px;
+  }
+
   body {
-    @apply bg-surface-900 text-gray-100 font-sans antialiased;
     margin: 0;
     padding: 0;
     min-height: 100vh;
+    background-color: var(--surface-900);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Remove Electron default text selection cursor */
     user-select: none;
   }
 
@@ -22,17 +115,32 @@
     user-select: text;
   }
 
+  /* ── Scrollbar fina ────────────────────────────────────────────────── */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
   }
   ::-webkit-scrollbar-track {
-    @apply bg-surface-800;
+    background: var(--surface-800);
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-surface-500 rounded-full;
+    background: var(--surface-500);
+    border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-brand-600;
+    background: var(--brand-600);
   }
+}
+
+/* ── Utilitários semânticos ────────────────────────────────────────────── */
+@layer utilities {
+  .bg-app       { background-color: var(--surface-900); }
+  .bg-card      { background-color: var(--surface-800); }
+  .bg-panel     { background-color: var(--surface-700); }
+  .bg-hover     { background-color: var(--surface-600); }
+  .border-app   { border-color: var(--border); }
+  .text-main    { color: var(--text-primary); }
+  .text-sub     { color: var(--text-secondary); }
+  .text-hint    { color: var(--text-muted); }
+  .text-brand   { color: var(--brand-600); }
 }
