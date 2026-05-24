@@ -6,6 +6,7 @@ import RibbonBar from '@/components/layout/RibbonBar'
 import { useTheme } from '@/app/theme/ThemeContext'
 import { useSelectedEmpresaStore } from '@/state/selectedEmpresaSlice'
 import { useSessionStore } from '@/state/sessionSlice'
+import { usePageActionsStore } from '@/state/pageActionsSlice'
 import { ROUTES } from '@/app/routes'
 
 const PAGE_NAMES: Record<string, string> = {
@@ -179,32 +180,48 @@ export default function AppShell() {
       </div>
 
       {/* ── STATUS BAR 20px ─────────────────────────────────────── */}
-      <div style={{
-        height: 20,
-        flexShrink: 0,
-        background: 'var(--color-status-bar)',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 8px',
-        fontSize: 11,
-        color: 'rgba(255,255,255,0.9)',
-        userSelect: 'none',
-        gap: 0,
-      }}>
-        <span>Sistema</span>
-        <StatusSep />
-        <span>Aplicação</span>
-        <StatusSep />
-        <span>Mensagens</span>
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          Período: {compLabel}
-          <span style={{ margin: '0 8px', opacity: 0.35 }}>·</span>
-          Empresa: {empresaNome ?? '—'}
-          <span style={{ margin: '0 8px', opacity: 0.35 }}>·</span>
-          Folha: 1 - Mensal
-        </div>
-        <span style={{ opacity: 0.75 }}>SudoSys v1.0.0</span>
+      <StatusBar compLabel={compLabel} empresaNome={empresaNome} />
+    </div>
+  )
+}
+
+function StatusBar({ compLabel, empresaNome }: { compLabel: string; empresaNome: string | null }) {
+  const { statusMessage, statusType } = usePageActionsStore()
+
+  const msgColor = statusType === 'error'
+    ? '#ff6b6b'
+    : statusType === 'success'
+      ? '#69db7c'
+      : 'rgba(255,255,255,0.9)'
+
+  return (
+    <div style={{
+      height: 20,
+      flexShrink: 0,
+      background: 'var(--color-status-bar)',
+      display: 'flex',
+      alignItems: 'center',
+      padding: '0 8px',
+      fontSize: 11,
+      color: 'rgba(255,255,255,0.9)',
+      userSelect: 'none',
+      gap: 0,
+    }}>
+      <span>Sistema</span>
+      <StatusSep />
+      <span>Aplicação</span>
+      <StatusSep />
+      <span style={{ color: msgColor, minWidth: 180, maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {statusMessage ?? 'Pronto'}
+      </span>
+      <div style={{ flex: 1, textAlign: 'center' }}>
+        Período: {compLabel}
+        <span style={{ margin: '0 8px', opacity: 0.35 }}>·</span>
+        Empresa: {empresaNome ?? '—'}
+        <span style={{ margin: '0 8px', opacity: 0.35 }}>·</span>
+        Folha: 1 - Mensal
       </div>
+      <span style={{ opacity: 0.75 }}>SudoSys v1.0.0</span>
     </div>
   )
 }
@@ -227,6 +244,9 @@ const winBtn: React.CSSProperties = {
 
 /* ── Action Toolbar ─────────────────────────────────────────────────── */
 function ActionToolbar() {
+  const { actions } = usePageActionsStore()
+  const { total, current } = actions
+
   return (
     <div style={{
       height: 26,
@@ -238,28 +258,31 @@ function ActionToolbar() {
       padding: '0 4px',
       gap: 1,
     }}>
-      <TBtn color="var(--color-btn-add)" title="Novo (Ins)">+</TBtn>
-      <TBtn color="var(--color-btn-del)" title="Excluir (Del)">✕</TBtn>
-      <TBtn color="var(--color-text-secondary)" title="Editar (F2)">✎</TBtn>
-      <TBtn color="var(--color-text-secondary)" title="Atualizar (F5)">⟳</TBtn>
+      <TBtn color="var(--color-btn-add)" title="Novo (Ins)" onClick={actions.onNew}>+</TBtn>
+      <TBtn color="var(--color-btn-del)" title="Excluir (Del)" onClick={actions.onDelete}>✕</TBtn>
+      <TBtn color="var(--color-text-secondary)" title="Editar (F2)" onClick={actions.onEdit}>✎</TBtn>
+      <TBtn color="var(--color-text-secondary)" title="Atualizar (F5)" onClick={actions.onRefresh}>⟳</TBtn>
       <TDivider />
       <TDrop>Anexos ▾</TDrop>
       <TDrop>Processos ▾</TDrop>
       <TDivider />
       <TDrop>Filtro: Todos ▾</TDrop>
       <div style={{ flex: 1 }} />
-      <span style={{ fontSize: 11, color: 'var(--color-text-muted)', padding: '0 6px' }}>
-        🔍 1/48
-      </span>
+      {total !== undefined && (
+        <span style={{ fontSize: 11, color: 'var(--color-text-muted)', padding: '0 6px' }}>
+          {current ?? 0}/{total}
+        </span>
+      )}
     </div>
   )
 }
 
-function TBtn({ children, color, title }: { children: React.ReactNode; color: string; title?: string }) {
+function TBtn({ children, color, title, onClick }: { children: React.ReactNode; color: string; title?: string; onClick?: () => void }) {
   const [h, setH] = useState(false)
   return (
     <button
       title={title}
+      onClick={onClick}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       style={{
@@ -270,10 +293,11 @@ function TBtn({ children, color, title }: { children: React.ReactNode; color: st
         justifyContent: 'center',
         border: `1px solid ${h ? 'var(--color-border-main)' : 'transparent'}`,
         background: h ? 'var(--color-bg-row-hover)' : 'transparent',
-        color,
+        color: onClick ? color : 'var(--color-text-muted)',
         fontSize: 13,
-        cursor: 'pointer',
+        cursor: onClick ? 'pointer' : 'default',
         lineHeight: 1,
+        opacity: onClick ? 1 : 0.5,
       }}
     >
       {children}

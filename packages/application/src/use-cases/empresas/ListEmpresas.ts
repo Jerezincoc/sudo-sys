@@ -1,1 +1,6 @@
-import type { EmpresaRepository } from '../../ports'; export class ListEmpresas { constructor(private repo: EmpresaRepository) {} async execute() { return this.repo.findAll() } }
+import type { Empresa } from '@sudo-sys/shared'
+import type { IEmpresaRepository } from './IEmpresaRepository'
+
+export function listEmpresas(repo: IEmpresaRepository): Empresa[] {
+  return repo.list()
+}

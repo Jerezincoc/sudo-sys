@@ -7,6 +7,7 @@ import { app, BrowserWindow, shell } from 'electron'
 import path from 'path'
 import { registerSetupHandlers } from './ipc/handlers/setupHandlers'
 import { registerAllHandlers } from './ipc/ipcRouter'
+import { initDatabase } from './db/database'
 
 // ── Dev vs Prod ──────────────────────────────────────────────────────────────
 const isDev = !!process.env['VITE_DEV_SERVER_URL']
@@ -90,6 +91,7 @@ async function createWindow(): Promise<void> {
 // ── IPC ───────────────────────────────────────────────────────────────────────
 function setupIpc(): void {
   registerSetupHandlers()
+  initDatabase()        // garante DB + migrations antes dos handlers
   registerAllHandlers()
 }
 

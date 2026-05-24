@@ -9,9 +9,15 @@ import type {
   TestDbResult,
   SaveConfigPayload,
   AppConfig,
+  Empresa,
+  CreateEmpresaPayload,
+  UpdateEmpresaPayload,
 } from '@sudo-sys/shared'
 
+type IpcResult<T> = { success: true; data: T } | { success: false; error: string }
+
 contextBridge.exposeInMainWorld('electronAPI', {
+  // ── Setup ─────────────────────────────────────────────────────────
   checkInitialized: (): Promise<boolean> =>
     ipcRenderer.invoke('setup:check-initialized'),
 
@@ -23,4 +29,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   getConfig: (): Promise<AppConfig | null> =>
     ipcRenderer.invoke('setup:get-config'),
+
+  // ── Empresas ──────────────────────────────────────────────────────
+  listEmpresas: (): Promise<Empresa[]> =>
+    ipcRenderer.invoke('empresa:list'),
+
+  getEmpresa: (id: number): Promise<Empresa | null> =>
+    ipcRenderer.invoke('empresa:get', id),
+
+  createEmpresa: (payload: CreateEmpresaPayload): Promise<IpcResult<Empresa>> =>
+    ipcRenderer.invoke('empresa:create', payload),
+
+  updateEmpresa: (payload: UpdateEmpresaPayload): Promise<IpcResult<Empresa>> =>
+    ipcRenderer.invoke('empresa:update', payload),
+
+  deleteEmpresa: (id: number): Promise<IpcResult<void>> =>
+    ipcRenderer.invoke('empresa:delete', id),
 })
