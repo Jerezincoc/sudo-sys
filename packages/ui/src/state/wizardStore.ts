@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { DbType } from '@sudo-sys/shared'
 
-// ── Tipos ──────────────────────────────────────────────────────────────────
+// ── Tipos ───────────────────────────────────────────────────────────────────
 
 export interface WizardDbConfig {
   type: DbType
@@ -12,6 +12,7 @@ export interface WizardDbConfig {
 }
 
 export interface WizardEmpresaData {
+  skipped: boolean       // true quando o usuario clicou em "Pular por enquanto"
   razaoSocial: string
   cnpj: string
   endereco: string
@@ -19,7 +20,7 @@ export interface WizardEmpresaData {
 }
 
 export interface WizardState {
-  currentStep: number          // 0-3
+  currentStep: number
   totalSteps: number
   db: WizardDbConfig
   empresa: WizardEmpresaData
@@ -32,17 +33,22 @@ export interface WizardActions {
   setStep: (step: number) => void
   nextStep: () => void
   prevStep: () => void
+  skipEmpresaStep: () => void
   setDbType: (type: DbType) => void
   setConnectionString: (cs: string) => void
-  setDbTestStatus: (status: WizardDbConfig['testStatus'], error?: string | null, latencyMs?: number | null) => void
-  setEmpresa: (data: Partial<WizardEmpresaData>) => void
+  setDbTestStatus: (
+    status: WizardDbConfig['testStatus'],
+    error?: string | null,
+    latencyMs?: number | null
+  ) => void
+  setEmpresa: (data: Partial<Omit<WizardEmpresaData, 'skipped'>>) => void
   setSaving: (saving: boolean) => void
   setSavedOk: (ok: boolean) => void
   setSaveError: (err: string | null) => void
   reset: () => void
 }
 
-// ── Estado inicial ─────────────────────────────────────────────────────────
+// ── Estado inicial ───────────────────────────────────────────────────────────
 
 const initialState: WizardState = {
   currentStep: 0,
@@ -55,6 +61,7 @@ const initialState: WizardState = {
     latencyMs: null,
   },
   empresa: {
+    skipped: false,
     razaoSocial: '',
     cnpj: '',
     endereco: '',
@@ -65,14 +72,23 @@ const initialState: WizardState = {
   saveError: null,
 }
 
-// ── Store ──────────────────────────────────────────────────────────────────
+// ── Store ───────────────────────────────────────────────────────────────────
 
-export const useWizardStore = create<WizardState & WizardActions>((set, get) => ({
+export const useWizardStore = create<WizardState & WizardActions>((set) => ({
   ...initialState,
 
   setStep: (step) => set({ currentStep: step }),
-  nextStep: () => set((s) => ({ currentStep: Math.min(s.currentStep + 1, s.totalSteps - 1) })),
-  prevStep: () => set((s) => ({ currentStep: Math.max(s.currentStep - 1, 0) })),
+  nextStep: () =>
+    set((s) => ({ currentStep: Math.min(s.currentStep + 1, s.totalSteps - 1) })),
+  prevStep: () =>
+    set((s) => ({ currentStep: Math.max(s.currentStep - 1, 0) })),
+
+  /** Avanca sem validar e marca a etapa como pulada. */
+  skipEmpresaStep: () =>
+    set((s) => ({
+      empresa: { ...s.empresa, skipped: true },
+      currentStep: Math.min(s.currentStep + 1, s.totalSteps - 1),
+    })),
 
   setDbType: (type) =>
     set((s) => ({
@@ -88,7 +104,9 @@ export const useWizardStore = create<WizardState & WizardActions>((set, get) => 
     set((s) => ({ db: { ...s.db, testStatus, testError, latencyMs } })),
 
   setEmpresa: (data) =>
-    set((s) => ({ empresa: { ...s.empresa, ...data } })),
+    set((s) => ({
+      empresa: { ...s.empresa, ...data, skipped: false },
+    })),
 
   setSaving: (saving) => set({ saving }),
   setSavedOk: (savedOk) => set({ savedOk }),
