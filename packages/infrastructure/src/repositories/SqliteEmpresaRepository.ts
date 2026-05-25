@@ -109,4 +109,31 @@ export class SqliteEmpresaRepository {
       )
       .run(id)
   }
+
+  /**
+   * Lógica dupla de exclusão:
+   * - Empresa ATIVA  → soft-delete (status = 'inativa')   → action: 'inativada'
+   * - Empresa INATIVA → hard-delete (DELETE FROM empresas) → action: 'excluida'
+   *
+   * Lança erro se o id não existir (o handler deve checar antes de chamar).
+   */
+  deleteOrPermanent(id: number): { action: 'inativada' | 'excluida' } {
+    const empresa = this.getById(id)
+    if (!empresa) throw new Error(`Empresa ${id} não encontrada.`)
+
+    if (empresa.status === 'ativa') {
+      this.db
+        .prepare(
+          "UPDATE empresas SET status = 'inativa', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        )
+        .run(id)
+      return { action: 'inativada' }
+    }
+
+    // status === 'inativa' → remoção permanente
+    this.db
+      .prepare('DELETE FROM empresas WHERE id = ?')
+      .run(id)
+    return { action: 'excluida' }
+  }
 }

@@ -78,14 +78,16 @@ export function registerEmpresaHandlers(): void {
     }
   })
 
-  // ── empresa:delete (soft-delete → status = inativa) ─────────────
+  // ── empresa:delete (lógica dupla) ───────────────────────────────
+  //   Empresa ATIVA   → soft-delete (status = 'inativa') → action: 'inativada'
+  //   Empresa INATIVA → hard-delete (DELETE FROM empresas) → action: 'excluida'
   ipcMain.handle('empresa:delete', (_e, id: number) => {
     try {
       const r = repo()
       const exists = r.getById(id)
       if (!exists) return { success: false, error: `Empresa ${id} não encontrada.` }
-      r.softDelete(id)
-      return { success: true, data: undefined }
+      const { action } = r.deleteOrPermanent(id)
+      return { success: true, data: undefined, action }
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) }
     }
