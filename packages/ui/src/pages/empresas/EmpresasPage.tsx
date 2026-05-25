@@ -82,6 +82,11 @@ export default function EmpresasPage() {
     names: string[]
   } | null>(null)
 
+  // Refs estáveis — permitem que setActions rode apenas quando
+  // filtered.length / selectedId mudam, sem referenciar callbacks voláteis.
+  const handleDeleteRef = useRef<() => void>(() => {})
+  const loadRef = useRef<() => Promise<void>>(async () => {})
+
   const setActions = usePageActionsStore((s) => s.setActions)
   const clearActions = usePageActionsStore((s) => s.clearActions)
   const setStatus = usePageActionsStore((s) => s.setStatus)
@@ -105,6 +110,7 @@ export default function EmpresasPage() {
     }
   }, [setStatus])
 
+  useEffect(() => { loadRef.current = load }, [load])
   useEffect(() => { load() }, [load])
 
   // ── Filtro ─────────────────────────────────────────────────────
@@ -146,6 +152,8 @@ export default function EmpresasPage() {
     setConfirmInativar({ ids, names })
   }, [checkedIds, selectedId, empresas, setStatus])
 
+  useEffect(() => { handleDeleteRef.current = handleDelete }, [handleDelete])
+
   /**
    * Fase 2: executa o soft-delete após confirmação do dialog.
    * A API já faz soft-delete (status = 'inativa') no SQLite.
@@ -173,15 +181,15 @@ export default function EmpresasPage() {
 
   useEffect(() => {
     setActions({
-      onNew: () => setFormMode('new'),
-      onDelete: handleDelete,
-      onEdit: () => { if (selectedId != null) setFormMode(selectedId) },
-      onRefresh: load,
+      onNew:     () => setFormMode('new'),
+      onDelete:  () => handleDeleteRef.current(),
+      onEdit:    () => { if (selectedId != null) setFormMode(selectedId) },
+      onRefresh: () => loadRef.current(),
       total: filtered.length,
       current: selectedId != null ? selectedIdx + 1 : 0,
     })
     return () => clearActions()
-  }, [filtered.length, selectedId, selectedIdx, handleDelete, load, setActions, clearActions])
+  }, [filtered.length, selectedId, selectedIdx, setActions, clearActions])
 
   // ── Checkbox ────────────────────────────────────────────────────
   function toggleCheck(id: number, e: React.ChangeEvent<HTMLInputElement>) {

@@ -5,6 +5,7 @@ import {
   Settings, Database, Shield, Users, Lock, Zap, Calculator, LayoutDashboard,
   Search, AlertCircle, CheckCircle, Link2,
 } from 'lucide-react'
+import { pageActionRefs } from '@/state/pageActionsSlice'
 
 const TABS = [
   'Cadastros', 'Folha Mensal', 'Operações',
@@ -110,7 +111,27 @@ const RIBBON_CONTENT: Record<string, RibbonGroup[]> = {
 
 export default function RibbonBar() {
   const [activeTab, setActiveTab] = useState('Cadastros')
-  const groups = RIBBON_CONTENT[activeTab] ?? []
+
+  const cadastrosGroups: RibbonGroup[] = [
+    { label: 'ARQUIVO', items: [
+      { icon: Plus,      label: 'Novo',      onClick: () => pageActionRefs.onNew()     },
+      { icon: Pencil,    label: 'Editar',    onClick: () => pageActionRefs.onEdit()    },
+      { icon: Trash2,    label: 'Excluir',   onClick: () => pageActionRefs.onDelete()  },
+    ]},
+    { label: 'DADOS', items: [
+      { icon: RefreshCw, label: 'Atualizar', onClick: () => pageActionRefs.onRefresh() },
+      { icon: Download,  label: 'Exportar'  },
+      { icon: Upload,    label: 'Importar'  },
+    ]},
+    { label: 'IMPRESSÃO', items: [
+      { icon: Printer,   label: 'Imprimir'  },
+      { icon: FileText,  label: 'Preview'   },
+    ]},
+  ]
+
+  const groups = activeTab === 'Cadastros'
+    ? cadastrosGroups
+    : (RIBBON_CONTENT[activeTab] ?? [])
 
   return (
     <div style={{ flexShrink: 0, background: 'var(--color-bg-ribbon)', borderBottom: '1px solid var(--color-border-main)' }}>
@@ -201,9 +222,11 @@ export default function RibbonBar() {
 
 function RibbonButton({ icon: Icon, label, onClick }: { icon: React.ElementType; label: string; onClick?: () => void }) {
   const [hover, setHover] = useState(false)
+  const disabled = !onClick
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
@@ -212,9 +235,10 @@ function RibbonButton({ icon: Icon, label, onClick }: { icon: React.ElementType;
         alignItems: 'center',
         justifyContent: 'flex-start',
         padding: '3px 5px',
-        border: `1px solid ${hover ? 'var(--color-border-main)' : 'transparent'}`,
-        background: hover ? '#e8f0f8' : 'transparent',
-        cursor: 'pointer',
+        border: `1px solid ${hover && !disabled ? 'var(--color-border-main)' : 'transparent'}`,
+        background: hover && !disabled ? '#e8f0f8' : 'transparent',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.4 : 1,
         gap: 2,
         minWidth: 34,
       }}

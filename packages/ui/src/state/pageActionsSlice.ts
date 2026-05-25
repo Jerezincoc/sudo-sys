@@ -1,8 +1,3 @@
-/**
- * pageActionsSlice.ts
- * Estado global para os botões da ActionToolbar do AppShell.
- * Cada página registra seus callbacks via setActions() no mount.
- */
 import { create } from 'zustand'
 
 export interface PageActions {
@@ -13,6 +8,15 @@ export interface PageActions {
   total?: number
   current?: number
 }
+
+const _refs: Required<Pick<PageActions, 'onNew' | 'onDelete' | 'onEdit' | 'onRefresh'>> = {
+  onNew: () => {},
+  onDelete: () => {},
+  onEdit: () => {},
+  onRefresh: () => {},
+}
+
+export const pageActionRefs = _refs
 
 interface PageActionsState {
   actions: PageActions
@@ -27,7 +31,22 @@ export const usePageActionsStore = create<PageActionsState>((set) => ({
   actions: {},
   statusMessage: null,
   statusType: 'info',
-  setActions: (a) => set({ actions: a }),
-  clearActions: () => set({ actions: {} }),
+
+  setActions: (a) => {
+    _refs.onNew     = a.onNew     ?? (() => {})
+    _refs.onDelete  = a.onDelete  ?? (() => {})
+    _refs.onEdit    = a.onEdit    ?? (() => {})
+    _refs.onRefresh = a.onRefresh ?? (() => {})
+    set({ actions: a })
+  },
+
+  clearActions: () => {
+    _refs.onNew     = () => {}
+    _refs.onDelete  = () => {}
+    _refs.onEdit    = () => {}
+    _refs.onRefresh = () => {}
+    set({ actions: {} })
+  },
+
   setStatus: (msg, type = 'info') => set({ statusMessage: msg, statusType: type }),
 }))
