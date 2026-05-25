@@ -24,7 +24,7 @@
     "@types/node": "^22.5.5",
     "@types/pg": "^8.11.6",
     "cross-env": "^7.0.3",
-    "electron": "^32.0.0",
+    "electron": "^32.3.3",
     "electron-builder": "^25.0.5",
     "tsx": "^4.19.1",
     "typescript": "^5.5.4"
