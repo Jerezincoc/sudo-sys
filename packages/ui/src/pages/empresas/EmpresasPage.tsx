@@ -7,6 +7,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import type { Empresa } from '@sudo-sys/shared'
 import { usePageActionsStore } from '@/state/pageActionsSlice'
 import EmpresaForm from './EmpresaForm'
+import ConfirmDialog from '@/components/feedback/ConfirmDialog'
 
 // ── Helpers de formatação ──────────────────────────────────────────────────
 
@@ -75,6 +76,12 @@ export default function EmpresasPage() {
   const [search, setSearch] = useState('')
   const rowRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
+  // ── Dialog de confirmação de inativação ───────────────────────────
+  const [confirmInativar, setConfirmInativar] = useState<{
+    ids: number[]
+    names: string[]
+  } | null>(null)
+
   const setActions = usePageActionsStore((s) => s.setActions)
   const clearActions = usePageActionsStore((s) => s.clearActions)
   const setStatus = usePageActionsStore((s) => s.setStatus)
@@ -118,15 +125,35 @@ export default function EmpresasPage() {
   const selectedIdx = filtered.findIndex((e) => e.id === selectedId)
 
   // ── Ações da toolbar ───────────────────────────────────────────
-  const handleDelete = useCallback(async () => {
+
+  /**
+   * Fase 1: valida seleção e abre o dialog de confirmação.
+   * A exclusão real (soft-delete → status='inativa') só ocorre após confirmar.
+   */
+  const handleDelete = useCallback(() => {
     const ids = checkedIds.size > 0
       ? Array.from(checkedIds)
       : selectedId != null ? [selectedId] : []
 
     if (ids.length === 0) {
-      setStatus('Selecione ao menos uma empresa para excluir.', 'error')
+      setStatus('Selecione ao menos uma empresa para inativar.', 'error')
       return
     }
+
+    const names = ids.map(
+      (id) => empresas.find((e) => e.id === id)?.razao_social ?? `#${id}`
+    )
+    setConfirmInativar({ ids, names })
+  }, [checkedIds, selectedId, empresas, setStatus])
+
+  /**
+   * Fase 2: executa o soft-delete após confirmação do dialog.
+   * A API já faz soft-delete (status = 'inativa') no SQLite.
+   */
+  const doInativar = useCallback(async () => {
+    if (!confirmInativar) return
+    const { ids } = confirmInativar
+    setConfirmInativar(null)
 
     const hasElectron = typeof window !== 'undefined' && !!window.electronAPI
     let count = 0
@@ -142,7 +169,7 @@ export default function EmpresasPage() {
     setCheckedIds(new Set())
     setSelectedId(null)
     load()
-  }, [checkedIds, selectedId, load, setStatus])
+  }, [confirmInativar, load, setStatus])
 
   useEffect(() => {
     setActions({
@@ -445,6 +472,22 @@ export default function EmpresasPage() {
         <div style={{ flex: 1 }} />
         <span style={{ opacity: 0.7 }}>Ins=Novo · F2=Editar · Del=Excluir · F5=Atualizar</span>
       </div>
+
+      {/* ── Dialog de confirmação de inativação ──────────────── */}
+      {confirmInativar && (
+        <ConfirmDialog
+          title="Inativar Empresa"
+          message={
+            confirmInativar.names.length === 1
+              ? `Deseja inativar a empresa "${confirmInativar.names[0]}"?\nEsta ação pode ser revertida editando a empresa.`
+              : `Deseja inativar ${confirmInativar.ids.length} empresa(s) selecionada(s)?\nEsta ação pode ser revertida editando cada empresa.`
+          }
+          confirmLabel="Inativar"
+          danger
+          onConfirm={doInativar}
+          onCancel={() => setConfirmInativar(null)}
+        />
+      )}
 
       {/* ── Modal do formulário ───────────────────────────────── */}
       {formMode !== null && (

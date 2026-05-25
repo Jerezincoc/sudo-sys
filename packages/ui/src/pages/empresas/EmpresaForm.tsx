@@ -438,6 +438,33 @@ export default function EmpresaForm({ empresa, onClose, onSaved, setStatusMsg }:
     }
   }
 
+  // ── Reativar empresa (soft-undelete → status='ativa') ────────────
+  async function handleReactivate() {
+    if (isNew || !empresa) return
+    setSaving(true)
+    try {
+      const hasElectron = typeof window !== 'undefined' && !!window.electronAPI
+      if (hasElectron) {
+        const result = await window.electronAPI.updateEmpresa({
+          id: empresa.id,
+          status: 'ativa',
+        })
+        if (!result.success) {
+          setErrors({ _global: result.error })
+          return
+        }
+        setStatusMsg(`Empresa "${result.data.razao_social}" reativada com sucesso.`, 'success')
+        onSaved(result.data)
+      } else {
+        const mock = { ...empresa, status: 'ativa' as const, updated_at: new Date().toISOString() }
+        setStatusMsg(`[DEV] Empresa "${mock.razao_social}" reativada.`, 'success')
+        onSaved(mock)
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
   // ── Esc fecha ───────────────────────────────────────────────────
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -734,10 +761,24 @@ export default function EmpresaForm({ empresa, onClose, onSaved, setStatusMsg }:
           borderTop: '1px solid var(--color-border-main)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'flex-end',
           padding: '0 8px',
           gap: 6,
         }}>
+          {/* Reativar — visível apenas ao editar empresa inativa */}
+          {!isNew && empresa?.status === 'inativa' && (
+            <button
+              onClick={handleReactivate}
+              disabled={saving}
+              style={footerBtn('reactivate')}
+              title="Define o status como Ativa e salva imediatamente"
+            >
+              {saving ? 'Reativando...' : '↑ Reativar Empresa'}
+            </button>
+          )}
+
+          {/* Spacer empurra Cancelar/Salvar para a direita */}
+          <div style={{ flex: 1 }} />
+
           <button
             onClick={onClose}
             disabled={saving}
@@ -758,15 +799,19 @@ export default function EmpresaForm({ empresa, onClose, onSaved, setStatusMsg }:
   )
 }
 
-function footerBtn(variant: 'primary' | 'secondary'): React.CSSProperties {
+function footerBtn(variant: 'primary' | 'secondary' | 'reactivate'): React.CSSProperties {
+  const bg =
+    variant === 'primary'    ? 'var(--color-brand)' :
+    variant === 'reactivate' ? '#27ae60' :
+                               'var(--color-bg-white)'
   return {
     height: 24,
     padding: '0 16px',
     fontSize: 12,
     fontWeight: 500,
     border: '1px solid var(--color-border-main)',
-    background: variant === 'primary' ? 'var(--color-brand)' : 'var(--color-bg-white)',
-    color: variant === 'primary' ? '#fff' : 'var(--color-text-primary)',
+    background: bg,
+    color: variant === 'secondary' ? 'var(--color-text-primary)' : '#fff',
     cursor: 'pointer',
     borderRadius: 0,
   }
