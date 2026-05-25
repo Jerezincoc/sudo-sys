@@ -76,15 +76,26 @@ export default function EmpresasPage() {
   const [search, setSearch] = useState('')
   const rowRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
-  // ── Dialog de confirmação de inativação ───────────────────────────
-  const [confirmInativar, setConfirmInativar] = useState<{
+  // ── Dialog de confirmação de ação de exclusão ─────────────────────
+  // Tipagem genérica: o diálogo é pré-configurado pelo handleDelete
+  // com a mensagem e rótulo certos para o cenário (inativar / excluir / misto).
+  const [confirmAction, setConfirmAction] = useState<{
     ids: number[]
-    names: string[]
+    title: string
+    message: string
+    confirmLabel: string
+    danger: boolean
   } | null>(null)
 
-  // Refs estáveis — permitem que setActions rode apenas quando
-  // filtered.length / selectedId mudam, sem referenciar callbacks voláteis.
-  const handleDeleteRef = useRef<() => void>(() => {})
+  // ── Refs estáveis ──────────────────────────────────────────────────
+  // Permitem que setActions rode apenas quando filtered.length / selectedId
+  // mudam, sem incluir os callbacks voláteis no deps array.
+  const handleDeleteRef    = useRef<() => void>(() => {})
+  const handleExportCsvRef = useRef<() => void>(() => {})
+  const handleExportJsonRef= useRef<() => void>(() => {})
+  const handleExportPdfRef = useRef<() => void>(() => {})
+  const handlePrintRef     = useRef<() => void>(() => {})
+  const handlePreviewRef   = useRef<() => void>(() => {})
   const loadRef = useRef<() => Promise<void>>(async () => {})
 
   const setActions = usePageActionsStore((s) => s.setActions)
@@ -113,6 +124,22 @@ export default function EmpresasPage() {
   useEffect(() => { loadRef.current = load }, [load])
   useEffect(() => { load() }, [load])
 
+  // ── Resolução de alvos ────────────────────────────────────────
+  /**
+   * Retorna os ids alvo de qualquer operação (Excluir, Exportar, etc.):
+   * 1. checkedIds (multiselect) — se houver algum marcado
+   * 2. selectedId (linha ativa) — fallback de seleção única
+   * 3. [] + mensagem de erro    — nada selecionado
+   *
+   * Função reutilizável por todos os handlers de ação.
+   */
+  const getTargetIds = useCallback((): number[] | null => {
+    if (checkedIds.size > 0) return Array.from(checkedIds)
+    if (selectedId != null)  return [selectedId]
+    setStatus('Selecione ao menos um registro para continuar.', 'error')
+    return null
+  }, [checkedIds, selectedId, setStatus])
+
   // ── Filtro ─────────────────────────────────────────────────────
   const filtered = empresas.filter((e) => {
     if (filterStatus !== 'all' && e.status !== filterStatus) return false
@@ -133,59 +160,153 @@ export default function EmpresasPage() {
   // ── Ações da toolbar ───────────────────────────────────────────
 
   /**
-   * Fase 1: valida seleção e abre o dialog de confirmação.
-   * A exclusão real (soft-delete → status='inativa') só ocorre após confirmar.
+   * FASE 1 — Exclusão com lógica dupla.
+   * Inspeciona o status de cada empresa selecionada e configura
+   * o ConfirmDialog com a mensagem e o nível de perigo adequados:
+   *
+   * • Todas ATIVAS   → soft-delete (inativar)   — danger=false
+   * • Todas INATIVAS → hard-delete permanente    — danger=true
+   * • Mistas         → cada uma recebe a ação do backend — danger=true
    */
   const handleDelete = useCallback(() => {
-    const ids = checkedIds.size > 0
-      ? Array.from(checkedIds)
-      : selectedId != null ? [selectedId] : []
+    const ids = getTargetIds()
+    if (!ids) return
 
-    if (ids.length === 0) {
-      setStatus('Selecione ao menos uma empresa para inativar.', 'error')
-      return
+    const targets = ids
+      .map((id) => empresas.find((e) => e.id === id))
+      .filter((e): e is Empresa => e !== undefined)
+
+    const ativas   = targets.filter((e) => e.status === 'ativa')
+    const inativas = targets.filter((e) => e.status === 'inativa')
+
+    let title: string
+    let message: string
+    let confirmLabel: string
+    let danger: boolean
+
+    if (inativas.length === 0) {
+      // ── Todas ativas → apenas inativar ─────────────────────────
+      title        = 'Inativar Empresa(s)'
+      confirmLabel = 'Inativar'
+      danger       = false
+      message = targets.length === 1
+        ? `Deseja inativar a empresa "${targets[0].razao_social}"?\nEla poderá ser reativada posteriormente.`
+        : `Deseja inativar ${targets.length} empresa(s) selecionada(s)?\nElas poderão ser reativadas posteriormente.`
+
+    } else if (ativas.length === 0) {
+      // ── Todas inativas → exclusão permanente ───────────────────
+      title        = 'Excluir Permanentemente'
+      confirmLabel = 'Excluir'
+      danger       = true
+      message = targets.length === 1
+        ? `A empresa "${targets[0].razao_social}" já está inativa.\nDeseja EXCLUIR PERMANENTEMENTE? Esta ação não pode ser desfeita.`
+        : `${targets.length} empresa(s) selecionada(s) já estão inativas.\nDeseja EXCLUIR PERMANENTEMENTE? Esta ação não pode ser desfeita.`
+
+    } else {
+      // ── Misto: ativas serão inativadas, inativas serão apagadas ─
+      title        = 'Ação Mista de Exclusão'
+      confirmLabel = 'Confirmar'
+      danger       = true
+      const listaAtivas   = ativas.map((e) => `"${e.razao_social}"`).join(', ')
+      const listaInativas = inativas.map((e) => `"${e.razao_social}"`).join(', ')
+      message =
+        `Serão realizadas ações diferentes por registro:\n` +
+        `• Inativadas (${ativas.length}): ${listaAtivas}\n` +
+        `• Excluídas permanentemente (${inativas.length}): ${listaInativas}\n\n` +
+        `Deseja continuar?`
     }
 
-    const names = ids.map(
-      (id) => empresas.find((e) => e.id === id)?.razao_social ?? `#${id}`
-    )
-    setConfirmInativar({ ids, names })
-  }, [checkedIds, selectedId, empresas, setStatus])
+    setConfirmAction({ ids, title, message, confirmLabel, danger })
+  }, [getTargetIds, empresas])
 
   useEffect(() => { handleDeleteRef.current = handleDelete }, [handleDelete])
 
   /**
-   * Fase 2: executa o soft-delete após confirmação do dialog.
-   * A API já faz soft-delete (status = 'inativa') no SQLite.
+   * FASE 2 — Executa a ação após confirmação.
+   * O backend decide o que fazer (soft ou hard) com base no status atual.
+   * Usa o campo `action` retornado para montar o feedback na status bar.
    */
-  const doInativar = useCallback(async () => {
-    if (!confirmInativar) return
-    const { ids } = confirmInativar
-    setConfirmInativar(null)
+  const doDeleteAction = useCallback(async () => {
+    if (!confirmAction) return
+    const { ids } = confirmAction
+    setConfirmAction(null)
 
     const hasElectron = typeof window !== 'undefined' && !!window.electronAPI
-    let count = 0
+    let countInativadas = 0
+    let countExcluidas  = 0
+
     for (const id of ids) {
       if (hasElectron) {
         const r = await window.electronAPI.deleteEmpresa(id)
-        if (r.success) count++
+        if (r.success) {
+          if ((r as { action?: string }).action === 'excluida') countExcluidas++
+          else countInativadas++
+        }
       } else {
-        count++
+        // mock dev: simula com base no status local
+        const emp = empresas.find((e) => e.id === id)
+        if (emp?.status === 'inativa') countExcluidas++
+        else countInativadas++
       }
     }
-    setStatus(`${count} empresa(s) inativada(s).`, 'success')
+
+    const parts: string[] = []
+    if (countInativadas > 0) parts.push(`${countInativadas} inativada(s)`)
+    if (countExcluidas  > 0) parts.push(`${countExcluidas} excluída(s) permanentemente`)
+    setStatus(parts.join(' · ') + '.', 'success')
+
     setCheckedIds(new Set())
     setSelectedId(null)
     load()
-  }, [confirmInativar, load, setStatus])
+  }, [confirmAction, empresas, load, setStatus])
 
+  // ── Stubs: Exportar ───────────────────────────────────────────
+  /**
+   * Stubs de exportação — implementação real virá por módulo.
+   * Por ora: loga os ids alvo e exibe status informativo.
+   */
+  const handleExport = useCallback((format: 'csv' | 'json' | 'pdf') => {
+    const ids = getTargetIds()
+    if (!ids) return
+    console.log(`[EmpresasPage] Export ${format.toUpperCase()}:`, ids)
+    setStatus(`Exportando ${ids.length} registro(s) como ${format.toUpperCase()}...`, 'info')
+  }, [getTargetIds, setStatus])
+
+  useEffect(() => { handleExportCsvRef.current  = () => handleExport('csv')  }, [handleExport])
+  useEffect(() => { handleExportJsonRef.current = () => handleExport('json') }, [handleExport])
+  useEffect(() => { handleExportPdfRef.current  = () => handleExport('pdf')  }, [handleExport])
+
+  // ── Stubs: Imprimir / Preview ─────────────────────────────────
+  const handlePrint = useCallback(() => {
+    const ids = getTargetIds()
+    if (!ids) return
+    console.log('[EmpresasPage] Print:', ids)
+    setStatus(`Preparando impressão de ${ids.length} registro(s)...`, 'info')
+  }, [getTargetIds, setStatus])
+
+  const handlePreview = useCallback(() => {
+    const ids = getTargetIds()
+    if (!ids) return
+    console.log('[EmpresasPage] Preview:', ids)
+    setStatus(`Abrindo preview de ${ids.length} registro(s)...`, 'info')
+  }, [getTargetIds, setStatus])
+
+  useEffect(() => { handlePrintRef.current   = handlePrint   }, [handlePrint])
+  useEffect(() => { handlePreviewRef.current = handlePreview }, [handlePreview])
+
+  // ── Registro no store global ───────────────────────────────────
   useEffect(() => {
     setActions({
-      onNew:     () => setFormMode('new'),
-      onDelete:  () => handleDeleteRef.current(),
-      onEdit:    () => { if (selectedId != null) setFormMode(selectedId) },
-      onRefresh: () => loadRef.current(),
-      total: filtered.length,
+      onNew:        () => setFormMode('new'),
+      onDelete:     () => handleDeleteRef.current(),
+      onEdit:       () => { if (selectedId != null) setFormMode(selectedId) },
+      onRefresh:    () => loadRef.current(),
+      onExportCsv:  () => handleExportCsvRef.current(),
+      onExportJson: () => handleExportJsonRef.current(),
+      onExportPdf:  () => handleExportPdfRef.current(),
+      onPrint:      () => handlePrintRef.current(),
+      onPreview:    () => handlePreviewRef.current(),
+      total:   filtered.length,
       current: selectedId != null ? selectedIdx + 1 : 0,
     })
     return () => clearActions()
@@ -481,19 +602,15 @@ export default function EmpresasPage() {
         <span style={{ opacity: 0.7 }}>Ins=Novo · F2=Editar · Del=Excluir · F5=Atualizar</span>
       </div>
 
-      {/* ── Dialog de confirmação de inativação ──────────────── */}
-      {confirmInativar && (
+      {/* ── Dialog de confirmação de exclusão (soft ou hard) ────── */}
+      {confirmAction && (
         <ConfirmDialog
-          title="Inativar Empresa"
-          message={
-            confirmInativar.names.length === 1
-              ? `Deseja inativar a empresa "${confirmInativar.names[0]}"?\nEsta ação pode ser revertida editando a empresa.`
-              : `Deseja inativar ${confirmInativar.ids.length} empresa(s) selecionada(s)?\nEsta ação pode ser revertida editando cada empresa.`
-          }
-          confirmLabel="Inativar"
-          danger
-          onConfirm={doInativar}
-          onCancel={() => setConfirmInativar(null)}
+          title={confirmAction.title}
+          message={confirmAction.message}
+          confirmLabel={confirmAction.confirmLabel}
+          danger={confirmAction.danger}
+          onConfirm={doDeleteAction}
+          onCancel={() => setConfirmAction(null)}
         />
       )}
 
