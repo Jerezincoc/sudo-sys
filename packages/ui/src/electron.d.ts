@@ -23,7 +23,15 @@ export interface ElectronAPI {
   getEmpresa: (id: number) => Promise<Empresa | null>
   createEmpresa: (payload: CreateEmpresaPayload) => Promise<IpcResult<Empresa>>
   updateEmpresa: (payload: UpdateEmpresaPayload) => Promise<IpcResult<Empresa>>
-  deleteEmpresa: (id: number) => Promise<IpcResult<void>>
+  deleteEmpresa: (id: number) => Promise<IpcResult<void> & { action?: string }>
+  exportEmpresas: (payload: {
+    ids: number[]
+    format: 'csv' | 'json' | 'pdf'
+  }) => Promise<IpcResult<{ filePath: string }>>
+
+  // Shell / Sistema
+  /** Revela o arquivo no explorador do sistema operacional. */
+  openPath: (filePath: string) => Promise<void>
 }
 
 declare global {

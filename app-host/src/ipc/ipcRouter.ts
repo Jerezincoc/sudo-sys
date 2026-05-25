@@ -2,7 +2,7 @@
  * ipcRouter.ts
  * Registra todos os handlers de IPC (exceto setup, que é registrado antes).
  */
-import { ipcMain } from 'electron'
+import { ipcMain, shell } from 'electron'
 import { registerEmpresaHandlers } from './handlers/empresaHandlers'
 
 function noop(channel: string) {
@@ -14,6 +14,12 @@ function noop(channel: string) {
 export function registerAllHandlers(): void {
   // ── Empresas (implementado) ──────────────────────────────────────
   registerEmpresaHandlers()
+
+  // ── Shell utilitários ────────────────────────────────────────────
+  // Revela o arquivo no gerenciador de arquivos do SO (Explorer, Finder, etc.)
+  ipcMain.handle('shell:open-path', (_e, filePath: string) => {
+    shell.showItemInFolder(filePath)
+  })
 
   // ── Auth ─────────────────────────────────────────────────────────
   noop('auth:login')

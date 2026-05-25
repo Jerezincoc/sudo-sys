@@ -45,4 +45,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   deleteEmpresa: (id: number): Promise<IpcResult<void>> =>
     ipcRenderer.invoke('empresa:delete', id),
+
+  exportEmpresas: (payload: { ids: number[]; format: 'csv' | 'json' | 'pdf' }): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('empresa:export', payload),
+
+  // ── Shell / Sistema ────────────────────────────────────────────────
+  /** Revela o arquivo no gerenciador de arquivos do SO. */
+  openPath: (filePath: string): Promise<void> =>
+    ipcRenderer.invoke('shell:open-path', filePath),
 })

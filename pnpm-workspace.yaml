@@ -1,3 +1,7 @@
-﻿packages:
+packages:
   - 'packages/*'
   - 'app-host'
+allowBuilds:
+  better-sqlite3: false
+  electron: false
+  esbuild: false

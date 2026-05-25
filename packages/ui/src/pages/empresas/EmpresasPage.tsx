@@ -260,16 +260,37 @@ export default function EmpresasPage() {
     load()
   }, [confirmAction, empresas, load, setStatus])
 
-  // ── Stubs: Exportar ───────────────────────────────────────────
+  // ── Exportar ──────────────────────────────────────────────────
   /**
-   * Stubs de exportação — implementação real virá por módulo.
-   * Por ora: loga os ids alvo e exibe status informativo.
+   * Chama o backend para gerar o arquivo (CSV / JSON / PDF),
+   * exibe feedback na status bar e abre o explorador na pasta do arquivo.
    */
-  const handleExport = useCallback((format: 'csv' | 'json' | 'pdf') => {
+  const handleExport = useCallback(async (format: 'csv' | 'json' | 'pdf') => {
     const ids = getTargetIds()
     if (!ids) return
-    console.log(`[EmpresasPage] Export ${format.toUpperCase()}:`, ids)
+
     setStatus(`Exportando ${ids.length} registro(s) como ${format.toUpperCase()}...`, 'info')
+
+    const hasElectron = typeof window !== 'undefined' && !!window.electronAPI
+    if (!hasElectron) {
+      // Mock dev browser
+      console.log(`[EmpresasPage][DEV] Export ${format.toUpperCase()}:`, ids)
+      setStatus(`[DEV] Export ${format.toUpperCase()} — ${ids.length} registro(s). (sem Electron)`, 'info')
+      return
+    }
+
+    try {
+      const result = await window.electronAPI.exportEmpresas({ ids, format })
+      if (!result.success) {
+        setStatus(`Erro ao exportar: ${result.error}`, 'error')
+        return
+      }
+      setStatus(`${ids.length} empresa(s) exportada(s) para ${format.toUpperCase()}.`, 'success')
+      // Abre o explorador do SO na pasta do arquivo gerado
+      await window.electronAPI.openPath(result.data.filePath)
+    } catch (err) {
+      setStatus(`Erro ao exportar: ${String(err)}`, 'error')
+    }
   }, [getTargetIds, setStatus])
 
   useEffect(() => { handleExportCsvRef.current  = () => handleExport('csv')  }, [handleExport])
