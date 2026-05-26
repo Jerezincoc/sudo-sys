@@ -10,8 +10,9 @@ import { usePageActionsStore } from '@/state/pageActionsSlice'
 import { ROUTES } from '@/app/routes'
 
 const PAGE_NAMES: Record<string, string> = {
-  [ROUTES.DASHBOARD]:  'Dashboard',
-  [ROUTES.EMPRESAS]:   'Empresas',
+  [ROUTES.DASHBOARD]:    'Dashboard',
+  [ROUTES.EMPRESAS]:     'Empresas',
+  [ROUTES.FUNCIONARIOS]: 'Funcionários',
   [ROUTES.FOLHA]:      'Folha de Pagamento',
   [ROUTES.RUBRICAS]:   'Rubricas',
   [ROUTES.FERIAS]:     'Férias',

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard, Building2, FileText, Tag, Umbrella,
+  LayoutDashboard, Building2, Users, FileText, Tag, Umbrella,
   LogOut, Clock, Calculator, Zap, BarChart2, Settings,
   ChevronLeft, ChevronRight,
 } from 'lucide-react'
@@ -16,7 +16,8 @@ const NAV: NavGroup[] = [
     { label: 'Dashboard',          icon: LayoutDashboard, to: ROUTES.DASHBOARD  },
   ]},
   { group: 'CADASTROS', items: [
-    { label: 'Empresas',           icon: Building2,       to: ROUTES.EMPRESAS   },
+    { label: 'Empresas',           icon: Building2,       to: ROUTES.EMPRESAS      },
+    { label: 'Funcionários',       icon: Users,           to: ROUTES.FUNCIONARIOS  },
   ]},
   { group: 'FOLHA', items: [
     { label: 'Folha de Pagamento', icon: FileText,        to: ROUTES.FOLHA      },

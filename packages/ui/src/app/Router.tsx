@@ -6,6 +6,7 @@ import SetupWizardPage from '@/pages/setup/SetupWizardPage'
 
 const DashboardPage       = lazy(() => import('@/pages/dashboard/DashboardPage'))
 const EmpresasPage        = lazy(() => import('@/pages/empresas/EmpresasPage'))
+const FuncionariosPage    = lazy(() => import('@/pages/empresas/FuncionariosDaEmpresaPage'))
 const FolhaPage           = lazy(() => import('@/pages/folha/FolhaPage'))
 const RubricasPage        = lazy(() => import('@/pages/rubricas/RubricasPage'))
 const FeriasPage          = lazy(() => import('@/pages/ferias/FeriasPage'))
@@ -44,8 +45,9 @@ export default function AppRouter({ initialState }: Props) {
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route element={<AppShell />}>
-          <Route path={ROUTES.DASHBOARD}  element={<DashboardPage />} />
-          <Route path={ROUTES.EMPRESAS}   element={<EmpresasPage />} />
+          <Route path={ROUTES.DASHBOARD}    element={<DashboardPage />} />
+          <Route path={ROUTES.EMPRESAS}     element={<EmpresasPage />} />
+          <Route path={ROUTES.FUNCIONARIOS} element={<FuncionariosPage />} />
           <Route path={ROUTES.FOLHA}      element={<FolhaPage />} />
           <Route path={ROUTES.RUBRICAS}   element={<RubricasPage />} />
           <Route path={ROUTES.FERIAS}     element={<FeriasPage />} />
