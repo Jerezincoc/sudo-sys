@@ -7,6 +7,9 @@ import type {
   Empresa,
   CreateEmpresaPayload,
   UpdateEmpresaPayload,
+  Funcionario,
+  CreateFuncionarioPayload,
+  UpdateFuncionarioPayload,
 } from '@sudo-sys/shared'
 
 type IpcResult<T = void> = { success: true; data: T } | { success: false; error: string }
@@ -28,6 +31,13 @@ export interface ElectronAPI {
     ids: number[]
     format: 'csv' | 'json' | 'pdf'
   }) => Promise<IpcResult<{ filePath: string }>>
+
+  // Funcionários
+  listFuncionarios: (empresaId?: number) => Promise<Funcionario[]>
+  getFuncionario: (id: number) => Promise<Funcionario | null>
+  createFuncionario: (payload: CreateFuncionarioPayload) => Promise<IpcResult<Funcionario>>
+  updateFuncionario: (payload: UpdateFuncionarioPayload) => Promise<IpcResult<Funcionario>>
+  deleteFuncionario: (id: number) => Promise<IpcResult<void> & { action?: string }>
 
   // Shell / Sistema
   /** Revela o arquivo no explorador do sistema operacional. */

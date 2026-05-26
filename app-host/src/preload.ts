@@ -12,6 +12,9 @@ import type {
   Empresa,
   CreateEmpresaPayload,
   UpdateEmpresaPayload,
+  Funcionario,
+  CreateFuncionarioPayload,
+  UpdateFuncionarioPayload,
 } from '@sudo-sys/shared'
 
 type IpcResult<T> = { success: true; data: T } | { success: false; error: string }
@@ -48,6 +51,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   exportEmpresas: (payload: { ids: number[]; format: 'csv' | 'json' | 'pdf' }): Promise<IpcResult<{ filePath: string }>> =>
     ipcRenderer.invoke('empresa:export', payload),
+
+  // ── Funcionários ──────────────────────────────────────────────────
+  listFuncionarios: (empresaId?: number): Promise<Funcionario[]> =>
+    ipcRenderer.invoke('funcionario:list', empresaId),
+
+  getFuncionario: (id: number): Promise<Funcionario | null> =>
+    ipcRenderer.invoke('funcionario:get', id),
+
+  createFuncionario: (payload: CreateFuncionarioPayload): Promise<IpcResult<Funcionario>> =>
+    ipcRenderer.invoke('funcionario:create', payload),
+
+  updateFuncionario: (payload: UpdateFuncionarioPayload): Promise<IpcResult<Funcionario>> =>
+    ipcRenderer.invoke('funcionario:update', payload),
+
+  deleteFuncionario: (id: number): Promise<IpcResult<void> & { action?: string }> =>
+    ipcRenderer.invoke('funcionario:delete', id),
 
   // ── Shell / Sistema ────────────────────────────────────────────────
   /** Revela o arquivo no gerenciador de arquivos do SO. */

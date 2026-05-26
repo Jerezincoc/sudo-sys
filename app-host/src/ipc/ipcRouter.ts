@@ -4,6 +4,7 @@
  */
 import { ipcMain, shell } from 'electron'
 import { registerEmpresaHandlers } from './handlers/empresaHandlers'
+import { registerFuncionarioHandlers } from './handlers/funcionarioHandlers'
 
 function noop(channel: string) {
   ipcMain.handle(channel, () => {
@@ -26,11 +27,8 @@ export function registerAllHandlers(): void {
   noop('auth:logout')
   noop('auth:register')
 
-  // ── Funcionários ──────────────────────────────────────────────────
-  noop('funcionario:list')
-  noop('funcionario:create')
-  noop('funcionario:update')
-  noop('funcionario:delete')
+  // ── Funcionários (implementado) ───────────────────────────────────
+  registerFuncionarioHandlers()
 
   // ── Folha ─────────────────────────────────────────────────────────
   noop('folha:list')

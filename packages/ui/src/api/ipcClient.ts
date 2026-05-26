@@ -11,6 +11,9 @@ import type {
   Empresa,
   CreateEmpresaPayload,
   UpdateEmpresaPayload,
+  Funcionario,
+  CreateFuncionarioPayload,
+  UpdateFuncionarioPayload,
 } from '@sudo-sys/shared'
 
 function hasElectron(): boolean {
@@ -73,6 +76,32 @@ export const ipcClient = {
 
   async deleteEmpresa(id: number): Promise<IpcResult<void>> {
     if (hasElectron()) return window.electronAPI.deleteEmpresa(id)
+    return { success: true, data: undefined }
+  },
+
+  // ── Funcionários ───────────────────────────────────────────────
+  async listFuncionarios(empresaId?: number): Promise<Funcionario[]> {
+    if (hasElectron()) return window.electronAPI.listFuncionarios(empresaId)
+    return []
+  },
+
+  async getFuncionario(id: number): Promise<Funcionario | null> {
+    if (hasElectron()) return window.electronAPI.getFuncionario(id)
+    return null
+  },
+
+  async createFuncionario(payload: CreateFuncionarioPayload): Promise<IpcResult<Funcionario>> {
+    if (hasElectron()) return window.electronAPI.createFuncionario(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async updateFuncionario(payload: UpdateFuncionarioPayload): Promise<IpcResult<Funcionario>> {
+    if (hasElectron()) return window.electronAPI.updateFuncionario(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async deleteFuncionario(id: number): Promise<IpcResult<void> & { action?: string }> {
+    if (hasElectron()) return window.electronAPI.deleteFuncionario(id)
     return { success: true, data: undefined }
   },
 }
