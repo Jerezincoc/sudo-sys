@@ -19,6 +19,10 @@ export const Channels = {
   EMPRESA_CREATE:            'empresa:create',
   EMPRESA_UPDATE:            'empresa:update',
   EMPRESA_DELETE:            'empresa:delete',
+  EMPRESA_IMPORT:            'empresa:import',
+
+  // Diálogos do sistema
+  DIALOG_OPEN_FILE:          'dialog:open-file',
 
   // Funcionarios
   FUNC_LIST:                 'funcionario:list',

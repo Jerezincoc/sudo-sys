@@ -3,7 +3,7 @@
  * IPC handlers para o cadastro de empresas (empresa:*).
  * Usa SqliteEmpresaRepository + validações inline nesta camada de IPC.
  */
-import { ipcMain, app } from 'electron'
+import { ipcMain, app, dialog } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import { getDb } from '../../db/database'
@@ -206,6 +206,98 @@ function buildPDF(empresas: Empresa[], filePath: string): Promise<void> {
 
 // ── Handlers IPC ─────────────────────────────────────────────────────────────
 
+// ── Helpers de importação ──────────────────────────────────────────────────
+
+/** Remove qualquer não-dígito do CNPJ e valida 14 dígitos. */
+function normalizeCnpj(raw: string): string | null {
+  const digits = raw.replace(/\D/g, '')
+  return digits.length === 14 ? digits : null
+}
+
+/**
+ * Parser CSV mínimo: suporta aspas duplas para campos com vírgula/quebra de linha.
+ * Retorna array de objetos usando a primeira linha como cabeçalho.
+ */
+function parseCsv(content: string): Record<string, string>[] {
+  const lines = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
+  if (lines.length < 2) return []
+
+  function splitLine(line: string): string[] {
+    const fields: string[] = []
+    let cur = ''
+    let inQuote = false
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i]
+      if (ch === '"') {
+        if (inQuote && line[i + 1] === '"') { cur += '"'; i++ } // escaped quote
+        else inQuote = !inQuote
+      } else if (ch === ',' && !inQuote) {
+        fields.push(cur.trim())
+        cur = ''
+      } else {
+        cur += ch
+      }
+    }
+    fields.push(cur.trim())
+    return fields
+  }
+
+  const headers = splitLine(lines[0]).map((h) => h.toLowerCase().trim())
+  const rows: Record<string, string>[] = []
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line) continue
+    const values = splitLine(line)
+    const obj: Record<string, string> = {}
+    headers.forEach((h, idx) => { obj[h] = values[idx] ?? '' })
+    rows.push(obj)
+  }
+
+  return rows
+}
+
+/** Campos CSV/JSON mapeados → CreateEmpresaPayload (sem codigo, que é gerado). */
+type ImportRow = Record<string, string>
+
+function rowToPayload(row: ImportRow): Omit<CreateEmpresaPayload, 'codigo'> {
+  const get = (key: string) => (row[key] ?? '').trim() || undefined
+  const getNum = (key: string) => {
+    const v = parseFloat(row[key] ?? '')
+    return isNaN(v) ? undefined : v
+  }
+  return {
+    razao_social:        (row['razao_social'] ?? '').trim(),
+    cnpj:                normalizeCnpj(row['cnpj'] ?? '') ?? row['cnpj'],
+    nome_fantasia:       get('nome_fantasia') ?? null,
+    inscricao_estadual:  get('inscricao_estadual') ?? null,
+    inscricao_municipal: get('inscricao_municipal') ?? null,
+    cnae_principal:      get('cnae_principal') ?? null,
+    natureza_juridica:   get('natureza_juridica') ?? null,
+    data_abertura:       get('data_abertura') ?? null,
+    cep:                 get('cep') ?? null,
+    logradouro:          get('logradouro') ?? null,
+    numero:              get('numero') ?? null,
+    complemento:         get('complemento') ?? null,
+    bairro:              get('bairro') ?? null,
+    cidade:              get('cidade') ?? null,
+    uf:                  get('uf') ?? null,
+    telefone:            get('telefone') ?? null,
+    email:               get('email') ?? null,
+    site:                get('site') ?? null,
+    responsavel:         get('responsavel') ?? null,
+    cargo_responsavel:   get('cargo_responsavel') ?? null,
+    regime_tributario:   get('regime_tributario') ?? null,
+    fpas:                get('fpas') ?? null,
+    codigo_gps:          get('codigo_gps') ?? null,
+    aliquota_rat:        getNum('aliquota_rat') ?? null,
+    fap:                 getNum('fap') ?? null,
+    lotacao_tributaria:  get('lotacao_tributaria') ?? null,
+    grau_risco:          getNum('grau_risco') ?? null,
+    status:              ((row['status'] ?? '').trim() === 'inativa' ? 'inativa' : 'ativa'),
+  }
+}
+
 export function registerEmpresaHandlers(): void {
   // ── empresa:list ────────────────────────────────────────────────
   ipcMain.handle('empresa:list', () => {
@@ -300,6 +392,136 @@ export function registerEmpresaHandlers(): void {
       }
 
       return { success: true, data: { filePath } }
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // ── dialog:open-file ────────────────────────────────────────────
+  ipcMain.handle('dialog:open-file', async (_e, options: {
+    filters?: Array<{ name: string; extensions: string[] }>
+    title?: string
+  }) => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: options.title ?? 'Selecionar arquivo',
+      properties: ['openFile'],
+      filters: options.filters ?? [],
+    })
+    if (canceled || filePaths.length === 0) return null
+    return filePaths[0]
+  })
+
+  // ── empresa:import ──────────────────────────────────────────────
+  // O payload aceita `string` no campo format para poder rejeitar 'pdf' em runtime.
+  ipcMain.handle('empresa:import', (_e, payload: {
+    filePath: string
+    format: string   // runtime: 'csv' | 'json' — outros valores são rejeitados abaixo
+  }) => {
+    try {
+      const { filePath, format } = payload
+
+      if (format === 'pdf') {
+        return { success: false, error: 'Importação em formato PDF não é suportada. Use CSV ou JSON.' }
+      }
+      if (format !== 'csv' && format !== 'json') {
+        return { success: false, error: `Formato "${format}" não suportado. Use csv ou json.` }
+      }
+
+      // Lê o arquivo
+      let rawContent: string
+      try {
+        rawContent = fs.readFileSync(filePath, 'utf-8')
+      } catch {
+        return { success: false, error: `Não foi possível ler o arquivo: ${filePath}` }
+      }
+
+      // Parse conforme formato
+      let rows: ImportRow[]
+      if (format === 'csv') {
+        rows = parseCsv(rawContent)
+        if (rows.length === 0) {
+          return { success: false, error: 'CSV vazio ou sem linhas de dados.' }
+        }
+        // Valida cabeçalho obrigatório
+        const firstRow = rows[0]
+        if (!('razao_social' in firstRow) || !('cnpj' in firstRow)) {
+          return {
+            success: false,
+            error: 'CSV inválido: colunas obrigatórias "razao_social" e "cnpj" não encontradas no cabeçalho.',
+          }
+        }
+      } else {
+        // JSON
+        let parsed: unknown
+        try {
+          parsed = JSON.parse(rawContent)
+        } catch {
+          return { success: false, error: 'Arquivo JSON inválido (erro de parse).' }
+        }
+        if (!Array.isArray(parsed)) {
+          return { success: false, error: 'JSON inválido: esperado um array de objetos de empresa.' }
+        }
+        rows = (parsed as Record<string, unknown>[]).map((item) => {
+          // Converte todos os valores para string para unificar o pipeline
+          const row: ImportRow = {}
+          for (const [k, v] of Object.entries(item)) {
+            row[k.toLowerCase()] = v == null ? '' : String(v)
+          }
+          return row
+        })
+        if (rows.length === 0) {
+          return { success: false, error: 'JSON vazio: nenhum registro encontrado.' }
+        }
+      }
+
+      // Processa cada linha
+      const r = repo()
+      let imported = 0
+      let skipped = 0
+      const errors: string[] = []
+
+      for (let i = 0; i < rows.length; i++) {
+        const lineLabel = `Linha ${i + 2}` // +2 porque linha 1 é o cabeçalho
+        const row = rows[i]
+
+        // Valida campos obrigatórios
+        if (!row['razao_social']?.trim()) {
+          errors.push(`${lineLabel}: "razao_social" é obrigatório.`)
+          continue
+        }
+
+        const rawCnpj = row['cnpj'] ?? ''
+        const cnpj = normalizeCnpj(rawCnpj)
+        if (!cnpj) {
+          errors.push(`${lineLabel}: CNPJ "${rawCnpj}" inválido (deve ter 14 dígitos).`)
+          continue
+        }
+
+        // Verifica duplicata pelo CNPJ
+        const existing = getDb()
+          .prepare('SELECT id FROM empresas WHERE cnpj = ?')
+          .get(cnpj) as { id: number } | undefined
+
+        if (existing) {
+          skipped++
+          continue
+        }
+
+        // Gera código sequencial
+        const codigo = r.nextCodigo()
+
+        // Monta payload e insere
+        try {
+          const base = rowToPayload({ ...row, cnpj })
+          r.create({ ...base, codigo })
+          imported++
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err)
+          errors.push(`${lineLabel}: ${msg}`)
+        }
+      }
+
+      return { success: true, imported, skipped, errors }
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) }
     }

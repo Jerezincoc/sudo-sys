@@ -72,4 +72,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /** Revela o arquivo no gerenciador de arquivos do SO. */
   openPath: (filePath: string): Promise<void> =>
     ipcRenderer.invoke('shell:open-path', filePath),
+
+  // ── Diálogos ──────────────────────────────────────────────────────
+  openFileDialog: (options: {
+    filters?: Array<{ name: string; extensions: string[] }>
+    title?: string
+  }): Promise<string | null> =>
+    ipcRenderer.invoke('dialog:open-file', options),
+
+  // ── Importação ────────────────────────────────────────────────────
+  importEmpresas: (payload: {
+    filePath: string
+    format: 'csv' | 'json'
+  }): Promise<
+    | { success: true; imported: number; skipped: number; errors: string[] }
+    | { success: false; error: string }
+  > =>
+    ipcRenderer.invoke('empresa:import', payload),
 })

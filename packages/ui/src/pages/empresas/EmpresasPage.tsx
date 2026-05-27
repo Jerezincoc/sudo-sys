@@ -66,6 +66,12 @@ const COLUMNS: ColDef[] = [
 
 type FormMode = 'new' | number | null   // null=fechado, 'new'=novo, number=editar id
 
+interface ImportResult {
+  imported: number
+  skipped: number
+  errors: string[]
+}
+
 export default function EmpresasPage() {
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [loading, setLoading] = useState(false)
@@ -74,6 +80,8 @@ export default function EmpresasPage() {
   const [formMode, setFormMode] = useState<FormMode>(null)
   const [filterStatus, setFilterStatus] = useState<'all' | 'ativa' | 'inativa'>('all')
   const [search, setSearch] = useState('')
+  const [importResult, setImportResult] = useState<ImportResult | null>(null)
+  const [importMenuOpen, setImportMenuOpen] = useState(false)
   const rowRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
   // ── Dialog de confirmação de ação de exclusão ─────────────────────
@@ -315,6 +323,42 @@ export default function EmpresasPage() {
   useEffect(() => { handlePrintRef.current   = handlePrint   }, [handlePrint])
   useEffect(() => { handlePreviewRef.current = handlePreview }, [handlePreview])
 
+  // ── Importar CSV / JSON ────────────────────────────────────────
+  const handleImport = useCallback(async (format: 'csv' | 'json') => {
+    setImportMenuOpen(false)
+    const hasElectron = typeof window !== 'undefined' && !!window.electronAPI
+    if (!hasElectron) {
+      setStatus('Importação disponível apenas no app desktop.', 'error')
+      return
+    }
+
+    const filters = format === 'csv'
+      ? [{ name: 'CSV – Valores Separados por Vírgula', extensions: ['csv'] }]
+      : [{ name: 'JSON – JavaScript Object Notation', extensions: ['json'] }]
+
+    const filePath = await window.electronAPI.openFileDialog({
+      title: `Importar empresas (${format.toUpperCase()})`,
+      filters,
+    })
+
+    if (!filePath) return
+
+    setStatus('Importando...', 'info')
+    const res = await window.electronAPI.importEmpresas({ filePath, format })
+
+    if (!res.success) {
+      setStatus(`Erro na importação: ${res.error}`, 'error')
+      return
+    }
+
+    setStatus(
+      `Importação concluída: ${res.imported} importada(s), ${res.skipped} ignorada(s), ${res.errors.length} erro(s).`,
+      res.errors.length > 0 ? 'error' : 'success',
+    )
+    setImportResult({ imported: res.imported, skipped: res.skipped, errors: res.errors })
+    load()
+  }, [load, setStatus])
+
   // ── Registro no store global ───────────────────────────────────
   useEffect(() => {
     setActions({
@@ -458,6 +502,72 @@ export default function EmpresasPage() {
           </button>
         ))}
         <div style={{ flex: 1 }} />
+
+        {/* ── Botão Importar com dropdown CSV / JSON ── */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setImportMenuOpen((o) => !o)}
+            title="Importar empresas (CSV ou JSON)"
+            style={{
+              height: 20,
+              padding: '0 8px',
+              fontSize: 11,
+              border: '1px solid var(--color-border-main)',
+              background: importMenuOpen ? 'var(--color-brand)' : 'var(--color-bg-white)',
+              color: importMenuOpen ? '#fff' : 'var(--color-text-secondary)',
+              cursor: 'pointer',
+              borderRadius: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            ↑ Importar ▾
+          </button>
+
+          {importMenuOpen && (
+            <>
+              {/* overlay para fechar ao clicar fora */}
+              <div
+                style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+                onClick={() => setImportMenuOpen(false)}
+              />
+              <div style={{
+                position: 'absolute',
+                right: 0,
+                top: '100%',
+                zIndex: 100,
+                background: 'var(--color-bg-white)',
+                border: '1px solid var(--color-border-main)',
+                boxShadow: '2px 2px 6px rgba(0,0,0,0.15)',
+                minWidth: 120,
+              }}>
+                {(['csv', 'json'] as const).map((fmt) => (
+                  <button
+                    key={fmt}
+                    onClick={() => handleImport(fmt)}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '5px 12px',
+                      textAlign: 'left',
+                      fontSize: 11,
+                      border: 'none',
+                      background: 'transparent',
+                      color: 'var(--color-text-primary)',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-bg-row-hover)' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                  >
+                    {fmt.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
         {loading && (
           <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>Carregando...</span>
         )}
@@ -642,6 +752,55 @@ export default function EmpresasPage() {
           onClose={() => setFormMode(null)}
           onSaved={handleSaved}
           setStatusMsg={(msg, type) => setStatus(msg, type)}
+        />
+      )}
+
+      {/* ── Resultado da importação ───────────────────────────── */}
+      {importResult !== null && (
+        <ConfirmDialog
+          title="Resultado da Importação"
+          message={
+            <div style={{ fontSize: 12 }}>
+              <p style={{ margin: '0 0 8px' }}>
+                <strong>Importação concluída:</strong>
+              </p>
+              <ul style={{ margin: '0 0 8px', paddingLeft: 18, lineHeight: 1.8 }}>
+                <li>
+                  <span style={{ color: '#155724', fontWeight: 600 }}>
+                    {importResult.imported} empresa(s) importada(s)
+                  </span>
+                </li>
+                <li>
+                  {importResult.skipped} ignorada(s){' '}
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
+                    (CNPJ duplicado)
+                  </span>
+                </li>
+                <li>
+                  <span style={{ color: importResult.errors.length > 0 ? '#721c24' : 'inherit' }}>
+                    {importResult.errors.length} erro(s)
+                  </span>
+                </li>
+              </ul>
+              {importResult.errors.length > 0 && (
+                <div style={{
+                  background: '#fff3f3',
+                  border: '1px solid #f5c6cb',
+                  padding: '6px 8px',
+                  fontSize: 11,
+                  maxHeight: 120,
+                  overflowY: 'auto',
+                  lineHeight: 1.5,
+                }}>
+                  {importResult.errors.map((e, i) => (
+                    <div key={i} style={{ color: '#721c24' }}>{e}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+          }
+          confirmLabel="Fechar"
+          onConfirm={() => setImportResult(null)}
         />
       )}
     </div>

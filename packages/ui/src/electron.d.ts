@@ -42,6 +42,19 @@ export interface ElectronAPI {
   // Shell / Sistema
   /** Revela o arquivo no explorador do sistema operacional. */
   openPath: (filePath: string) => Promise<void>
+
+  // Diálogos do sistema
+  openFileDialog: (options: {
+    filters?: Array<{ name: string; extensions: string[] }>
+    title?: string
+  }) => Promise<string | null>
+
+  // Importação de empresas
+  importEmpresas: (payload: {
+    filePath: string
+    format: 'csv' | 'json'
+  }) => Promise<{ success: true; imported: number; skipped: number; errors: string[] }
+              | { success: false; error: string }>
 }
 
 declare global {
