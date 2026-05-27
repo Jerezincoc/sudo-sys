@@ -5,6 +5,8 @@
 import { ipcMain, shell } from 'electron'
 import { registerEmpresaHandlers } from './handlers/empresaHandlers'
 import { registerFuncionarioHandlers } from './handlers/funcionarioHandlers'
+import { registerFeriasHandlers } from './handlers/feriasHandlers'
+import { registerRubricaHandlers } from './handlers/rubricaHandlers'
 
 function noop(channel: string) {
   ipcMain.handle(channel, () => {
@@ -35,8 +37,9 @@ export function registerAllHandlers(): void {
   noop('folha:create')
   noop('folha:generate-pdf')
 
-  // ── Rubricas ──────────────────────────────────────────────────────
-  noop('rubrica:list')
-  noop('rubrica:create')
-  noop('rubrica:delete')
+  // ── Rubricas (implementado) ───────────────────────────────────────
+  registerRubricaHandlers()
+
+  // ── Férias (implementado) ─────────────────────────────────────────
+  registerFeriasHandlers()
 }

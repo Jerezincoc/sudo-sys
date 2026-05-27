@@ -14,6 +14,12 @@ import type {
   Funcionario,
   CreateFuncionarioPayload,
   UpdateFuncionarioPayload,
+  Ferias,
+  CreateFeriasPayload,
+  UpdateFeriasPayload,
+  Rubrica,
+  CreateRubricaPayload,
+  UpdateRubricaPayload,
 } from '@sudo-sys/shared'
 
 function hasElectron(): boolean {
@@ -102,6 +108,58 @@ export const ipcClient = {
 
   async deleteFuncionario(id: number): Promise<IpcResult<void> & { action?: string }> {
     if (hasElectron()) return window.electronAPI.deleteFuncionario(id)
+    return { success: true, data: undefined }
+  },
+
+  // ── Férias ─────────────────────────────────────────────────────────
+  async listFerias(empresaId: number): Promise<Ferias[]> {
+    if (hasElectron()) return window.electronAPI.listFerias(empresaId)
+    return []
+  },
+
+  async getFerias(id: number): Promise<Ferias | null> {
+    if (hasElectron()) return window.electronAPI.getFerias(id)
+    return null
+  },
+
+  async createFerias(payload: CreateFeriasPayload): Promise<IpcResult<Ferias>> {
+    if (hasElectron()) return window.electronAPI.createFerias(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async updateFerias(payload: UpdateFeriasPayload): Promise<IpcResult<Ferias>> {
+    if (hasElectron()) return window.electronAPI.updateFerias(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async deleteFerias(id: number): Promise<IpcResult<void>> {
+    if (hasElectron()) return window.electronAPI.deleteFerias(id)
+    return { success: true, data: undefined }
+  },
+
+  // ── Rubricas ────────────────────────────────────────────────────
+  async listRubricas(empresaId?: number | null): Promise<Rubrica[]> {
+    if (hasElectron()) return window.electronAPI.listRubricas(empresaId)
+    return []
+  },
+
+  async getRubrica(id: number): Promise<Rubrica | null> {
+    if (hasElectron()) return window.electronAPI.getRubrica(id)
+    return null
+  },
+
+  async createRubrica(payload: CreateRubricaPayload): Promise<IpcResult<Rubrica>> {
+    if (hasElectron()) return window.electronAPI.createRubrica(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async updateRubrica(payload: UpdateRubricaPayload): Promise<IpcResult<Rubrica>> {
+    if (hasElectron()) return window.electronAPI.updateRubrica(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async deleteRubrica(id: number): Promise<IpcResult<void> & { action?: string }> {
+    if (hasElectron()) return window.electronAPI.deleteRubrica(id)
     return { success: true, data: undefined }
   },
 }

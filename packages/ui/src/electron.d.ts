@@ -10,6 +10,12 @@ import type {
   Funcionario,
   CreateFuncionarioPayload,
   UpdateFuncionarioPayload,
+  Ferias,
+  CreateFeriasPayload,
+  UpdateFeriasPayload,
+  Rubrica,
+  CreateRubricaPayload,
+  UpdateRubricaPayload,
 } from '@sudo-sys/shared'
 
 type IpcResult<T = void> = { success: true; data: T } | { success: false; error: string }
@@ -38,6 +44,20 @@ export interface ElectronAPI {
   createFuncionario: (payload: CreateFuncionarioPayload) => Promise<IpcResult<Funcionario>>
   updateFuncionario: (payload: UpdateFuncionarioPayload) => Promise<IpcResult<Funcionario>>
   deleteFuncionario: (id: number) => Promise<IpcResult<void> & { action?: string }>
+
+  // Férias
+  listFerias: (empresaId: number) => Promise<Ferias[]>
+  getFerias: (id: number) => Promise<Ferias | null>
+  createFerias: (payload: CreateFeriasPayload) => Promise<IpcResult<Ferias>>
+  updateFerias: (payload: UpdateFeriasPayload) => Promise<IpcResult<Ferias>>
+  deleteFerias: (id: number) => Promise<IpcResult<void>>
+
+  // Rubricas
+  listRubricas: (empresaId?: number | null) => Promise<Rubrica[]>
+  getRubrica: (id: number) => Promise<Rubrica | null>
+  createRubrica: (payload: CreateRubricaPayload) => Promise<IpcResult<Rubrica>>
+  updateRubrica: (payload: UpdateRubricaPayload) => Promise<IpcResult<Rubrica>>
+  deleteRubrica: (id: number) => Promise<IpcResult<void> & { action?: string }>
 
   // Shell / Sistema
   /** Revela o arquivo no explorador do sistema operacional. */
