@@ -132,6 +132,12 @@ export interface ElectronAPI {
   listHolerites: (folhaId: number) => Promise<FolhaHolerite[]>
   getHolerite: (folhaId: number, funcionarioId: number) => Promise<(FolhaHolerite & { lancamentos: FolhaLancamento[] }) | null>
   gerarHolerite: (payload: { folhaId: number; funcionarioId?: number }) => Promise<IpcResult<{ filePath: string }>>
+
+  // PDFs Documentos
+  gerarPdfRescisao: (id: number) => Promise<IpcResult<{ filePath: string }>>
+  gerarPdfFerias: (id: number) => Promise<IpcResult<{ filePath: string }>>
+  gerarEspelhoPdf: (payload: { empresaId: number; funcionarioId: number; mes: number; ano: number }) => Promise<IpcResult<{ filePath: string }>>
+  gerarFichaFuncionario: (id: number) => Promise<IpcResult<{ filePath: string }>>
 }
 
 declare global {

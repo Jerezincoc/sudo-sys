@@ -243,4 +243,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   gerarHolerite: (payload: { folhaId: number; funcionarioId?: number }): Promise<IpcResult<{ filePath: string }>> =>
     ipcRenderer.invoke('folha:gerar-holerite', payload),
+
+  // ── PDFs Documentos ───────────────────────────────────────────────
+  gerarPdfRescisao: (id: number): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('rescisao:gerar-pdf', id),
+
+  gerarPdfFerias: (id: number): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('ferias:gerar-pdf', id),
+
+  gerarEspelhoPdf: (payload: { empresaId: number; funcionarioId: number; mes: number; ano: number }): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('ponto:gerar-espelho-pdf', payload),
+
+  gerarFichaFuncionario: (id: number): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('funcionario:gerar-ficha-pdf', id),
 })

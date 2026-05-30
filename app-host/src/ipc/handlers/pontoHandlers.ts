@@ -1,7 +1,11 @@
-import { ipcMain } from 'electron'
+import { ipcMain, app } from 'electron'
+import path from 'path'
 import { getDb } from '../../db/database'
 import { SqlitePontoRepository } from '@sudo-sys/infrastructure/src/repositories/SqlitePontoRepository'
+import { SqliteFuncionarioRepository } from '@sudo-sys/infrastructure/src/repositories/SqliteFuncionarioRepository'
+import { SqliteEmpresaRepository } from '@sudo-sys/infrastructure/src/repositories/SqliteEmpresaRepository'
 import type { CreatePontoPayload, UpdatePontoPayload } from '@sudo-sys/shared'
+import { EspelhoPontoRenderer } from '../../pdf/EspelhoPontoRenderer'
 
 function calcHoras(entrada?: string | null, saidaAlmoco?: string | null, retornoAlmoco?: string | null, saida?: string | null, cargaDiaria = 8.8) {
   if (!entrada || !saida) return { trabalhadas: 0, normais: 0, extras50: 0, extras100: 0, falta: 0 }
@@ -95,6 +99,63 @@ export function registerPontoHandlers(): void {
       return { success: true, data: repo.espelho(empresaId, funcionarioId, mes, ano) }
     } catch (err) {
       return { success: false, error: String(err) }
+    }
+  })
+
+  // ── ponto:gerar-espelho-pdf ──────────────────────────────────────
+  ipcMain.handle('ponto:gerar-espelho-pdf', async (_e, payload: { empresaId: number; funcionarioId: number; mes: number; ano: number }) => {
+    try {
+      const { empresaId, funcionarioId, mes, ano } = payload
+      const espelho = new SqlitePontoRepository(getDb()).espelho(empresaId, funcionarioId, mes, ano)
+
+      const func = new SqliteFuncionarioRepository(getDb()).getById(funcionarioId)
+      if (!func) return { success: false, error: 'Funcionário não encontrado.' }
+
+      const emp = new SqliteEmpresaRepository(getDb()).getById(empresaId)
+      if (!emp) return { success: false, error: 'Empresa não encontrada.' }
+
+      const downloads = app.getPath('downloads')
+      const mesStr = String(mes).padStart(2, '0')
+      const fileName = `EspelhoPonto_${func.nome.replace(/\s+/g, '_')}_${ano}${mesStr}.pdf`
+      const filePath = path.join(downloads, fileName)
+
+      await EspelhoPontoRenderer.render({
+        empresa: { razao_social: emp.razao_social, cnpj: emp.cnpj, cidade: emp.cidade ?? '', uf: emp.uf ?? '' },
+        funcionario: {
+          codigo: func.codigo,
+          nome: func.nome,
+          cpf: func.cpf,
+          cargo: func.cargo ?? '',
+          departamento: func.departamento ?? '',
+        },
+        mes,
+        ano,
+        registros: espelho.registros.map(r => ({
+          data: r.data,
+          entrada: r.entrada,
+          saida_almoco: r.saida_almoco,
+          retorno_almoco: r.retorno_almoco,
+          saida: r.saida,
+          horas_trabalhadas: r.horas_trabalhadas,
+          horas_normais: r.horas_normais,
+          horas_extras_50: r.horas_extras_50,
+          horas_extras_100: r.horas_extras_100,
+          horas_falta: r.horas_falta,
+          tipo: r.tipo,
+          justificativa: r.justificativa,
+        })),
+        totais: {
+          total_trabalhadas: espelho.total_trabalhadas,
+          total_normais: espelho.total_normais,
+          total_extras_50: espelho.total_extras_50,
+          total_extras_100: espelho.total_extras_100,
+          total_faltas: espelho.total_faltas,
+        },
+      }, filePath)
+
+      return { success: true, data: { filePath } }
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) }
     }
   })
 }
