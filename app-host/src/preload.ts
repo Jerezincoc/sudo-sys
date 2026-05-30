@@ -107,6 +107,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   me: (token: string): Promise<Usuario | null> =>
     ipcRenderer.invoke('auth:me', token),
 
+  listUsuarios: (): Promise<IpcResult<Usuario[]>> =>
+    ipcRenderer.invoke('usuario:list'),
+
+  createUsuario: (payload: { nome: string; email: string; senha: string; papel: string }): Promise<IpcResult<Usuario>> =>
+    ipcRenderer.invoke('usuario:create', payload),
+
+  deleteUsuario: (id: number): Promise<IpcResult<void>> =>
+    ipcRenderer.invoke('usuario:delete', id),
+
+  // ── Admin ─────────────────────────────────────────────────────────
+  backupDatabase: (): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('admin:backup'),
+
   // ── Diálogos ──────────────────────────────────────────────────────
   openFileDialog: (options: {
     filters?: Array<{ name: string; extensions: string[] }>

@@ -69,6 +69,12 @@ export interface ElectronAPI {
   logout: (token: string) => Promise<{ success: boolean }>
   register: (payload: { nome: string; email: string; senha: string; papel: string; requestingToken: string }) => Promise<LoginResult>
   me: (token: string) => Promise<Usuario | null>
+  listUsuarios: () => Promise<IpcResult<Usuario[]>>
+  createUsuario: (payload: { nome: string; email: string; senha: string; papel: string }) => Promise<IpcResult<Usuario>>
+  deleteUsuario: (id: number) => Promise<IpcResult<void>>
+
+  // Admin
+  backupDatabase: () => Promise<IpcResult<{ filePath: string }>>
 
   // Diálogos do sistema
   openFileDialog: (options: {
