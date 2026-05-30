@@ -13,6 +13,13 @@ export interface Rubrica {
   incide_fgts: number
   incide_ferias: number
   incide_13: number
+  numero?: string | null
+  fator?: 'valor' | 'percentual' | 'horas' | 'dias' | null
+  esocial_rubrica?: string | null
+  media_ferias?: number | null
+  media_decimo?: number | null
+  media_aviso?: number | null
+  media_rescisao?: number | null
   ativo: number
   created_at: string
   updated_at: string

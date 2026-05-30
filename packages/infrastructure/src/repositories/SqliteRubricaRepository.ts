@@ -20,9 +20,11 @@ export class SqliteRubricaRepository {
   create(payload: CreateRubricaPayload): Rubrica {
     const stmt = this.db.prepare(`
       INSERT INTO rubricas (empresa_id, codigo, nome, tipo, modo_valor, valor, percentual, formula,
-        incide_inss, incide_irrf, incide_fgts, incide_ferias, incide_13, ativo)
+        incide_inss, incide_irrf, incide_fgts, incide_ferias, incide_13, ativo,
+        numero, fator, esocial_rubrica, media_ferias, media_decimo, media_aviso, media_rescisao)
       VALUES (@empresa_id, @codigo, @nome, @tipo, @modo_valor, @valor, @percentual, @formula,
-        @incide_inss, @incide_irrf, @incide_fgts, @incide_ferias, @incide_13, @ativo)
+        @incide_inss, @incide_irrf, @incide_fgts, @incide_ferias, @incide_13, @ativo,
+        @numero, @fator, @esocial_rubrica, @media_ferias, @media_decimo, @media_aviso, @media_rescisao)
     `)
     const info = stmt.run({
       empresa_id:    payload.empresa_id ?? null,
@@ -39,6 +41,13 @@ export class SqliteRubricaRepository {
       incide_ferias: payload.incide_ferias ?? 0,
       incide_13:     payload.incide_13 ?? 0,
       ativo:         payload.ativo ?? 1,
+      numero:        payload.numero ?? null,
+      fator:         payload.fator ?? null,
+      esocial_rubrica: payload.esocial_rubrica ?? null,
+      media_ferias:  payload.media_ferias ?? 0,
+      media_decimo:  payload.media_decimo ?? 0,
+      media_aviso:   payload.media_aviso ?? 0,
+      media_rescisao:payload.media_rescisao ?? 0,
     })
     return this.getById(Number(info.lastInsertRowid))!
   }
@@ -47,7 +56,8 @@ export class SqliteRubricaRepository {
     const fields: string[] = ['updated_at = CURRENT_TIMESTAMP']
     const params: Record<string, unknown> = { id: payload.id }
     const cols = ['codigo','nome','tipo','modo_valor','valor','percentual','formula',
-      'incide_inss','incide_irrf','incide_fgts','incide_ferias','incide_13','ativo'] as const
+      'incide_inss','incide_irrf','incide_fgts','incide_ferias','incide_13','ativo',
+      'numero', 'fator', 'esocial_rubrica', 'media_ferias', 'media_decimo', 'media_aviso', 'media_rescisao'] as const
     for (const col of cols) {
       if ((payload as Record<string, unknown>)[col] !== undefined) {
         fields.push(`${col} = @${col}`)

@@ -180,6 +180,18 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       ('0201','Base INSS','informativo','fixo',0,0,0,0,0,0,0,1)`,
   },
   {
+    name: '031c_rubricas_v2',
+    sql: `
+      ALTER TABLE rubricas ADD COLUMN numero TEXT;
+      ALTER TABLE rubricas ADD COLUMN fator TEXT DEFAULT 'valor';
+      ALTER TABLE rubricas ADD COLUMN esocial_rubrica TEXT;
+      ALTER TABLE rubricas ADD COLUMN media_ferias INTEGER DEFAULT 0;
+      ALTER TABLE rubricas ADD COLUMN media_decimo INTEGER DEFAULT 0;
+      ALTER TABLE rubricas ADD COLUMN media_aviso INTEGER DEFAULT 0;
+      ALTER TABLE rubricas ADD COLUMN media_rescisao INTEGER DEFAULT 0;
+    `,
+  },
+  {
     name: '032_ferias',
     sql: `CREATE TABLE IF NOT EXISTS ferias (
       id                    INTEGER PRIMARY KEY AUTOINCREMENT,

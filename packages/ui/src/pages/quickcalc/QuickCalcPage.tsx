@@ -16,9 +16,15 @@ export default function QuickCalcPage() {
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([])
   const [selectedFunc, setSelectedFunc] = useState<string>('')
   
+  const [modo, setModo] = useState<'empresa' | 'manual'>('empresa')
+
   const [nomeAvulso, setNomeAvulso] = useState('')
-  const [salarioAvulso, setSalarioAvulso] = useState(0)
+  const [salarioAvulso, setSalarioAvulso] = useState(2500)
   const [competencia, setCompetencia] = useState('05/2026')
+  const [cpfAvulso, setCpfAvulso] = useState('')
+  const [cargoAvulso, setCargoAvulso] = useState('')
+  const [deptoAvulso, setDeptoAvulso] = useState('')
+  const [admissaoAvulso, setAdmissaoAvulso] = useState('')
 
   const [lancamentos, setLancamentos] = useState<LancamentoAvulso[]>([
     { id: 1, codigo: '0001', descricao: 'Salário Base', referencia: '30.00', valor: 2500, tipo: 'provento' }
@@ -61,6 +67,16 @@ export default function QuickCalcPage() {
     }
   }
 
+  const handleManualSalarioChange = (v: number) => {
+    setSalarioAvulso(v)
+    const baseLanc = lancamentos.find(l => l.codigo === '0001')
+    if (baseLanc) {
+      handleUpdate(baseLanc.id, 'valor', v)
+    } else {
+      setLancamentos([{ id: Date.now(), codigo: '0001', descricao: 'Salário Base', referencia: '30.00', valor: v, tipo: 'provento' }, ...lancamentos])
+    }
+  }
+
   const handleAddLancamento = () => {
     setLancamentos([...lancamentos, { id: Date.now(), codigo: '', descricao: '', referencia: '', valor: 0, tipo: 'provento' }])
   }
@@ -88,27 +104,45 @@ export default function QuickCalcPage() {
       
       {/* ── Inputs e Lançamentos ──────────────────────────────────────── */}
       <div style={{ flex: 1, background: 'var(--color-bg-white)', padding: 16, border: '1px solid var(--color-border-main)' }}>
-        <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 16 }}>Calculadora Avulsa</div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 11, marginBottom: 4 }}>Funcionário (Opcional)</label>
-            <select value={selectedFunc} onChange={e => handleFuncChange(e.target.value)} style={{ width: '100%', padding: 4 }}>
-              <option value="">-- Avulso --</option>
-              {funcionarios.map(f => (
-                <option key={f.id} value={f.id}>{f.nome}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 11, marginBottom: 4 }}>Nome</label>
-            <input value={nomeAvulso} onChange={e => setNomeAvulso(e.target.value)} style={{ width: '100%', padding: 4 }} disabled={!!selectedFunc} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 11, marginBottom: 4 }}>Competência</label>
-            <input value={competencia} onChange={e => setCompetencia(e.target.value)} style={{ width: '100%', padding: 4 }} />
+        <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          Calculadora Avulsa
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setModo('empresa')} style={{ padding: '4px 8px', fontSize: 11, background: modo === 'empresa' ? 'var(--color-brand)' : 'transparent', color: modo === 'empresa' ? '#fff' : 'inherit' }}>Modo Empresa</button>
+            <button onClick={() => setModo('manual')} style={{ padding: '4px 8px', fontSize: 11, background: modo === 'manual' ? 'var(--color-brand)' : 'transparent', color: modo === 'manual' ? '#fff' : 'inherit' }}>Modo Manual</button>
           </div>
         </div>
+
+        {modo === 'empresa' ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, marginBottom: 4 }}>Funcionário (Opcional)</label>
+              <select value={selectedFunc} onChange={e => handleFuncChange(e.target.value)} style={{ width: '100%', padding: 4 }}>
+                <option value="">-- Avulso --</option>
+                {funcionarios.map(f => (
+                  <option key={f.id} value={f.id}>{f.nome}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, marginBottom: 4 }}>Nome</label>
+              <input value={nomeAvulso} onChange={e => setNomeAvulso(e.target.value)} style={{ width: '100%', padding: 4 }} disabled={!!selectedFunc} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, marginBottom: 4 }}>Competência</label>
+              <input value={competencia} onChange={e => setCompetencia(e.target.value)} style={{ width: '100%', padding: 4 }} />
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div><label style={{ display: 'block', fontSize: 11, marginBottom: 4 }}>Nome *</label><input value={nomeAvulso} onChange={e => setNomeAvulso(e.target.value)} style={{ width: '100%', padding: 4 }} /></div>
+            <div><label style={{ display: 'block', fontSize: 11, marginBottom: 4 }}>Salário Base *</label><input type="number" value={salarioAvulso} onChange={e => handleManualSalarioChange(Number(e.target.value))} style={{ width: '100%', padding: 4 }} /></div>
+            <div><label style={{ display: 'block', fontSize: 11, marginBottom: 4 }}>Competência *</label><input value={competencia} onChange={e => setCompetencia(e.target.value)} style={{ width: '100%', padding: 4 }} /></div>
+            <div><label style={{ display: 'block', fontSize: 11, marginBottom: 4 }}>CPF</label><input value={cpfAvulso} onChange={e => setCpfAvulso(e.target.value)} style={{ width: '100%', padding: 4 }} /></div>
+            <div><label style={{ display: 'block', fontSize: 11, marginBottom: 4 }}>Cargo</label><input value={cargoAvulso} onChange={e => setCargoAvulso(e.target.value)} style={{ width: '100%', padding: 4 }} /></div>
+            <div><label style={{ display: 'block', fontSize: 11, marginBottom: 4 }}>Departamento</label><input value={deptoAvulso} onChange={e => setDeptoAvulso(e.target.value)} style={{ width: '100%', padding: 4 }} /></div>
+            <div><label style={{ display: 'block', fontSize: 11, marginBottom: 4 }}>Admissão</label><input type="date" value={admissaoAvulso} onChange={e => setAdmissaoAvulso(e.target.value)} style={{ width: '100%', padding: 4 }} /></div>
+          </div>
+        )}
 
         <div style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
           Lançamentos
@@ -169,7 +203,9 @@ export default function QuickCalcPage() {
 
         <div style={{ marginTop: 24, display: 'flex', gap: 8 }}>
           <button onClick={handlePrint} style={{ flex: 1, padding: 8, fontWeight: 'bold' }}>Imprimir</button>
-          <button onClick={handleSave} style={{ flex: 1, padding: 8, fontWeight: 'bold', background: 'var(--color-brand)', color: 'white' }}>Salvar Lançamentos</button>
+          {modo === 'empresa' && (
+            <button onClick={handleSave} style={{ flex: 1, padding: 8, fontWeight: 'bold', background: 'var(--color-brand)', color: 'white' }}>Salvar Lançamentos</button>
+          )}
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import type { Rubrica, CreateRubricaPayload, UpdateRubricaPayload } from '@sudo-sys/shared'
+import { ESOCIAL_TABELA3 } from '@sudo-sys/shared'
 
 interface Props {
   rubrica: Rubrica | null
@@ -42,6 +43,14 @@ export default function RubricaForm({ rubrica, empresaId, onSave, onCancel, savi
   const [incFerias, setIncFerias]     = useState(Boolean(rubrica?.incide_ferias))
   const [inc13, setInc13]             = useState(Boolean(rubrica?.incide_13))
 
+  const [numero, setNumero]           = useState(rubrica?.numero ?? '')
+  const [fator, setFator]             = useState(rubrica?.fator ?? 'valor')
+  const [esocialRubrica, setEsocialRubrica] = useState(rubrica?.esocial_rubrica ?? '')
+  const [mediaFerias, setMediaFerias] = useState(Boolean(rubrica?.media_ferias))
+  const [mediaDecimo, setMediaDecimo] = useState(Boolean(rubrica?.media_decimo))
+  const [mediaAviso, setMediaAviso]   = useState(Boolean(rubrica?.media_aviso))
+  const [mediaRescisao, setMediaRescisao] = useState(Boolean(rubrica?.media_rescisao))
+
   useEffect(() => {
     if (rubrica) {
       setCodigo(rubrica.codigo)
@@ -56,6 +65,13 @@ export default function RubricaForm({ rubrica, empresaId, onSave, onCancel, savi
       setIncFgts(Boolean(rubrica.incide_fgts))
       setIncFerias(Boolean(rubrica.incide_ferias))
       setInc13(Boolean(rubrica.incide_13))
+      setNumero(rubrica.numero ?? '')
+      setFator(rubrica.fator ?? 'valor')
+      setEsocialRubrica(rubrica.esocial_rubrica ?? '')
+      setMediaFerias(Boolean(rubrica.media_ferias))
+      setMediaDecimo(Boolean(rubrica.media_decimo))
+      setMediaAviso(Boolean(rubrica.media_aviso))
+      setMediaRescisao(Boolean(rubrica.media_rescisao))
     }
   }, [rubrica])
 
@@ -75,6 +91,13 @@ export default function RubricaForm({ rubrica, empresaId, onSave, onCancel, savi
       incide_ferias: incFerias ? 1 : 0,
       incide_13:     inc13 ? 1 : 0,
       ativo:         rubrica?.ativo ?? 1,
+      numero:        numero.trim() || null,
+      fator:         fator as Rubrica['fator'],
+      esocial_rubrica: esocialRubrica || null,
+      media_ferias:  mediaFerias ? 1 : 0,
+      media_decimo:  mediaDecimo ? 1 : 0,
+      media_aviso:   mediaAviso ? 1 : 0,
+      media_rescisao:mediaRescisao ? 1 : 0,
     }
     if (isEdit) {
       await onSave({ id: rubrica!.id, ...base } as UpdateRubricaPayload)
@@ -116,7 +139,23 @@ export default function RubricaForm({ rubrica, empresaId, onSave, onCancel, savi
                 {TIPOS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </Field>
-            <div />
+            <Field label="Número"><input value={numero} onChange={(e) => setNumero(e.target.value)} style={inp} placeholder="001" /></Field>
+            <Field label="Fator">
+              <select value={fator} onChange={(e) => setFator(e.target.value as any)} style={inp}>
+                <option value="valor">Valor R$</option>
+                <option value="percentual">Percentual %</option>
+                <option value="horas">Horas</option>
+                <option value="dias">Dias</option>
+              </select>
+            </Field>
+            <Field label="Classificação eSocial">
+              <select value={esocialRubrica} onChange={(e) => setEsocialRubrica(e.target.value)} style={inp}>
+                <option value="">-- Selecione --</option>
+                {(ESOCIAL_TABELA3 as {codigo: string; descricao: string}[]).map(item => (
+                  <option key={item.codigo} value={item.codigo}>{item.codigo} — {item.descricao}</option>
+                ))}
+              </select>
+            </Field>
           </div>
         )}
 
@@ -142,19 +181,36 @@ export default function RubricaForm({ rubrica, empresaId, onSave, onCancel, savi
         )}
 
         {tab === 'Incidências' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 300 }}>
-            {[
-              { label: 'Incide no INSS',   value: incInss,   set: setIncInss },
-              { label: 'Incide no IRRF',   value: incIrrf,   set: setIncIrrf },
-              { label: 'Incide no FGTS',   value: incFgts,   set: setIncFgts },
-              { label: 'Incide em Férias', value: incFerias, set: setIncFerias },
-              { label: 'Incide no 13°',    value: inc13,     set: setInc13 },
-            ].map(({ label, value, set }) => (
-              <label key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
-                <input type="checkbox" checked={value} onChange={(e) => set(e.target.checked)} />
-                {label}
-              </label>
-            ))}
+          <div style={{ display: 'flex', gap: 32 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 300 }}>
+              <div style={{ fontSize: 11, fontWeight: 'bold', marginBottom: 4 }}>Bases de Cálculo</div>
+              {[
+                { label: 'Incide no INSS',   value: incInss,   set: setIncInss },
+                { label: 'Incide no IRRF',   value: incIrrf,   set: setIncIrrf },
+                { label: 'Incide no FGTS',   value: incFgts,   set: setIncFgts },
+                { label: 'Incide em Férias', value: incFerias, set: setIncFerias },
+                { label: 'Incide no 13°',    value: inc13,     set: setInc13 },
+              ].map(({ label, value, set }) => (
+                <label key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={value} onChange={(e) => set(e.target.checked)} />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 300 }}>
+              <div style={{ fontSize: 11, fontWeight: 'bold', marginBottom: 4 }}>Composição de Médias</div>
+              {[
+                { label: 'Média de Férias',       value: mediaFerias,   set: setMediaFerias },
+                { label: 'Média de 13° Salário',  value: mediaDecimo,   set: setMediaDecimo },
+                { label: 'Média de Aviso Prévio', value: mediaAviso,    set: setMediaAviso },
+                { label: 'Média de Rescisão',     value: mediaRescisao, set: setMediaRescisao },
+              ].map(({ label, value, set }) => (
+                <label key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={value} onChange={(e) => set(e.target.checked)} />
+                  {label}
+                </label>
+              ))}
+            </div>
           </div>
         )}
       </div>
