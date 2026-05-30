@@ -14,6 +14,22 @@ import type {
   Funcionario,
   CreateFuncionarioPayload,
   UpdateFuncionarioPayload,
+  LoginPayload,
+  LoginResult,
+  Usuario,
+  Rescisao,
+  CreateRescisaoPayload,
+  UpdateRescisaoPayload,
+  Rubrica,
+  CreateRubricaPayload,
+  UpdateRubricaPayload,
+  Ferias,
+  CreateFeriasPayload,
+  UpdateFeriasPayload,
+  RegistroPonto,
+  CreatePontoPayload,
+  UpdatePontoPayload,
+  EspelhoPonto,
 } from '@sudo-sys/shared'
 
 function hasElectron(): boolean {
@@ -103,5 +119,140 @@ export const ipcClient = {
   async deleteFuncionario(id: number): Promise<IpcResult<void> & { action?: string }> {
     if (hasElectron()) return window.electronAPI.deleteFuncionario(id)
     return { success: true, data: undefined }
+  },
+
+  // ── Auth ───────────────────────────────────────────────────────
+  async login(payload: LoginPayload): Promise<LoginResult> {
+    if (hasElectron()) return window.electronAPI.login(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async logout(token: string): Promise<{ success: boolean }> {
+    if (hasElectron()) return window.electronAPI.logout(token)
+    return { success: true }
+  },
+
+  async register(payload: { nome: string; email: string; senha: string; papel: string; requestingToken: string }): Promise<LoginResult> {
+    if (hasElectron()) return window.electronAPI.register(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async me(token: string): Promise<Usuario | null> {
+    if (hasElectron()) return window.electronAPI.me(token)
+    return null
+  },
+
+  // ── Rescisão ───────────────────────────────────────────────────
+  async listRescisoes(empresaId: number): Promise<Rescisao[]> {
+    if (hasElectron()) return window.electronAPI.listRescisoes(empresaId)
+    return []
+  },
+
+  async getRescisao(id: number): Promise<Rescisao | null> {
+    if (hasElectron()) return window.electronAPI.getRescisao(id)
+    return null
+  },
+
+  async createRescisao(payload: CreateRescisaoPayload): Promise<IpcResult<Rescisao>> {
+    if (hasElectron()) return window.electronAPI.createRescisao(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async updateRescisao(payload: UpdateRescisaoPayload): Promise<IpcResult<Rescisao>> {
+    if (hasElectron()) return window.electronAPI.updateRescisao(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async deleteRescisao(id: number): Promise<IpcResult<void>> {
+    if (hasElectron()) return window.electronAPI.deleteRescisao(id)
+    return { success: true, data: undefined }
+  },
+
+  async calcularRescisao(id: number): Promise<IpcResult<Rescisao>> {
+    if (hasElectron()) return window.electronAPI.calcularRescisao(id)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  // ── Rubricas ───────────────────────────────────────────────────
+  async listRubricas(empresaId?: number): Promise<Rubrica[]> {
+    if (hasElectron()) return window.electronAPI.listRubricas(empresaId)
+    return []
+  },
+
+  async getRubrica(id: number): Promise<Rubrica | null> {
+    if (hasElectron()) return window.electronAPI.getRubrica(id)
+    return null
+  },
+
+  async createRubrica(payload: CreateRubricaPayload): Promise<IpcResult<Rubrica>> {
+    if (hasElectron()) return window.electronAPI.createRubrica(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async updateRubrica(payload: UpdateRubricaPayload): Promise<IpcResult<Rubrica>> {
+    if (hasElectron()) return window.electronAPI.updateRubrica(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async deleteRubrica(id: number): Promise<IpcResult<void> & { action?: string }> {
+    if (hasElectron()) return window.electronAPI.deleteRubrica(id)
+    return { success: true, data: undefined }
+  },
+
+  // ── Férias ─────────────────────────────────────────────────────
+  async listFerias(empresaId: number): Promise<Ferias[]> {
+    if (hasElectron()) return window.electronAPI.listFerias(empresaId)
+    return []
+  },
+
+  async getFerias(id: number): Promise<Ferias | null> {
+    if (hasElectron()) return window.electronAPI.getFerias(id)
+    return null
+  },
+
+  async createFerias(payload: CreateFeriasPayload): Promise<IpcResult<Ferias>> {
+    if (hasElectron()) return window.electronAPI.createFerias(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async updateFerias(payload: UpdateFeriasPayload): Promise<IpcResult<Ferias>> {
+    if (hasElectron()) return window.electronAPI.updateFerias(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async deleteFerias(id: number): Promise<IpcResult<void>> {
+    if (hasElectron()) return window.electronAPI.deleteFerias(id)
+    return { success: true, data: undefined }
+  },
+
+  // ── Ponto ──────────────────────────────────────────────────────────
+  async listPonto(empresaId: number, mes?: number, ano?: number, funcionarioId?: number): Promise<RegistroPonto[]> {
+    if (hasElectron()) return window.electronAPI.listPonto(empresaId, mes, ano, funcionarioId)
+    return []
+  },
+
+  async getPonto(id: number): Promise<RegistroPonto | null> {
+    if (hasElectron()) return window.electronAPI.getPonto(id)
+    return null
+  },
+
+  async createPonto(payload: CreatePontoPayload): Promise<IpcResult<RegistroPonto>> {
+    if (hasElectron()) return window.electronAPI.createPonto(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async updatePonto(payload: UpdatePontoPayload): Promise<IpcResult<RegistroPonto>> {
+    if (hasElectron()) return window.electronAPI.updatePonto(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async deletePonto(id: number): Promise<IpcResult<void>> {
+    if (hasElectron()) return window.electronAPI.deletePonto(id)
+    return { success: true, data: undefined }
+  },
+
+  async espelhoPonto(empresaId: number, funcionarioId: number, mes: number, ano: number): Promise<IpcResult<EspelhoPonto>> {
+    if (hasElectron()) return window.electronAPI.espelhoPonto(empresaId, funcionarioId, mes, ano)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
   },
 }

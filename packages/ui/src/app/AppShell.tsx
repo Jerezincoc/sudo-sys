@@ -6,6 +6,7 @@ import RibbonBar from '@/components/layout/RibbonBar'
 import { useTheme } from '@/app/theme/ThemeContext'
 import { useSelectedEmpresaStore } from '@/state/selectedEmpresaSlice'
 import { useSessionStore } from '@/state/sessionSlice'
+import { ipcClient } from '@/api/ipcClient'
 import { usePageActionsStore } from '@/state/pageActionsSlice'
 import { ROUTES } from '@/app/routes'
 
@@ -32,8 +33,14 @@ export default function AppShell() {
   const location = useLocation()
   const { theme, toggle } = useTheme()
   const { empresaNome, competencia } = useSelectedEmpresaStore()
-  const user = useSessionStore((s) => s.user)
+  const { user, token, clearUser } = useSessionStore()
   const [menuHover, setMenuHover] = useState<string | null>(null)
+
+  async function handleLogout() {
+    await ipcClient.logout(token ?? '')
+    clearUser()
+    window.location.reload()
+  }
 
   const [cYear, cMonth] = competencia.split('-')
   const compLabel = `${MONTHS[parseInt(cMonth, 10) - 1] ?? cMonth}/${cYear}`
@@ -125,6 +132,13 @@ export default function AppShell() {
           <span>{user?.name ?? 'Usuário'}</span>
           <span style={{ margin: '0 8px', color: 'var(--color-border-main)' }}>|</span>
           <span>{empresaNome ?? 'Nenhuma empresa selecionada'}</span>
+          <span style={{ margin: '0 8px', color: 'var(--color-border-main)' }}>|</span>
+          <button
+            onClick={handleLogout}
+            style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--color-text-secondary)', cursor: 'pointer', padding: 0 }}
+          >
+            Sair
+          </button>
         </div>
       </div>
 

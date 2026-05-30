@@ -3,15 +3,21 @@ import { HashRouter } from 'react-router-dom'
 import AppRouter from './Router'
 import { ThemeProvider } from './theme/ThemeContext'
 import { ipcClient } from '@/api/ipcClient'
+import LoginPage from '@/pages/login/LoginPage'
 
-type AppState = 'loading' | 'setup' | 'main'
+type AppState = 'loading' | 'setup' | 'login' | 'main'
 
 export default function App() {
   const [state, setState] = useState<AppState>('loading')
 
   useEffect(() => {
-    ipcClient.checkInitialized().then((initialized: boolean) => {
-      setState(initialized ? 'main' : 'setup')
+    ipcClient.checkInitialized().then(async (initialized: boolean) => {
+      if (!initialized) {
+        setState('setup')
+        return
+      }
+      // Verifica se há sessão ativa em memória (token persiste só no processo Electron)
+      setState('login')
     }).catch(() => {
       setState('setup')
     })
@@ -40,10 +46,18 @@ export default function App() {
     )
   }
 
+  if (state === 'login') {
+    return (
+      <ThemeProvider>
+        <LoginPage onLogin={() => setState('main')} />
+      </ThemeProvider>
+    )
+  }
+
   return (
     <ThemeProvider>
       <HashRouter>
-        <AppRouter initialState={state} />
+        <AppRouter initialState={state === 'setup' ? 'setup' : 'main'} />
       </HashRouter>
     </ThemeProvider>
   )

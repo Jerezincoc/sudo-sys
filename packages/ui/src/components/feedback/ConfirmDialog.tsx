@@ -7,13 +7,13 @@ import React, { useEffect } from 'react'
 
 interface Props {
   title: string
-  message: string
+  message: React.ReactNode
   confirmLabel?: string
   cancelLabel?: string
   /** Quando true, o botão de confirmação fica vermelho (ação destrutiva). */
   danger?: boolean
   onConfirm: () => void
-  onCancel: () => void
+  onCancel?: () => void
 }
 
 export default function ConfirmDialog({
@@ -25,20 +25,21 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }: Props) {
+  const close = onCancel ?? onConfirm
   // Fechar com Esc
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onCancel()
+      if (e.key === 'Escape') close()
       if (e.key === 'Enter') onConfirm()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onCancel, onConfirm])
+  }, [close, onConfirm])
 
   return (
     /* Overlay */
     <div
-      onClick={onCancel}
+      onClick={close}
       style={{
         position: 'fixed',
         inset: 0,
@@ -103,12 +104,14 @@ export default function ConfirmDialog({
           padding: '0 8px',
           gap: 6,
         }}>
-          <button
-            onClick={onCancel}
-            style={dlgBtn('secondary')}
-          >
-            {cancelLabel}
-          </button>
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              style={dlgBtn('secondary')}
+            >
+              {cancelLabel}
+            </button>
+          )}
           <button
             onClick={onConfirm}
             style={dlgBtn(danger ? 'danger' : 'primary')}

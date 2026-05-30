@@ -10,6 +10,22 @@ import type {
   Funcionario,
   CreateFuncionarioPayload,
   UpdateFuncionarioPayload,
+  LoginPayload,
+  LoginResult,
+  Usuario,
+  Rescisao,
+  CreateRescisaoPayload,
+  UpdateRescisaoPayload,
+  Rubrica,
+  CreateRubricaPayload,
+  UpdateRubricaPayload,
+  Ferias,
+  CreateFeriasPayload,
+  UpdateFeriasPayload,
+  RegistroPonto,
+  CreatePontoPayload,
+  UpdatePontoPayload,
+  EspelhoPonto,
 } from '@sudo-sys/shared'
 
 type IpcResult<T = void> = { success: true; data: T } | { success: false; error: string }
@@ -43,6 +59,12 @@ export interface ElectronAPI {
   /** Revela o arquivo no explorador do sistema operacional. */
   openPath: (filePath: string) => Promise<void>
 
+  // Auth
+  login: (payload: LoginPayload) => Promise<LoginResult>
+  logout: (token: string) => Promise<{ success: boolean }>
+  register: (payload: { nome: string; email: string; senha: string; papel: string; requestingToken: string }) => Promise<LoginResult>
+  me: (token: string) => Promise<Usuario | null>
+
   // Diálogos do sistema
   openFileDialog: (options: {
     filters?: Array<{ name: string; extensions: string[] }>
@@ -55,6 +77,36 @@ export interface ElectronAPI {
     format: 'csv' | 'json'
   }) => Promise<{ success: true; imported: number; skipped: number; errors: string[] }
               | { success: false; error: string }>
+
+  // Rescisão
+  listRescisoes: (empresaId: number) => Promise<Rescisao[]>
+  getRescisao: (id: number) => Promise<Rescisao | null>
+  createRescisao: (payload: CreateRescisaoPayload) => Promise<IpcResult<Rescisao>>
+  updateRescisao: (payload: UpdateRescisaoPayload) => Promise<IpcResult<Rescisao>>
+  deleteRescisao: (id: number) => Promise<IpcResult<void>>
+  calcularRescisao: (id: number) => Promise<IpcResult<Rescisao>>
+
+  // Rubricas
+  listRubricas: (empresaId?: number) => Promise<Rubrica[]>
+  getRubrica: (id: number) => Promise<Rubrica | null>
+  createRubrica: (payload: CreateRubricaPayload) => Promise<IpcResult<Rubrica>>
+  updateRubrica: (payload: UpdateRubricaPayload) => Promise<IpcResult<Rubrica>>
+  deleteRubrica: (id: number) => Promise<IpcResult<void> & { action?: string }>
+
+  // Férias
+  listFerias: (empresaId: number) => Promise<Ferias[]>
+  getFerias: (id: number) => Promise<Ferias | null>
+  createFerias: (payload: CreateFeriasPayload) => Promise<IpcResult<Ferias>>
+  updateFerias: (payload: UpdateFeriasPayload) => Promise<IpcResult<Ferias>>
+  deleteFerias: (id: number) => Promise<IpcResult<void>>
+
+  // Ponto
+  listPonto: (empresaId: number, mes?: number, ano?: number, funcionarioId?: number) => Promise<RegistroPonto[]>
+  getPonto: (id: number) => Promise<RegistroPonto | null>
+  createPonto: (payload: CreatePontoPayload) => Promise<IpcResult<RegistroPonto>>
+  updatePonto: (payload: UpdatePontoPayload) => Promise<IpcResult<RegistroPonto>>
+  deletePonto: (id: number) => Promise<IpcResult<void>>
+  espelhoPonto: (empresaId: number, funcionarioId: number, mes: number, ano: number) => Promise<IpcResult<EspelhoPonto>>
 }
 
 declare global {
