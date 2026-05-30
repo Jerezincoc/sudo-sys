@@ -247,6 +247,64 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       VALUES ('Administrador', 'admin@sudosys.local',
       '$argon2id$v=19$m=65536,t=3,p=4$placeholder', 'admin')`,
   },
+  {
+    name: '041_folha_competencias',
+    sql: `CREATE TABLE IF NOT EXISTS folha_competencias (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      empresa_id      INTEGER NOT NULL REFERENCES empresas(id),
+      competencia     TEXT NOT NULL,
+      status          TEXT DEFAULT 'aberta',
+      total_proventos REAL DEFAULT 0,
+      total_descontos REAL DEFAULT 0,
+      total_liquido   REAL DEFAULT 0,
+      total_inss      REAL DEFAULT 0,
+      total_fgts      REAL DEFAULT 0,
+      total_irrf      REAL DEFAULT 0,
+      observacao      TEXT,
+      created_at      TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at      TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(empresa_id, competencia)
+    )`,
+  },
+  {
+    name: '042_folha_lancamentos',
+    sql: `CREATE TABLE IF NOT EXISTS folha_lancamentos (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      folha_id          INTEGER NOT NULL REFERENCES folha_competencias(id),
+      funcionario_id    INTEGER NOT NULL REFERENCES funcionarios(id),
+      empresa_id        INTEGER NOT NULL REFERENCES empresas(id),
+      rubrica_id        INTEGER REFERENCES rubricas(id),
+      rubrica_codigo    TEXT NOT NULL,
+      rubrica_nome      TEXT NOT NULL,
+      rubrica_tipo      TEXT NOT NULL,
+      referencia        REAL DEFAULT 0,
+      valor             REAL NOT NULL DEFAULT 0,
+      origem            TEXT DEFAULT 'manual',
+      created_at        TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at        TEXT DEFAULT CURRENT_TIMESTAMP
+    )`,
+  },
+  {
+    name: '043_folha_holerites',
+    sql: `CREATE TABLE IF NOT EXISTS folha_holerites (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      folha_id          INTEGER NOT NULL REFERENCES folha_competencias(id),
+      funcionario_id    INTEGER NOT NULL REFERENCES funcionarios(id),
+      empresa_id        INTEGER NOT NULL REFERENCES empresas(id),
+      total_proventos   REAL DEFAULT 0,
+      total_descontos   REAL DEFAULT 0,
+      valor_liquido     REAL DEFAULT 0,
+      base_inss         REAL DEFAULT 0,
+      valor_inss        REAL DEFAULT 0,
+      base_irrf         REAL DEFAULT 0,
+      valor_irrf        REAL DEFAULT 0,
+      valor_fgts        REAL DEFAULT 0,
+      status            TEXT DEFAULT 'calculado',
+      created_at        TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at        TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(folha_id, funcionario_id)
+    )`,
+  },
 ]
 
 function runMigrations(db: BetterSqlite3.Database): void {

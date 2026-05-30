@@ -31,6 +31,11 @@ import type {
   CreatePontoPayload,
   UpdatePontoPayload,
   EspelhoPonto,
+  FolhaCompetencia,
+  FolhaLancamento,
+  FolhaHolerite,
+  CreateFolhaPayload,
+  CreateLancamentoPayload,
 } from '@sudo-sys/shared'
 
 type IpcResult<T> = { success: true; data: T } | { success: false; error: string }
@@ -188,4 +193,41 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   espelhoPonto: (empresaId: number, funcionarioId: number, mes: number, ano: number): Promise<IpcResult<EspelhoPonto>> =>
     ipcRenderer.invoke('ponto:espelho', empresaId, funcionarioId, mes, ano),
+
+  // ── Folha ────────────────────────────────────────────────────
+  listFolhas: (empresaId: number): Promise<FolhaCompetencia[]> =>
+    ipcRenderer.invoke('folha:list', empresaId),
+
+  getFolha: (id: number): Promise<(FolhaCompetencia & { holerites: FolhaHolerite[] }) | null> =>
+    ipcRenderer.invoke('folha:get', id),
+
+  createFolha: (payload: CreateFolhaPayload): Promise<IpcResult<FolhaCompetencia>> =>
+    ipcRenderer.invoke('folha:create', payload),
+
+  updateFolha: (payload: Partial<FolhaCompetencia> & { id: number }): Promise<IpcResult<FolhaCompetencia>> =>
+    ipcRenderer.invoke('folha:update', payload),
+
+  fecharFolha: (id: number): Promise<IpcResult<FolhaCompetencia>> =>
+    ipcRenderer.invoke('folha:fechar', id),
+
+  listLancamentos: (folhaId: number, funcionarioId?: number): Promise<FolhaLancamento[]> =>
+    ipcRenderer.invoke('folha:lancamentos:list', folhaId, funcionarioId),
+
+  addLancamento: (payload: CreateLancamentoPayload): Promise<IpcResult<FolhaLancamento>> =>
+    ipcRenderer.invoke('folha:lancamentos:add', payload),
+
+  deleteLancamento: (id: number): Promise<IpcResult<void>> =>
+    ipcRenderer.invoke('folha:lancamentos:delete', id),
+
+  calcularFolha: (folhaId: number): Promise<IpcResult<FolhaCompetencia>> =>
+    ipcRenderer.invoke('folha:calcular', folhaId),
+
+  listHolerites: (folhaId: number): Promise<FolhaHolerite[]> =>
+    ipcRenderer.invoke('folha:holerites:list', folhaId),
+
+  getHolerite: (folhaId: number, funcionarioId: number): Promise<(FolhaHolerite & { lancamentos: FolhaLancamento[] }) | null> =>
+    ipcRenderer.invoke('folha:holerites:get', folhaId, funcionarioId),
+
+  gerarHolerite: (payload: { folhaId: number; funcionarioId?: number }): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('folha:gerar-holerite', payload),
 })

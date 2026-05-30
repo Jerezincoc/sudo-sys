@@ -26,6 +26,11 @@ import type {
   CreatePontoPayload,
   UpdatePontoPayload,
   EspelhoPonto,
+  FolhaCompetencia,
+  FolhaLancamento,
+  FolhaHolerite,
+  CreateFolhaPayload,
+  CreateLancamentoPayload,
 } from '@sudo-sys/shared'
 
 type IpcResult<T = void> = { success: true; data: T } | { success: false; error: string }
@@ -107,6 +112,20 @@ export interface ElectronAPI {
   updatePonto: (payload: UpdatePontoPayload) => Promise<IpcResult<RegistroPonto>>
   deletePonto: (id: number) => Promise<IpcResult<void>>
   espelhoPonto: (empresaId: number, funcionarioId: number, mes: number, ano: number) => Promise<IpcResult<EspelhoPonto>>
+
+  // Folha
+  listFolhas: (empresaId: number) => Promise<FolhaCompetencia[]>
+  getFolha: (id: number) => Promise<(FolhaCompetencia & { holerites: FolhaHolerite[] }) | null>
+  createFolha: (payload: CreateFolhaPayload) => Promise<IpcResult<FolhaCompetencia>>
+  updateFolha: (payload: Partial<FolhaCompetencia> & { id: number }) => Promise<IpcResult<FolhaCompetencia>>
+  fecharFolha: (id: number) => Promise<IpcResult<FolhaCompetencia>>
+  listLancamentos: (folhaId: number, funcionarioId?: number) => Promise<FolhaLancamento[]>
+  addLancamento: (payload: CreateLancamentoPayload) => Promise<IpcResult<FolhaLancamento>>
+  deleteLancamento: (id: number) => Promise<IpcResult<void>>
+  calcularFolha: (folhaId: number) => Promise<IpcResult<FolhaCompetencia>>
+  listHolerites: (folhaId: number) => Promise<FolhaHolerite[]>
+  getHolerite: (folhaId: number, funcionarioId: number) => Promise<(FolhaHolerite & { lancamentos: FolhaLancamento[] }) | null>
+  gerarHolerite: (payload: { folhaId: number; funcionarioId?: number }) => Promise<IpcResult<{ filePath: string }>>
 }
 
 declare global {
