@@ -31,6 +31,11 @@ import type {
   FolhaHolerite,
   CreateFolhaPayload,
   CreateLancamentoPayload,
+  RelatorioPersonalizado,
+  CreateRelatorioPayload,
+  UpdateRelatorioPayload,
+  RelatorioLinhaFuncionario,
+  ExecutarRelatorioPayload,
 } from '@sudo-sys/shared'
 
 type IpcResult<T = void> = { success: true; data: T } | { success: false; error: string }
@@ -132,6 +137,15 @@ export interface ElectronAPI {
   listHolerites: (folhaId: number) => Promise<FolhaHolerite[]>
   getHolerite: (folhaId: number, funcionarioId: number) => Promise<(FolhaHolerite & { lancamentos: FolhaLancamento[] }) | null>
   gerarHolerite: (payload: { folhaId: number; funcionarioId?: number }) => Promise<IpcResult<{ filePath: string }>>
+
+  // Relatórios Personalizados
+  listRelatorios: (empresaId?: number) => Promise<IpcResult<RelatorioPersonalizado[]>>
+  getRelatorio: (id: number) => Promise<IpcResult<RelatorioPersonalizado | null>>
+  createRelatorio: (payload: CreateRelatorioPayload) => Promise<IpcResult<RelatorioPersonalizado>>
+  updateRelatorio: (payload: UpdateRelatorioPayload) => Promise<IpcResult<RelatorioPersonalizado>>
+  deleteRelatorio: (id: number) => Promise<IpcResult<void>>
+  executarRelatorio: (payload: ExecutarRelatorioPayload) => Promise<IpcResult<RelatorioLinhaFuncionario[]>>
+  gerarPdfRelatorio: (payload: ExecutarRelatorioPayload) => Promise<IpcResult<{ filePath: string }>>
 }
 
 declare global {

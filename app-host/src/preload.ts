@@ -36,6 +36,11 @@ import type {
   FolhaHolerite,
   CreateFolhaPayload,
   CreateLancamentoPayload,
+  RelatorioPersonalizado,
+  CreateRelatorioPayload,
+  UpdateRelatorioPayload,
+  RelatorioLinhaFuncionario,
+  ExecutarRelatorioPayload,
 } from '@sudo-sys/shared'
 
 type IpcResult<T> = { success: true; data: T } | { success: false; error: string }
@@ -243,4 +248,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   gerarHolerite: (payload: { folhaId: number; funcionarioId?: number }): Promise<IpcResult<{ filePath: string }>> =>
     ipcRenderer.invoke('folha:gerar-holerite', payload),
+
+  // ── Relatórios ────────────────────────────────────────────────────
+  listRelatorios: (empresaId?: number): Promise<IpcResult<RelatorioPersonalizado[]>> =>
+    ipcRenderer.invoke('relatorio:list', empresaId),
+
+  getRelatorio: (id: number): Promise<IpcResult<RelatorioPersonalizado | null>> =>
+    ipcRenderer.invoke('relatorio:get', id),
+
+  createRelatorio: (payload: CreateRelatorioPayload): Promise<IpcResult<RelatorioPersonalizado>> =>
+    ipcRenderer.invoke('relatorio:create', payload),
+
+  updateRelatorio: (payload: UpdateRelatorioPayload): Promise<IpcResult<RelatorioPersonalizado>> =>
+    ipcRenderer.invoke('relatorio:update', payload),
+
+  deleteRelatorio: (id: number): Promise<IpcResult<void>> =>
+    ipcRenderer.invoke('relatorio:delete', id),
+
+  executarRelatorio: (payload: ExecutarRelatorioPayload): Promise<IpcResult<RelatorioLinhaFuncionario[]>> =>
+    ipcRenderer.invoke('relatorio:executar', payload),
+
+  gerarPdfRelatorio: (payload: ExecutarRelatorioPayload): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('relatorio:gerar-pdf', payload),
 })
