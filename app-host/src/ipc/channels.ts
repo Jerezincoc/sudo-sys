@@ -39,6 +39,14 @@ export const Channels = {
   RUBRICA_LIST:              'rubrica:list',
   RUBRICA_CREATE:            'rubrica:create',
   RUBRICA_DELETE:            'rubrica:delete',
+
+  // Rescisão
+  RESCISAO_LIST:             'rescisao:list',
+  RESCISAO_GET:              'rescisao:get',
+  RESCISAO_CREATE:           'rescisao:create',
+  RESCISAO_UPDATE:           'rescisao:update',
+  RESCISAO_DELETE:           'rescisao:delete',
+  RESCISAO_CALCULAR:         'rescisao:calcular',
 } as const
 
 export type Channel = (typeof Channels)[keyof typeof Channels]

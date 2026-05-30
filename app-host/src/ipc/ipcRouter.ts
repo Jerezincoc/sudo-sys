@@ -5,38 +5,24 @@
 import { ipcMain, shell } from 'electron'
 import { registerEmpresaHandlers } from './handlers/empresaHandlers'
 import { registerFuncionarioHandlers } from './handlers/funcionarioHandlers'
+import { registerAuthHandlers } from './handlers/authHandlers'
+import { registerRescisaoHandlers } from './handlers/rescisaoHandlers'
+import { registerRubricaHandlers } from './handlers/rubricaHandlers'
+import { registerFeriasHandlers } from './handlers/feriasHandlers'
+import { registerPontoHandlers } from './handlers/pontoHandlers'
 
-function noop(channel: string) {
-  ipcMain.handle(channel, () => {
-    throw new Error(`Handler não implementado: ${channel}`)
-  })
-}
-
-export function registerAllHandlers(): void {
-  // ── Empresas (implementado) ──────────────────────────────────────
+export async function registerAllHandlers(): Promise<void> {
   registerEmpresaHandlers()
 
-  // ── Shell utilitários ────────────────────────────────────────────
-  // Revela o arquivo no gerenciador de arquivos do SO (Explorer, Finder, etc.)
   ipcMain.handle('shell:open-path', (_e, filePath: string) => {
     shell.showItemInFolder(filePath)
   })
 
-  // ── Auth ─────────────────────────────────────────────────────────
-  noop('auth:login')
-  noop('auth:logout')
-  noop('auth:register')
+  await registerAuthHandlers()
 
-  // ── Funcionários (implementado) ───────────────────────────────────
   registerFuncionarioHandlers()
-
-  // ── Folha ─────────────────────────────────────────────────────────
-  noop('folha:list')
-  noop('folha:create')
-  noop('folha:generate-pdf')
-
-  // ── Rubricas ──────────────────────────────────────────────────────
-  noop('rubrica:list')
-  noop('rubrica:create')
-  noop('rubrica:delete')
+  registerRubricaHandlers()
+  registerFeriasHandlers()
+  registerRescisaoHandlers()
+  registerPontoHandlers()
 }

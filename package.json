@@ -26,5 +26,8 @@
       "electron",
       "esbuild"
     ]
+  },
+  "dependencies": {
+    "pdfkit": "^0.15.2"
   }
 }

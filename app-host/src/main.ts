@@ -89,15 +89,15 @@ async function createWindow(): Promise<void> {
 }
 
 // ── IPC ───────────────────────────────────────────────────────────────────────
-function setupIpc(): void {
+async function setupIpc(): Promise<void> {
   registerSetupHandlers()
   initDatabase()        // garante DB + migrations antes dos handlers
-  registerAllHandlers()
+  await registerAllHandlers()
 }
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
-  setupIpc()
+  await setupIpc()
   await createWindow()
 
   app.on('activate', async () => {

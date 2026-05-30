@@ -15,6 +15,22 @@ import type {
   Funcionario,
   CreateFuncionarioPayload,
   UpdateFuncionarioPayload,
+  LoginPayload,
+  LoginResult,
+  Usuario,
+  Rescisao,
+  CreateRescisaoPayload,
+  UpdateRescisaoPayload,
+  Rubrica,
+  CreateRubricaPayload,
+  UpdateRubricaPayload,
+  Ferias,
+  CreateFeriasPayload,
+  UpdateFeriasPayload,
+  RegistroPonto,
+  CreatePontoPayload,
+  UpdatePontoPayload,
+  EspelhoPonto,
 } from '@sudo-sys/shared'
 
 type IpcResult<T> = { success: true; data: T } | { success: false; error: string }
@@ -73,6 +89,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openPath: (filePath: string): Promise<void> =>
     ipcRenderer.invoke('shell:open-path', filePath),
 
+  // ── Auth ──────────────────────────────────────────────────────────
+  login: (payload: LoginPayload): Promise<LoginResult> =>
+    ipcRenderer.invoke('auth:login', payload),
+
+  logout: (token: string): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('auth:logout', token),
+
+  register: (payload: { nome: string; email: string; senha: string; papel: string; requestingToken: string }): Promise<LoginResult> =>
+    ipcRenderer.invoke('auth:register', payload),
+
+  me: (token: string): Promise<Usuario | null> =>
+    ipcRenderer.invoke('auth:me', token),
+
   // ── Diálogos ──────────────────────────────────────────────────────
   openFileDialog: (options: {
     filters?: Array<{ name: string; extensions: string[] }>
@@ -89,4 +118,74 @@ contextBridge.exposeInMainWorld('electronAPI', {
     | { success: false; error: string }
   > =>
     ipcRenderer.invoke('empresa:import', payload),
+
+  // ── Rescisão ──────────────────────────────────────────────────────
+  listRescisoes: (empresaId: number): Promise<Rescisao[]> =>
+    ipcRenderer.invoke('rescisao:list', empresaId),
+
+  getRescisao: (id: number): Promise<Rescisao | null> =>
+    ipcRenderer.invoke('rescisao:get', id),
+
+  createRescisao: (payload: CreateRescisaoPayload): Promise<IpcResult<Rescisao>> =>
+    ipcRenderer.invoke('rescisao:create', payload),
+
+  updateRescisao: (payload: UpdateRescisaoPayload): Promise<IpcResult<Rescisao>> =>
+    ipcRenderer.invoke('rescisao:update', payload),
+
+  deleteRescisao: (id: number): Promise<IpcResult<void>> =>
+    ipcRenderer.invoke('rescisao:delete', id),
+
+  calcularRescisao: (id: number): Promise<IpcResult<Rescisao>> =>
+    ipcRenderer.invoke('rescisao:calcular', id),
+
+  // ── Rubricas ──────────────────────────────────────────────────────
+  listRubricas: (empresaId?: number): Promise<Rubrica[]> =>
+    ipcRenderer.invoke('rubrica:list', empresaId),
+
+  getRubrica: (id: number): Promise<Rubrica | null> =>
+    ipcRenderer.invoke('rubrica:get', id),
+
+  createRubrica: (payload: CreateRubricaPayload): Promise<IpcResult<Rubrica>> =>
+    ipcRenderer.invoke('rubrica:create', payload),
+
+  updateRubrica: (payload: UpdateRubricaPayload): Promise<IpcResult<Rubrica>> =>
+    ipcRenderer.invoke('rubrica:update', payload),
+
+  deleteRubrica: (id: number): Promise<IpcResult<void> & { action?: string }> =>
+    ipcRenderer.invoke('rubrica:delete', id),
+
+  // ── Férias ────────────────────────────────────────────────────────
+  listFerias: (empresaId: number): Promise<Ferias[]> =>
+    ipcRenderer.invoke('ferias:list', empresaId),
+
+  getFerias: (id: number): Promise<Ferias | null> =>
+    ipcRenderer.invoke('ferias:get', id),
+
+  createFerias: (payload: CreateFeriasPayload): Promise<IpcResult<Ferias>> =>
+    ipcRenderer.invoke('ferias:create', payload),
+
+  updateFerias: (payload: UpdateFeriasPayload): Promise<IpcResult<Ferias>> =>
+    ipcRenderer.invoke('ferias:update', payload),
+
+  deleteFerias: (id: number): Promise<IpcResult<void>> =>
+    ipcRenderer.invoke('ferias:delete', id),
+
+  // ── Ponto ────────────────────────────────────────────────────────
+  listPonto: (empresaId: number, mes?: number, ano?: number, funcionarioId?: number): Promise<RegistroPonto[]> =>
+    ipcRenderer.invoke('ponto:list', empresaId, mes, ano, funcionarioId),
+
+  getPonto: (id: number): Promise<RegistroPonto | null> =>
+    ipcRenderer.invoke('ponto:get', id),
+
+  createPonto: (payload: CreatePontoPayload): Promise<IpcResult<RegistroPonto>> =>
+    ipcRenderer.invoke('ponto:create', payload),
+
+  updatePonto: (payload: UpdatePontoPayload): Promise<IpcResult<RegistroPonto>> =>
+    ipcRenderer.invoke('ponto:update', payload),
+
+  deletePonto: (id: number): Promise<IpcResult<void>> =>
+    ipcRenderer.invoke('ponto:delete', id),
+
+  espelhoPonto: (empresaId: number, funcionarioId: number, mes: number, ano: number): Promise<IpcResult<EspelhoPonto>> =>
+    ipcRenderer.invoke('ponto:espelho', empresaId, funcionarioId, mes, ano),
 })
