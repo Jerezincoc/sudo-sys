@@ -95,20 +95,35 @@ export function registerFolhaHandlers(): void {
         .prepare("SELECT id FROM funcionarios WHERE empresa_id = ? AND status = 'ativo'")
         .all(folha.empresa_id) as { id: number }[]
 
+      const rubricaFlags = db.prepare(
+        'SELECT codigo, incide_inss, incide_irrf, incide_fgts FROM rubricas WHERE (empresa_id = ? OR empresa_id IS NULL) ORDER BY empresa_id DESC'
+      ).all(folha.empresa_id) as { codigo: string; incide_inss: number; incide_irrf: number; incide_fgts: number }[]
+      const rubricaMap = new Map(rubricaFlags.map((r) => [r.codigo, r]))
+
       for (const { id: funcionarioId } of funcionarios) {
         const lancamentos = repo.listLancamentos(folhaId, funcionarioId)
         if (lancamentos.length === 0) continue
 
         let proventos = 0
         let descontosManuais = 0
+        let baseInss = 0
+        let baseIrrf = 0
+        let baseFgts = 0
         for (const l of lancamentos) {
-          if (l.rubrica_tipo === 'provento') proventos += l.valor
-          else if (l.rubrica_tipo === 'desconto') descontosManuais += l.valor
+          if (l.rubrica_tipo === 'provento') {
+            proventos += l.valor
+            const flags = rubricaMap.get(l.rubrica_codigo)
+            if (!flags || flags.incide_inss) baseInss += l.valor
+            if (!flags || flags.incide_irrf) baseIrrf += l.valor
+            if (!flags || flags.incide_fgts) baseFgts += l.valor
+          } else if (l.rubrica_tipo === 'desconto') {
+            descontosManuais += l.valor
+          }
         }
 
-        const inss  = calcularINSS(proventos)
-        const irrf  = calcularIRRF(proventos - inss.valor)
-        const fgts  = calcularFGTS(proventos)
+        const inss  = calcularINSS(baseInss)
+        const irrf  = calcularIRRF(baseIrrf - inss.valor)
+        const fgts  = calcularFGTS(baseFgts)
         const totalDescontos = descontosManuais + inss.valor + irrf.valor
         const liquido = Math.max(0, proventos - totalDescontos)
 
@@ -119,7 +134,7 @@ export function registerFolhaHandlers(): void {
           total_proventos: proventos,
           total_descontos: totalDescontos,
           valor_liquido:   liquido,
-          base_inss:       inss.base,
+          base_inss:       baseInss,
           valor_inss:      inss.valor,
           base_irrf:       irrf.base,
           valor_irrf:      irrf.valor,
@@ -186,6 +201,7 @@ export function registerFolhaHandlers(): void {
             nome:         String(func['nome'] ?? ''),
             cpf:          String(func['cpf'] ?? ''),
             cargo:        String(func['cargo'] ?? ''),
+            cbo_codigo:   String(func['cbo_codigo'] ?? ''),
             departamento: String(func['departamento'] ?? ''),
             data_admissao: String(func['data_admissao'] ?? ''),
             pis_pasep:    String(func['pis_pasep'] ?? ''),

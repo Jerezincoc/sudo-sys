@@ -42,3 +42,12 @@ export function calcularIRRF(baseCalculo: number, dependentes = 0): { base: numb
 export function calcularFGTS(salarioBruto: number): number {
   return Math.round(salarioBruto * 0.08 * 100) / 100
 }
+
+export function diasDoMes(competencia: string): number {
+  const [ano, mes] = competencia.split('-').map(Number)
+  return new Date(ano, mes, 0).getDate()
+}
+
+export function salarioDia(salarioBase: number, competencia: string): number {
+  return salarioBase / diasDoMes(competencia)
+}

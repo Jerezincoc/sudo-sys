@@ -283,4 +283,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   gerarPdfRelatorio: (payload: ExecutarRelatorioPayload): Promise<IpcResult<{ filePath: string }>> =>
     ipcRenderer.invoke('relatorio:gerar-pdf', payload),
+
+  // ── CBO ───────────────────────────────────────────────────────────
+  listCbo: (): Promise<{ codigo: string; descricao: string }[]> =>
+    ipcRenderer.invoke('cbo:list'),
 })

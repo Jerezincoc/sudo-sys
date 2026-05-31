@@ -43,14 +43,14 @@ export class SqliteFuncionarioRepository {
         tipo_contrato, salario_base, carga_horaria, periculosidade, insalubridade,
         vale_transporte, vale_refeicao, plano_saude, cep, logradouro, numero,
         complemento, bairro, cidade, uf, telefone, email, banco, agencia, conta,
-        pis_pasep, ctps, status
+        pis_pasep, ctps, cbo_codigo, status
       ) VALUES (
         @empresa_id, @codigo, @nome, @cpf, @rg, @data_nascimento, @sexo, @estado_civil,
         @escolaridade, @cargo, @departamento, @data_admissao, @data_demissao,
         @tipo_contrato, @salario_base, @carga_horaria, @periculosidade, @insalubridade,
         @vale_transporte, @vale_refeicao, @plano_saude, @cep, @logradouro, @numero,
         @complemento, @bairro, @cidade, @uf, @telefone, @email, @banco, @agencia, @conta,
-        @pis_pasep, @ctps, @status
+        @pis_pasep, @ctps, @cbo_codigo, @status
       )
     `)
 
@@ -90,6 +90,7 @@ export class SqliteFuncionarioRepository {
       conta:           payload.conta           ?? null,
       pis_pasep:       payload.pis_pasep       ?? null,
       ctps:            payload.ctps            ?? null,
+      cbo_codigo:      payload.cbo_codigo      ?? null,
       status:          payload.status          ?? 'ativo',
     })
 

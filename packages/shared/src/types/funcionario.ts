@@ -39,6 +39,7 @@ export interface Funcionario {
   conta?: string | null
   pis_pasep?: string | null
   ctps?: string | null
+  cbo_codigo?: string | null
   status: 'ativo' | 'inativo' | 'demitido'
   created_at: string
   updated_at: string

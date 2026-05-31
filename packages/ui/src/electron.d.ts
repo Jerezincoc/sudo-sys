@@ -152,6 +152,9 @@ export interface ElectronAPI {
   deleteRelatorio: (id: number) => Promise<IpcResult<void>>
   executarRelatorio: (payload: ExecutarRelatorioPayload) => Promise<IpcResult<RelatorioLinhaFuncionario[]>>
   gerarPdfRelatorio: (payload: ExecutarRelatorioPayload) => Promise<IpcResult<{ filePath: string }>>
+
+  // CBO
+  listCbo: () => Promise<{ codigo: string; descricao: string }[]>
 }
 
 declare global {

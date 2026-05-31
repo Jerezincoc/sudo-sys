@@ -8,6 +8,7 @@ export interface HoleriteData {
     nome: string
     cpf: string
     cargo: string
+    cbo_codigo: string
     departamento: string
     data_admissao: string
     pis_pasep: string
@@ -96,26 +97,35 @@ function drawVia(doc: PDFKit.PDFDocument, data: HoleriteData, y0: number): void 
   doc.rect(CX, y0, CANHOTO_W, VIA_H)
     .lineWidth(0.3).strokeColor(BORDER_C).stroke()
 
-  // Texto rotacionado "DECLARO..."
+  // Tudo rotacionado -90°, centrado na faixa
+  // x_rot > 0 = topo do canhoto; x_rot < 0 = base do canhoto
+  // real_y = (y0 + VIA_H/2) - x_rot
   const decText = 'DECLARO TER RECEBIDO A IMPORTÂNCIA LÍQUIDA DISCRIMINADA NESTE RECIBO.'
-  const textSpan = VIA_H * 0.52
   doc.save()
-  doc.translate(CX + CANHOTO_W / 2, y0 + VIA_H * 0.44)
+  doc.translate(CX + CANHOTO_W / 2, y0 + VIA_H / 2)
   doc.rotate(-90)
-  doc.fontSize(5.5).font('Helvetica').fillColor('#444444')
-    .text(decText, -(textSpan / 2), -3.5, { lineBreak: false, width: textSpan, align: 'center' })
-  doc.restore()
 
-  // Assinatura no canhoto
-  const csY = y0 + VIA_H - 62
-  doc.fontSize(6).font('Helvetica').fillColor(LABEL_C)
-    .text('ASSINATURA DO FUNCIONÁRIO', CX + 2, csY, { lineBreak: false, width: CANHOTO_W - 4, align: 'center' })
-  doc.moveTo(CX + 4, csY + 20).lineTo(CX + CANHOTO_W - 4, csY + 20)
+  // 1. Declaração — área superior (x_rot 50→160, real_y y0+145→y0+35)
+  doc.fontSize(5.5).font('Helvetica').fillColor('#444444')
+    .text(decText, 50, -4, { lineBreak: false, width: 110, align: 'center' })
+
+  // 2. Linha de assinatura (x_rot=-40, real_y=y0+235)
+  doc.moveTo(-40, -22).lineTo(-40, 22)
     .lineWidth(0.4).strokeColor('#555555').stroke()
-  doc.fontSize(6).font('Helvetica').fillColor(LABEL_C)
-    .text('DATA:', CX + 4, csY + 30, { lineBreak: false, width: CANHOTO_W - 8 })
-  doc.moveTo(CX + 4, csY + 44).lineTo(CX + CANHOTO_W - 4, csY + 44)
+
+  // 3. "ASSINATURA DO FUNCIONÁRIO" — abaixo da linha (x_rot=-120..−45, real_y y0+315→y0+240)
+  doc.fontSize(4.5).font('Helvetica').fillColor(LABEL_C)
+    .text('ASSINATURA DO FUNCIONÁRIO', -120, -5, { lineBreak: false, width: 75, align: 'center' })
+
+  // 4. "DATA:" (x_rot=-155, real_y≈y0+350)
+  doc.fontSize(5).font('Helvetica').fillColor(LABEL_C)
+    .text('DATA:', -155, -20, { lineBreak: false, width: 44 })
+
+  // 5. Linha data (x_rot=-172, real_y≈y0+367)
+  doc.moveTo(-172, -22).lineTo(-172, 22)
     .lineWidth(0.4).strokeColor('#555555').stroke()
+
+  doc.restore()
 
   // ── Cabeçalho Empresa ────────────────────────────────────────────────────
   doc.rect(ML, y, BODY_W, EMPRESA_H).lineWidth(0.3).strokeColor(BORDER_C).stroke()
@@ -147,7 +157,7 @@ function drawVia(doc: PDFKit.PDFDocument, data: HoleriteData, y0: number): void 
   const funcCols = [
     { label: 'CÓDIGO',              w: 60,  value: data.funcionario.codigo },
     { label: 'NOME DO FUNCIONÁRIO', w: 195, value: data.funcionario.nome   },
-    { label: 'CBO',                 w: 120, value: ''                      },
+    { label: 'CBO',                 w: 120, value: data.funcionario.cbo_codigo },
     { label: 'FUNÇÃO',              w: 120, value: data.funcionario.cargo  },
   ]
   let fx = ML

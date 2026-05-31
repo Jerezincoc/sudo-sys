@@ -3,7 +3,7 @@
  * Modal com 5 abas (Dados Pessoais | Dados Profissionais | Remuneração | Endereço | Bancários/Docs).
  * Estilo TOTVS RM: zero border-radius, zero shadow, inputs 24px, labels 11px uppercase.
  */
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import type { Funcionario, CreateFuncionarioPayload, UpdateFuncionarioPayload } from '@sudo-sys/shared'
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
@@ -82,6 +82,7 @@ function emptyForm(empresaId: number): FormData {
     estado_civil:    '',
     escolaridade:    '',
     cargo:           '',
+    cbo_codigo:      '',
     departamento:    '',
     data_admissao:   '',
     data_demissao:   '',
@@ -275,6 +276,130 @@ const STATUS_OPTIONS   = [{ value: 'ativo', label: 'Ativo' }, { value: 'inativo'
 const INSALUB_OPTIONS  = [{ value: '', label: 'Não' }, { value: '10', label: '10%' }, { value: '20', label: '20%' }, { value: '40', label: '40%' }]
 const UF_OPTIONS       = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'].map((uf) => ({ value: uf, label: uf }))
 
+// ── CboSearchField ────────────────────────────────────────────────────────
+
+interface CboSearchFieldProps {
+  value: string
+  onChange: (codigo: string, descricao: string) => void
+  cboList: { codigo: string; descricao: string }[]
+  width?: number | string
+}
+
+function CboSearchField({ value, onChange, cboList, width }: CboSearchFieldProps) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  const selected = cboList.find((c) => c.codigo === value)
+  const displayText = selected ? `${selected.codigo} — ${selected.descricao}` : query
+
+  const filtered = query.length < 2
+    ? []
+    : cboList.filter(
+        (c) =>
+          c.codigo.includes(query) ||
+          c.descricao.toLowerCase().includes(query.toLowerCase()),
+      ).slice(0, 30)
+
+  useEffect(() => {
+    function onClickOut(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOut)
+    return () => document.removeEventListener('mousedown', onClickOut)
+  }, [])
+
+  function handleSelect(c: { codigo: string; descricao: string }) {
+    onChange(c.codigo, c.descricao)
+    setQuery('')
+    setOpen(false)
+  }
+
+  function handleClear() {
+    onChange('', '')
+    setQuery('')
+    setOpen(false)
+  }
+
+  return (
+    <div ref={ref} style={{ display: 'flex', flexDirection: 'column', width, position: 'relative' }}>
+      <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-muted)', marginBottom: 1, userSelect: 'none' }}>
+        CBO
+      </div>
+      <div style={{ display: 'flex', height: 24 }}>
+        <input
+          type="text"
+          value={open ? query : displayText}
+          placeholder="Código ou descrição..."
+          onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+          onFocus={() => { setQuery(''); setOpen(true) }}
+          style={{
+            flex: 1,
+            height: 24,
+            padding: '0 4px',
+            fontSize: 12,
+            border: '1px solid var(--color-border-main)',
+            borderRight: 'none',
+            background: 'var(--color-bg-white)',
+            color: 'var(--color-text-primary)',
+            outline: 'none',
+            borderRadius: 0,
+            boxSizing: 'border-box',
+          }}
+        />
+        {value && (
+          <button
+            onClick={handleClear}
+            style={{
+              width: 20,
+              height: 24,
+              border: '1px solid var(--color-border-main)',
+              background: 'var(--color-bg-panel)',
+              cursor: 'pointer',
+              fontSize: 10,
+              color: 'var(--color-text-muted)',
+              padding: 0,
+              borderRadius: 0,
+            }}
+          >✕</button>
+        )}
+      </div>
+      {open && filtered.length > 0 && (
+        <div style={{
+          position: 'absolute',
+          top: 37,
+          left: 0,
+          right: 0,
+          zIndex: 200,
+          background: 'var(--color-bg-white)',
+          border: '1px solid var(--color-border-main)',
+          maxHeight: 180,
+          overflowY: 'auto',
+        }}>
+          {filtered.map((c) => (
+            <div
+              key={c.codigo}
+              onMouseDown={() => handleSelect(c)}
+              style={{
+                padding: '3px 6px',
+                fontSize: 11,
+                cursor: 'pointer',
+                borderBottom: '1px solid var(--color-border-main)',
+                background: 'var(--color-bg-white)',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-bg-panel)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--color-bg-white)' }}
+            >
+              <span style={{ color: 'var(--color-brand)', fontWeight: 600 }}>{c.codigo}</span>
+              {' '}— {c.descricao}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── FuncionarioForm ────────────────────────────────────────────────────────
 
 export default function FuncionarioForm({ funcionario, empresaId, onClose, onSaved, setStatusMsg }: Props) {
@@ -292,6 +417,7 @@ export default function FuncionarioForm({ funcionario, empresaId, onClose, onSav
       estado_civil:    funcionario.estado_civil    ?? '',
       escolaridade:    funcionario.escolaridade    ?? '',
       cargo:           funcionario.cargo           ?? '',
+      cbo_codigo:      funcionario.cbo_codigo      ?? '',
       departamento:    funcionario.departamento    ?? '',
       data_admissao:   funcionario.data_admissao,
       data_demissao:   funcionario.data_demissao   ?? '',
@@ -324,6 +450,13 @@ export default function FuncionarioForm({ funcionario, empresaId, onClose, onSav
   const [errors, setErrors]     = useState<Errors>({})
   const [saving, setSaving]     = useState(false)
   const [cepLoading, setCepLoading] = useState(false)
+  const [cboList, setCboList]   = useState<{ codigo: string; descricao: string }[]>([])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.electronAPI?.listCbo) {
+      window.electronAPI.listCbo().then(setCboList).catch(() => {})
+    }
+  }, [])
 
   // ── field helper ─────────────────────────────────────────────────
   function set<K extends keyof FormData>(key: K, value: FormData[K]) {
@@ -650,10 +783,21 @@ export default function FuncionarioForm({ funcionario, empresaId, onClose, onSav
           {tab === 1 && (
             <div>
               <Row>
+                <CboSearchField
+                  value={form.cbo_codigo ?? ''}
+                  cboList={cboList}
+                  onChange={(codigo, descricao) => {
+                    set('cbo_codigo', codigo)
+                    if (descricao) set('cargo', descricao)
+                  }}
+                  width={300}
+                />
                 <div style={{ flex: 1 }}>
-                  <Field label="Cargo" value={form.cargo}
+                  <Field label="Cargo / Função" value={form.cargo}
                     onChange={(v) => set('cargo', v)} />
                 </div>
+              </Row>
+              <Row>
                 <div style={{ flex: 1 }}>
                   <Field label="Departamento" value={form.departamento}
                     onChange={(v) => set('departamento', v)} />
