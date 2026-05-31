@@ -1,7 +1,11 @@
-import { ipcMain } from 'electron'
+import { ipcMain, app } from 'electron'
+import path from 'path'
 import { getDb } from '../../db/database'
 import { SqliteFeriasRepository } from '@sudo-sys/infrastructure/src/repositories/SqliteFeriasRepository'
+import { SqliteFuncionarioRepository } from '@sudo-sys/infrastructure/src/repositories/SqliteFuncionarioRepository'
+import { SqliteEmpresaRepository } from '@sudo-sys/infrastructure/src/repositories/SqliteEmpresaRepository'
 import type { CreateFeriasPayload, UpdateFeriasPayload } from '@sudo-sys/shared'
+import { FeriasRenderer } from '../../pdf/FeriasRenderer'
 
 function repo() {
   return new SqliteFeriasRepository(getDb())
@@ -52,6 +56,63 @@ export function registerFeriasHandlers(): void {
     try {
       repo().delete(id)
       return { success: true, data: undefined }
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // ── ferias:gerar-pdf ─────────────────────────────────────────────
+  ipcMain.handle('ferias:gerar-pdf', async (_e, id: number) => {
+    try {
+      const ferias = repo().getById(id)
+      if (!ferias) return { success: false, error: `Férias ${id} não encontradas.` }
+
+      const func = new SqliteFuncionarioRepository(getDb()).getById(ferias.funcionario_id)
+      if (!func) return { success: false, error: 'Funcionário não encontrado.' }
+
+      const emp = new SqliteEmpresaRepository(getDb()).getById(ferias.empresa_id)
+      if (!emp) return { success: false, error: 'Empresa não encontrada.' }
+
+      const downloads = app.getPath('downloads')
+      const fileName = `Ferias_${func.nome.replace(/\s+/g, '_')}_${ferias.inicio_gozo.slice(0, 10)}.pdf`
+      const filePath = path.join(downloads, fileName)
+
+      await FeriasRenderer.render({
+        empresa: {
+          razao_social: emp.razao_social,
+          cnpj: emp.cnpj,
+          endereco: `${emp.logradouro ?? ''} ${emp.numero ?? ''}`.trim(),
+          cidade: emp.cidade ?? '',
+          uf: emp.uf ?? '',
+        },
+        funcionario: {
+          codigo: func.codigo,
+          nome: func.nome,
+          cpf: func.cpf,
+          cargo: func.cargo ?? '',
+          departamento: func.departamento ?? '',
+          data_admissao: func.data_admissao,
+        },
+        ferias: {
+          periodo_inicio: ferias.periodo_inicio,
+          periodo_fim: ferias.periodo_fim,
+          inicio_gozo: ferias.inicio_gozo,
+          fim_gozo: ferias.fim_gozo,
+          dias_concedidos: ferias.dias_concedidos,
+          dias_abono: ferias.dias_abono,
+          adiantamento_13: ferias.adiantamento_13,
+          salario_referencia: ferias.salario_referencia,
+          valor_ferias: ferias.valor_ferias,
+          valor_abono: ferias.valor_abono,
+          valor_adiantamento_13: ferias.valor_adiantamento_13,
+          valor_total: ferias.valor_total,
+          observacao: ferias.observacao,
+        },
+        inss: 0,
+        irrf: 0,
+      }, filePath)
+
+      return { success: true, data: { filePath } }
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) }
     }

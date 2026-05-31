@@ -97,4 +97,46 @@ export async function registerAuthHandlers(): Promise<void> {
     const user = tokenMap.get(token)
     return user ? sanitize(user) : null
   })
+
+  // ── usuario:list ─────────────────────────────────────────────────
+  ipcMain.handle('usuario:list', (_e) => {
+    try {
+      const users = repo().list()
+      return { success: true, data: users.map(sanitize) }
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // ── usuario:create ───────────────────────────────────────────────
+  ipcMain.handle('usuario:create', async (_e, payload: {
+    nome: string
+    email: string
+    senha: string
+    papel: string
+  }) => {
+    try {
+      const senha_hash = await hasher.hash(payload.senha)
+      const user = repo().create({
+        nome: payload.nome,
+        email: payload.email,
+        senha_hash,
+        papel: payload.papel,
+      })
+      return { success: true, usuario: sanitize(user) }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      return { success: false, error: msg.includes('UNIQUE') ? 'E-mail já cadastrado.' : msg }
+    }
+  })
+
+  // ── usuario:delete ───────────────────────────────────────────────
+  ipcMain.handle('usuario:delete', (_e, id: number) => {
+    try {
+      repo().softDelete(id)
+      return { success: true }
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
 }

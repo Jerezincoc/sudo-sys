@@ -26,6 +26,11 @@ import type {
   CreatePontoPayload,
   UpdatePontoPayload,
   EspelhoPonto,
+  FolhaCompetencia,
+  FolhaLancamento,
+  FolhaHolerite,
+  CreateFolhaPayload,
+  CreateLancamentoPayload,
 } from '@sudo-sys/shared'
 
 type IpcResult<T = void> = { success: true; data: T } | { success: false; error: string }
@@ -64,6 +69,12 @@ export interface ElectronAPI {
   logout: (token: string) => Promise<{ success: boolean }>
   register: (payload: { nome: string; email: string; senha: string; papel: string; requestingToken: string }) => Promise<LoginResult>
   me: (token: string) => Promise<Usuario | null>
+  listUsuarios: () => Promise<IpcResult<Usuario[]>>
+  createUsuario: (payload: { nome: string; email: string; senha: string; papel: string }) => Promise<IpcResult<Usuario>>
+  deleteUsuario: (id: number) => Promise<IpcResult<void>>
+
+  // Admin
+  backupDatabase: () => Promise<IpcResult<{ filePath: string }>>
 
   // Diálogos do sistema
   openFileDialog: (options: {
@@ -107,6 +118,26 @@ export interface ElectronAPI {
   updatePonto: (payload: UpdatePontoPayload) => Promise<IpcResult<RegistroPonto>>
   deletePonto: (id: number) => Promise<IpcResult<void>>
   espelhoPonto: (empresaId: number, funcionarioId: number, mes: number, ano: number) => Promise<IpcResult<EspelhoPonto>>
+
+  // Folha
+  listFolhas: (empresaId: number) => Promise<FolhaCompetencia[]>
+  getFolha: (id: number) => Promise<(FolhaCompetencia & { holerites: FolhaHolerite[] }) | null>
+  createFolha: (payload: CreateFolhaPayload) => Promise<IpcResult<FolhaCompetencia>>
+  updateFolha: (payload: Partial<FolhaCompetencia> & { id: number }) => Promise<IpcResult<FolhaCompetencia>>
+  fecharFolha: (id: number) => Promise<IpcResult<FolhaCompetencia>>
+  listLancamentos: (folhaId: number, funcionarioId?: number) => Promise<FolhaLancamento[]>
+  addLancamento: (payload: CreateLancamentoPayload) => Promise<IpcResult<FolhaLancamento>>
+  deleteLancamento: (id: number) => Promise<IpcResult<void>>
+  calcularFolha: (folhaId: number) => Promise<IpcResult<FolhaCompetencia>>
+  listHolerites: (folhaId: number) => Promise<FolhaHolerite[]>
+  getHolerite: (folhaId: number, funcionarioId: number) => Promise<(FolhaHolerite & { lancamentos: FolhaLancamento[] }) | null>
+  gerarHolerite: (payload: { folhaId: number; funcionarioId?: number }) => Promise<IpcResult<{ filePath: string }>>
+
+  // PDFs Documentos
+  gerarPdfRescisao: (id: number) => Promise<IpcResult<{ filePath: string }>>
+  gerarPdfFerias: (id: number) => Promise<IpcResult<{ filePath: string }>>
+  gerarEspelhoPdf: (payload: { empresaId: number; funcionarioId: number; mes: number; ano: number }) => Promise<IpcResult<{ filePath: string }>>
+  gerarFichaFuncionario: (id: number) => Promise<IpcResult<{ filePath: string }>>
 }
 
 declare global {

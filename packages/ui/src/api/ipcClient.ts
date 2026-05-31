@@ -142,6 +142,27 @@ export const ipcClient = {
     return null
   },
 
+  async listUsuarios(): Promise<IpcResult<Usuario[]>> {
+    if (hasElectron()) return window.electronAPI.listUsuarios()
+    return { success: true, data: [] }
+  },
+
+  async createUsuario(payload: { nome: string; email: string; senha: string; papel: string }): Promise<IpcResult<Usuario>> {
+    if (hasElectron()) return window.electronAPI.createUsuario(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
+  async deleteUsuario(id: number): Promise<IpcResult<void>> {
+    if (hasElectron()) return window.electronAPI.deleteUsuario(id)
+    return { success: true, data: undefined }
+  },
+
+  // ── Admin ────────────────────────────────────────────────────────
+  async backupDatabase(): Promise<IpcResult<{ filePath: string }>> {
+    if (hasElectron()) return window.electronAPI.backupDatabase()
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
+  },
+
   // ── Rescisão ───────────────────────────────────────────────────
   async listRescisoes(empresaId: number): Promise<Rescisao[]> {
     if (hasElectron()) return window.electronAPI.listRescisoes(empresaId)

@@ -16,11 +16,9 @@ const CustosSimuladorPage = lazy(() => import('@/pages/custos/CustosSimuladorPag
 const QuickCalcPage       = lazy(() => import('@/pages/quickcalc/QuickCalcPage'))
 const AdminPage           = lazy(() => import('@/pages/admin/AdminPage'))
 
-import PlaceholderPage from '@/components/layout/PlaceholderPage'
-function RelatoriosPage() {
-  return <PlaceholderPage module="Relatórios" name="Relatórios" />
-}
+const RelatoriosPage      = lazy(() => import('@/pages/relatorios/RelatoriosPage'))
 
+import PlaceholderPage from '@/components/layout/PlaceholderPage'
 function PageLoader() {
   return (
     <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
