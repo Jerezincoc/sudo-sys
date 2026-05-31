@@ -317,6 +317,20 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       UNIQUE(folha_id, funcionario_id)
     )`,
   },
+  {
+    name: '051_relatorios_personalizados',
+    sql: `CREATE TABLE IF NOT EXISTS relatorios_personalizados (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      nome        TEXT NOT NULL,
+      descricao   TEXT,
+      modo        TEXT NOT NULL DEFAULT 'sintetico',
+      campos      TEXT NOT NULL DEFAULT '[]',
+      cabecalho   TEXT,
+      empresa_id  INTEGER REFERENCES empresas(id),
+      created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+    )`,
+  },
 ]
 
 function runMigrations(db: BetterSqlite3.Database): void {
