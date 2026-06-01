@@ -133,6 +133,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   cboSearch: (q: string): Promise<{ codigo: string; descricao: string }[]> =>
     ipcRenderer.invoke('cbo:search', q),
 
+  // ── Folha ─────────────────────────────────────────────────────────
+  folhaGerarPdf: (payload: unknown): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('folha:generate-pdf', payload),
+
   // ── Shell / Sistema ────────────────────────────────────────────────
   /** Revela o arquivo no gerenciador de arquivos do SO. */
   openPath: (filePath: string): Promise<void> =>
