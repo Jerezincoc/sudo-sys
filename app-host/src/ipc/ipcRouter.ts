@@ -9,6 +9,7 @@ import { registerFeriasHandlers } from './handlers/feriasHandlers'
 import { registerRubricaHandlers } from './handlers/rubricaHandlers'
 import { registerCboHandlers } from './handlers/cboHandlers'
 import { registerDocumentosHandlers } from './handlers/documentosHandlers'
+import { registerFolhaHandlers } from './handlers/folhaHandlers'
 
 function noop(channel: string) {
   ipcMain.handle(channel, () => {
@@ -37,7 +38,7 @@ export function registerAllHandlers(): void {
   // ── Folha ─────────────────────────────────────────────────────────
   noop('folha:list')
   noop('folha:create')
-  noop('folha:generate-pdf')
+  registerFolhaHandlers()
 
   // ── Rubricas (implementado) ───────────────────────────────────────
   registerRubricaHandlers()
