@@ -15,6 +15,8 @@ const PontoPage           = lazy(() => import('@/pages/ponto/PontoPage'))
 const CustosSimuladorPage = lazy(() => import('@/pages/custos/CustosSimuladorPage'))
 const QuickCalcPage       = lazy(() => import('@/pages/quickcalc/QuickCalcPage'))
 const AdminPage           = lazy(() => import('@/pages/admin/AdminPage'))
+const CboPage             = lazy(() => import('@/pages/cbo/CboPage'))
+const DocumentosPage      = lazy(() => import('@/pages/documentos/DocumentosPage'))
 
 import PlaceholderPage from '@/components/layout/PlaceholderPage'
 function RelatoriosPage() {
@@ -56,6 +58,8 @@ export default function AppRouter({ initialState }: Props) {
           <Route path={ROUTES.CUSTOS}     element={<CustosSimuladorPage />} />
           <Route path={ROUTES.QUICKCALC}  element={<QuickCalcPage />} />
           <Route path={ROUTES.RELATORIOS} element={<RelatoriosPage />} />
+          <Route path={ROUTES.CBO}        element={<CboPage />} />
+          <Route path={ROUTES.DOCUMENTOS} element={<DocumentosPage />} />
           <Route path={ROUTES.ADMIN}      element={<AdminPage />} />
           <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
         </Route>

@@ -7,6 +7,8 @@ import { registerEmpresaHandlers } from './handlers/empresaHandlers'
 import { registerFuncionarioHandlers } from './handlers/funcionarioHandlers'
 import { registerFeriasHandlers } from './handlers/feriasHandlers'
 import { registerRubricaHandlers } from './handlers/rubricaHandlers'
+import { registerCboHandlers } from './handlers/cboHandlers'
+import { registerDocumentosHandlers } from './handlers/documentosHandlers'
 
 function noop(channel: string) {
   ipcMain.handle(channel, () => {
@@ -42,4 +44,10 @@ export function registerAllHandlers(): void {
 
   // ── Férias (implementado) ─────────────────────────────────────────
   registerFeriasHandlers()
+
+  // ── CBO (implementado) ────────────────────────────────────────────
+  registerCboHandlers()
+
+  // ── Documentos PDF (implementado) ─────────────────────────────────
+  registerDocumentosHandlers()
 }

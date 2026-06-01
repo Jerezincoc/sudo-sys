@@ -4,7 +4,7 @@
  * Filtrado pela empresa ativa em useSelectedEmpresaStore.
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import type { Funcionario } from '@sudo-sys/shared'
+import type { Funcionario, TipoAditivo } from '@sudo-sys/shared'
 import { usePageActionsStore } from '@/state/pageActionsSlice'
 import { useSelectedEmpresaStore } from '@/state/selectedEmpresaSlice'
 import FuncionarioForm from './FuncionarioForm'
@@ -101,6 +101,15 @@ export default function FuncionariosDaEmpresaPage() {
   const [formMode, setFormMode] = useState<FormMode>(null)
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [search, setSearch] = useState('')
+
+  const [aditivoOpen, setAditivoOpen] = useState(false)
+  const [aditivoTipo, setAditivoTipo] = useState<TipoAditivo>('salario')
+  const [aditivoAnterior, setAditivoAnterior] = useState('')
+  const [aditivoNovo, setAditivoNovo] = useState('')
+  const [aditivoVigencia, setAditivoVigencia] = useState(() => {
+    const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`
+  })
+  const [docLoading, setDocLoading] = useState(false)
 
   const [confirmAction, setConfirmAction] = useState<{
     ids: number[]
@@ -322,6 +331,32 @@ export default function FuncionariosDaEmpresaPage() {
     ? funcionarios.find((f) => f.id === formMode) ?? null
     : null
 
+  // ── Geração de documentos ──────────────────────────────────────────
+  async function handleContrato() {
+    if (selectedId == null || empresaIdNum == null) return
+    setDocLoading(true)
+    const r = await window.electronAPI.docContrato({ funcionarioId: selectedId, empresaId: empresaIdNum })
+    setDocLoading(false)
+    if (!r.success || !r.data) { setStatus('Erro ao gerar contrato: ' + (r.error ?? ''), 'error'); return }
+    setStatus('Contrato CLT gerado.', 'success')
+    window.electronAPI.openPath(r.data.filePath)
+  }
+
+  async function doGerarAditivo() {
+    if (selectedId == null || empresaIdNum == null) return
+    setDocLoading(true)
+    const r = await window.electronAPI.docAditivo({
+      funcionarioId: selectedId, empresaId: empresaIdNum,
+      tipo: aditivoTipo, valorAnterior: aditivoAnterior,
+      valorNovo: aditivoNovo, dataVigencia: aditivoVigencia,
+    })
+    setDocLoading(false)
+    setAditivoOpen(false)
+    if (!r.success || !r.data) { setStatus('Erro ao gerar aditivo: ' + (r.error ?? ''), 'error'); return }
+    setStatus('Aditivo gerado.', 'success')
+    window.electronAPI.openPath(r.data.filePath)
+  }
+
   // ── Layout da tabela ──────────────────────────────────────────────
   const colTemplate = COLUMNS.map((c) => {
     const w = c.width
@@ -434,6 +469,38 @@ export default function FuncionariosDaEmpresaPage() {
         <div style={{ flex: 1 }} />
         {loading && (
           <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>Carregando...</span>
+        )}
+        {/* ── Botões de documentos ──── */}
+        {selectedId != null && (
+          <>
+            <div style={{ width: 1, height: 16, background: 'var(--color-border-main)' }} />
+            <button
+              onClick={handleContrato}
+              disabled={docLoading}
+              title="Gerar Contrato CLT (PDF)"
+              style={{
+                height: 20, padding: '0 8px', fontSize: 11,
+                border: '1px solid var(--color-border-main)',
+                background: 'var(--color-bg-white)', color: 'var(--color-text-primary)',
+                cursor: 'pointer',
+              }}
+            >
+              Contrato CLT
+            </button>
+            <button
+              onClick={() => setAditivoOpen(true)}
+              disabled={docLoading}
+              title="Gerar Aditivo Contratual (PDF)"
+              style={{
+                height: 20, padding: '0 8px', fontSize: 11,
+                border: '1px solid var(--color-border-main)',
+                background: 'var(--color-bg-white)', color: 'var(--color-text-primary)',
+                cursor: 'pointer',
+              }}
+            >
+              Aditivo ▾
+            </button>
+          </>
         )}
       </div>
 
@@ -601,6 +668,98 @@ export default function FuncionariosDaEmpresaPage() {
           onConfirm={doDeleteAction}
           onCancel={() => setConfirmAction(null)}
         />
+      )}
+
+      {/* ── Aditivo Modal ────────────────────────────────────────── */}
+      {aditivoOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+        }}>
+          <div style={{
+            width: 420, background: 'var(--color-bg-white)',
+            border: '1px solid var(--color-border-main)',
+            display: 'flex', flexDirection: 'column',
+          }}>
+            {/* Header */}
+            <div style={{
+              height: 28, background: 'var(--color-brand)',
+              display: 'flex', alignItems: 'center', padding: '0 10px',
+              fontSize: 12, fontWeight: 600, color: '#fff', flexShrink: 0,
+            }}>
+              Gerar Aditivo Contratual
+            </div>
+            {/* Body */}
+            <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Tipo */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 10, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tipo de Alteração</span>
+                <select
+                  value={aditivoTipo}
+                  onChange={(e) => setAditivoTipo(e.target.value as TipoAditivo)}
+                  style={{ height: 24, padding: '0 6px', border: '1px solid var(--color-border-main)', background: 'var(--color-bg-white)', color: 'var(--color-text-primary)', fontSize: 12, outline: 'none' }}
+                >
+                  <option value="salario">Alteração Salarial</option>
+                  <option value="cargo">Alteração de Cargo</option>
+                  <option value="jornada">Alteração de Jornada</option>
+                </select>
+              </div>
+              {/* Valor Anterior */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 10, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                  {aditivoTipo === 'salario' ? 'Salário Anterior (R$)' : aditivoTipo === 'cargo' ? 'Cargo Anterior' : 'Horas Semanais Anteriores'}
+                </span>
+                <input
+                  type="text" value={aditivoAnterior} onChange={(e) => setAditivoAnterior(e.target.value)}
+                  style={{ height: 24, padding: '0 6px', border: '1px solid var(--color-border-main)', background: 'var(--color-bg-white)', color: 'var(--color-text-primary)', fontSize: 12, outline: 'none' }}
+                />
+              </div>
+              {/* Valor Novo */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 10, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                  {aditivoTipo === 'salario' ? 'Novo Salário (R$)' : aditivoTipo === 'cargo' ? 'Novo Cargo' : 'Novas Horas Semanais'}
+                </span>
+                <input
+                  type="text" value={aditivoNovo} onChange={(e) => setAditivoNovo(e.target.value)}
+                  style={{ height: 24, padding: '0 6px', border: '1px solid var(--color-border-main)', background: 'var(--color-bg-white)', color: 'var(--color-text-primary)', fontSize: 12, outline: 'none' }}
+                />
+              </div>
+              {/* Data Vigência */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 10, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Data de Vigência</span>
+                <input
+                  type="date" value={aditivoVigencia} onChange={(e) => setAditivoVigencia(e.target.value)}
+                  style={{ height: 24, padding: '0 6px', border: '1px solid var(--color-border-main)', background: 'var(--color-bg-white)', color: 'var(--color-text-primary)', fontSize: 12, outline: 'none' }}
+                />
+              </div>
+            </div>
+            {/* Footer */}
+            <div style={{
+              height: 36, background: 'var(--color-bg-panel)', borderTop: '1px solid var(--color-border-main)',
+              display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 10px', gap: 6, flexShrink: 0,
+            }}>
+              <button
+                onClick={() => setAditivoOpen(false)}
+                style={{ height: 24, padding: '0 12px', border: '1px solid var(--color-border-main)', background: 'var(--color-bg-white)', color: 'var(--color-text-primary)', fontSize: 11, cursor: 'pointer' }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={doGerarAditivo}
+                disabled={!aditivoAnterior || !aditivoNovo || docLoading}
+                style={{
+                  height: 24, padding: '0 14px',
+                  border: '1px solid var(--color-border-main)',
+                  background: aditivoAnterior && aditivoNovo && !docLoading ? 'var(--color-brand)' : 'var(--color-bg-panel)',
+                  color: aditivoAnterior && aditivoNovo && !docLoading ? '#fff' : 'var(--color-text-muted)',
+                  fontSize: 11, cursor: aditivoAnterior && aditivoNovo ? 'pointer' : 'default',
+                }}
+              >
+                {docLoading ? 'Gerando...' : 'Gerar PDF'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── FuncionarioForm ───────────────────────────────────────── */}

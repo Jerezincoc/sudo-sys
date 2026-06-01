@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Building2, Users, FileText, Tag, Umbrella,
-  LogOut, Clock, Calculator, Zap, BarChart2, Settings,
+  LogOut, Clock, Calculator, Zap, BarChart2, Settings, BookOpen, FolderOpen,
   ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { useUiStore } from '@/state/uiSlice'
@@ -29,6 +29,10 @@ const NAV: NavGroup[] = [
     { label: 'Ponto',              icon: Clock,           to: ROUTES.PONTO      },
     { label: 'Custo / Simulador',  icon: Calculator,      to: ROUTES.CUSTOS     },
     { label: 'QuickCalc',          icon: Zap,             to: ROUTES.QUICKCALC  },
+  ]},
+  { group: 'TABELAS', items: [
+    { label: 'CBO',                icon: BookOpen,        to: ROUTES.CBO        },
+    { label: 'Documentos',         icon: FolderOpen,      to: ROUTES.DOCUMENTOS },
   ]},
   { group: 'RELATÓRIOS', items: [
     { label: 'Relatórios',         icon: BarChart2,       to: ROUTES.RELATORIOS },

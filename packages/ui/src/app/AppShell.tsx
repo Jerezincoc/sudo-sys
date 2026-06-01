@@ -21,6 +21,8 @@ const PAGE_NAMES: Record<string, string> = {
   [ROUTES.CUSTOS]:     'Custo / Simulador',
   [ROUTES.QUICKCALC]:  'QuickCalc',
   [ROUTES.RELATORIOS]: 'Relatórios',
+  [ROUTES.CBO]:        'CBO',
+  [ROUTES.DOCUMENTOS]: 'Documentos',
   [ROUTES.ADMIN]:      'Administração',
 }
 

@@ -21,6 +21,10 @@ import type {
   Rubrica,
   CreateRubricaPayload,
   UpdateRubricaPayload,
+  DocContratoParams,
+  DocAditivoParams,
+  DocValeParams,
+  DocAdvertenciaParams,
 } from '@sudo-sys/shared'
 
 type IpcResult<T> = { success: true; data: T } | { success: false; error: string }
@@ -105,6 +109,29 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   deleteRubrica: (id: number): Promise<IpcResult<void> & { action?: string }> =>
     ipcRenderer.invoke('rubrica:delete', id),
+
+  // ── Documentos PDF ────────────────────────────────────────────────
+  docContrato:    (p: DocContratoParams): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('doc:contrato', p),
+
+  docAditivo:     (p: DocAditivoParams): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('doc:aditivo', p),
+
+  docVale:        (p: DocValeParams): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('doc:vale', p),
+
+  docAdvertencia: (p: DocAdvertenciaParams): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('doc:advertencia', p),
+
+  // ── CBO ───────────────────────────────────────────────────────────
+  cboListGrupos: (): Promise<{ codigo: string; descricao: string }[]> =>
+    ipcRenderer.invoke('cbo:list-grupos'),
+
+  cboListSubgrupo: (prefix: string): Promise<{ codigo: string; descricao: string }[]> =>
+    ipcRenderer.invoke('cbo:list-subgrupo', prefix),
+
+  cboSearch: (q: string): Promise<{ codigo: string; descricao: string }[]> =>
+    ipcRenderer.invoke('cbo:search', q),
 
   // ── Shell / Sistema ────────────────────────────────────────────────
   /** Revela o arquivo no gerenciador de arquivos do SO. */

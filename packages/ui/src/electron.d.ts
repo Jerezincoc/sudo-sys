@@ -16,6 +16,10 @@ import type {
   Rubrica,
   CreateRubricaPayload,
   UpdateRubricaPayload,
+  DocContratoParams,
+  DocAditivoParams,
+  DocValeParams,
+  DocAdvertenciaParams,
 } from '@sudo-sys/shared'
 
 type IpcResult<T = void> = { success: true; data: T } | { success: false; error: string }
@@ -58,6 +62,17 @@ export interface ElectronAPI {
   createRubrica: (payload: CreateRubricaPayload) => Promise<IpcResult<Rubrica>>
   updateRubrica: (payload: UpdateRubricaPayload) => Promise<IpcResult<Rubrica>>
   deleteRubrica: (id: number) => Promise<IpcResult<void> & { action?: string }>
+
+  // Documentos PDF
+  docContrato:    (p: DocContratoParams)    => Promise<IpcResult<{ filePath: string }>>
+  docAditivo:     (p: DocAditivoParams)     => Promise<IpcResult<{ filePath: string }>>
+  docVale:        (p: DocValeParams)        => Promise<IpcResult<{ filePath: string }>>
+  docAdvertencia: (p: DocAdvertenciaParams) => Promise<IpcResult<{ filePath: string }>>
+
+  // CBO
+  cboListGrupos: () => Promise<{ codigo: string; descricao: string }[]>
+  cboListSubgrupo: (prefix: string) => Promise<{ codigo: string; descricao: string }[]>
+  cboSearch: (q: string) => Promise<{ codigo: string; descricao: string }[]>
 
   // Shell / Sistema
   /** Revela o arquivo no explorador do sistema operacional. */
