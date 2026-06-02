@@ -89,40 +89,47 @@ function fmtIrrfFaixa(base: number): string {
   return '27,5%'
 }
 
+function drawCanhoto(doc: PDFKit.PDFDocument, y0: number): void {
+  doc.rect(CX, y0, CANHOTO_W, VIA_H)
+    .lineWidth(0.3).strokeColor(BORDER_C).stroke()
+
+  const cx = CX + CANHOTO_W / 2
+  const cy = y0 + VIA_H / 2
+
+  doc.save()
+  doc.translate(cx, cy)
+  doc.rotate(-90)
+
+  const halfH = VIA_H / 2
+  const halfW = CANHOTO_W / 2
+
+  // Declaração — topo, uma linha só
+  doc.fontSize(5).font('Helvetica').fillColor('#333333')
+    .text('DECLARO TER RECEBIDO A IMPORTANCIA LIQUIDA DISCRIMINADA NESTE RECIBO.', -(halfH - 8), -halfW + 4, { lineBreak: false, width: VIA_H - 16 })
+
+  // Linha assinatura — meio
+  doc.moveTo(20, -halfW + 6).lineTo(20, halfW - 6)
+    .lineWidth(0.4).strokeColor('#555555').stroke()
+  doc.fontSize(5).font('Helvetica').fillColor('#777777')
+    .text('Assinatura', 24, -2, { lineBreak: false, width: 50 })
+  doc.moveTo(24, 6).lineTo(74, 6).lineWidth(0.4).strokeColor('#555555').stroke()
+
+  // Linha data — fundo
+  doc.moveTo(halfH - 40, -halfW + 6).lineTo(halfH - 40, halfW - 6)
+    .lineWidth(0.4).strokeColor('#555555').stroke()
+  doc.fontSize(5).font('Helvetica').fillColor('#777777')
+    .text('Data', halfH - 36, -2, { lineBreak: false, width: 30 })
+  doc.moveTo(halfH - 36, 6).lineTo(halfH - 6, 6).lineWidth(0.4).strokeColor('#555555').stroke()
+
+  doc.restore()
+}
+
 function drawVia(doc: PDFKit.PDFDocument, data: HoleriteData, y0: number): void {
   const numRows = Math.max(data.lancamentos.length, MIN_ROWS)
   let y = y0
 
   // ── Canhoto (faixa lateral direita) ─────────────────────────────────────
-  doc.rect(CX, y0, CANHOTO_W, VIA_H)
-    .lineWidth(0.3).strokeColor(BORDER_C).stroke()
-
-  doc.save()
-  doc.translate(CX + CANHOTO_W / 2, y0 + VIA_H / 2)
-  doc.rotate(-90)
-  // Após rotate(-90) com translate(545, y0+195):
-  // x_rot: positivo = topo da página, negativo = fundo. Range: [-195, +195]
-  // y_rot: positivo = direita do canhoto, negativo = esquerda. Range: [-30, +30]
-
-  // 1. Declaração — topo do canhoto (x_rot = +120 a +180)
-  doc.fontSize(6).font('Helvetica').fillColor('#333333')
-    .text('DECLARO TER RECEBIDO A', 120, -28, { lineBreak: false, width: 75, align: 'center' })
-  doc.fontSize(6).font('Helvetica').fillColor('#333333')
-    .text('IMPORTÂNCIA LÍQUIDA', 108, -20, { lineBreak: false, width: 75, align: 'center' })
-  doc.fontSize(6).font('Helvetica').fillColor('#333333')
-    .text('DISCRIMINADA NESTE RECIBO.', 96, -12, { lineBreak: false, width: 75, align: 'center' })
-
-  // 2. Assinatura — meio do canhoto (x_rot = -20 a +40)
-  doc.fontSize(5.5).font('Helvetica-Bold').fillColor('#555555')
-    .text('ASSINATURA DO FUNCIONÁRIO', -20, -28, { lineBreak: false, width: 110, align: 'center' })
-  doc.moveTo(-20, -14).lineTo(90, -14).lineWidth(0.5).strokeColor('#333333').stroke()
-
-  // 3. Data — fundo do canhoto (x_rot = -120 a -60)
-  doc.fontSize(5.5).font('Helvetica-Bold').fillColor('#555555')
-    .text('DATA:', -130, -14, { lineBreak: false, width: 60, align: 'center' })
-  doc.moveTo(-130, -2).lineTo(-70, -2).lineWidth(0.5).strokeColor('#333333').stroke()
-
-  doc.restore()
+  drawCanhoto(doc, y0)
 
   // ── Cabeçalho Empresa ────────────────────────────────────────────────────
   doc.rect(ML, y, BODY_W, EMPRESA_H).lineWidth(0.3).strokeColor(BORDER_C).stroke()
