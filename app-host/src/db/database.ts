@@ -6,6 +6,7 @@ import BetterSqlite3 from 'better-sqlite3'
 import { app } from 'electron'
 import path from 'path'
 import fs from 'fs'
+import { runCboSeed } from './migrations/023_cbo_completo'
 
 let _db: BetterSqlite3.Database | null = null
 
@@ -425,6 +426,7 @@ export function initDatabase(): void {
   _db.pragma('foreign_keys = ON')
 
   runMigrations(_db)
+  runCboSeed(_db)
 
   console.log('[db] SQLite inicializado em', dbPath)
 }

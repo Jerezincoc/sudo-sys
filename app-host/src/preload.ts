@@ -94,6 +94,51 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteFuncionario: (id: number): Promise<IpcResult<void> & { action?: string }> =>
     ipcRenderer.invoke('funcionario:delete', id),
 
+  // ── Férias ────────────────────────────────────────────────────────
+  listFerias: (empresaId: number): Promise<Ferias[]> =>
+    ipcRenderer.invoke('ferias:list', empresaId),
+
+  getFerias: (id: number): Promise<Ferias | null> =>
+    ipcRenderer.invoke('ferias:get', id),
+
+  createFerias: (payload: CreateFeriasPayload): Promise<IpcResult<Ferias>> =>
+    ipcRenderer.invoke('ferias:create', payload),
+
+  updateFerias: (payload: UpdateFeriasPayload): Promise<IpcResult<Ferias>> =>
+    ipcRenderer.invoke('ferias:update', payload),
+
+  deleteFerias: (id: number): Promise<IpcResult<void>> =>
+    ipcRenderer.invoke('ferias:delete', id),
+
+  // ── Rubricas ──────────────────────────────────────────────────────
+  listRubricas: (empresaId?: number | null): Promise<Rubrica[]> =>
+    ipcRenderer.invoke('rubrica:list', empresaId),
+
+  getRubrica: (id: number): Promise<Rubrica | null> =>
+    ipcRenderer.invoke('rubrica:get', id),
+
+  createRubrica: (payload: CreateRubricaPayload): Promise<IpcResult<Rubrica>> =>
+    ipcRenderer.invoke('rubrica:create', payload),
+
+  updateRubrica: (payload: UpdateRubricaPayload): Promise<IpcResult<Rubrica>> =>
+    ipcRenderer.invoke('rubrica:update', payload),
+
+  deleteRubrica: (id: number): Promise<IpcResult<void> & { action?: string }> =>
+    ipcRenderer.invoke('rubrica:delete', id),
+
+  // ── CBO ───────────────────────────────────────────────────────────
+  listCbo: (): Promise<{ codigo: string; descricao: string }[]> =>
+    ipcRenderer.invoke('cbo:list'),
+
+  cboListGrupos: (): Promise<{ codigo: string; descricao: string }[]> =>
+    ipcRenderer.invoke('cbo:list-grupos'),
+
+  cboListSubgrupo: (prefix: string): Promise<{ codigo: string; descricao: string }[]> =>
+    ipcRenderer.invoke('cbo:list-subgrupo', prefix),
+
+  cboSearch: (q: string): Promise<{ codigo: string; descricao: string }[]> =>
+    ipcRenderer.invoke('cbo:search', q),
+
   // ── Shell / Sistema ────────────────────────────────────────────────
   /** Revela o arquivo no gerenciador de arquivos do SO. */
   openPath: (filePath: string): Promise<void> =>
@@ -160,38 +205,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   calcularRescisao: (id: number): Promise<IpcResult<Rescisao>> =>
     ipcRenderer.invoke('rescisao:calcular', id),
-
-  // ── Rubricas ──────────────────────────────────────────────────────
-  listRubricas: (empresaId?: number): Promise<Rubrica[]> =>
-    ipcRenderer.invoke('rubrica:list', empresaId),
-
-  getRubrica: (id: number): Promise<Rubrica | null> =>
-    ipcRenderer.invoke('rubrica:get', id),
-
-  createRubrica: (payload: CreateRubricaPayload): Promise<IpcResult<Rubrica>> =>
-    ipcRenderer.invoke('rubrica:create', payload),
-
-  updateRubrica: (payload: UpdateRubricaPayload): Promise<IpcResult<Rubrica>> =>
-    ipcRenderer.invoke('rubrica:update', payload),
-
-  deleteRubrica: (id: number): Promise<IpcResult<void> & { action?: string }> =>
-    ipcRenderer.invoke('rubrica:delete', id),
-
-  // ── Férias ────────────────────────────────────────────────────────
-  listFerias: (empresaId: number): Promise<Ferias[]> =>
-    ipcRenderer.invoke('ferias:list', empresaId),
-
-  getFerias: (id: number): Promise<Ferias | null> =>
-    ipcRenderer.invoke('ferias:get', id),
-
-  createFerias: (payload: CreateFeriasPayload): Promise<IpcResult<Ferias>> =>
-    ipcRenderer.invoke('ferias:create', payload),
-
-  updateFerias: (payload: UpdateFeriasPayload): Promise<IpcResult<Ferias>> =>
-    ipcRenderer.invoke('ferias:update', payload),
-
-  deleteFerias: (id: number): Promise<IpcResult<void>> =>
-    ipcRenderer.invoke('ferias:delete', id),
 
   // ── Ponto ────────────────────────────────────────────────────────
   listPonto: (empresaId: number, mes?: number, ano?: number, funcionarioId?: number): Promise<RegistroPonto[]> =>
@@ -283,8 +296,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   gerarPdfRelatorio: (payload: ExecutarRelatorioPayload): Promise<IpcResult<{ filePath: string }>> =>
     ipcRenderer.invoke('relatorio:gerar-pdf', payload),
-
-  // ── CBO ───────────────────────────────────────────────────────────
-  listCbo: (): Promise<{ codigo: string; descricao: string }[]> =>
-    ipcRenderer.invoke('cbo:list'),
 })

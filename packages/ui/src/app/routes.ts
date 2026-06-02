@@ -12,6 +12,8 @@ export const ROUTES = {
   CUSTOS:       '/custos',
   QUICKCALC:    '/quickcalc',
   RELATORIOS:   '/relatorios',
+  CBO:          '/cbo',
+  DOCUMENTOS:   '/documentos',
   ADMIN:        '/admin',
 } as const
 

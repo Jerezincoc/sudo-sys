@@ -16,6 +16,10 @@ export function registerFeriasHandlers(): void {
     return repo().list(Number(empresaId))
   })
 
+  ipcMain.handle('ferias:listByFuncionario', (_e, funcionarioId: number) => {
+    return repo().listByFuncionario(funcionarioId)
+  })
+
   ipcMain.handle('ferias:get', (_e, id: number) => {
     return repo().getById(id)
   })
@@ -54,7 +58,10 @@ export function registerFeriasHandlers(): void {
 
   ipcMain.handle('ferias:delete', (_e, id: number) => {
     try {
-      repo().delete(id)
+      const r = repo()
+      const exists = r.getById(id)
+      if (!exists) return { success: false, error: `Férias ${id} não encontrado.` }
+      r.delete(id)
       return { success: true, data: undefined }
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) }

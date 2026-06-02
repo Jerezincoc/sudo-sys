@@ -3,11 +3,11 @@ import { getDb } from '../../db/database'
 import { SqliteRubricaRepository } from '@sudo-sys/infrastructure/src/repositories/SqliteRubricaRepository'
 import type { CreateRubricaPayload, UpdateRubricaPayload } from '@sudo-sys/shared'
 
+const TIPOS_VALIDOS = ['provento', 'desconto', 'informativo'] as const
+
 function repo() {
   return new SqliteRubricaRepository(getDb())
 }
-
-const TIPOS_VALIDOS = ['provento', 'desconto', 'informativo'] as const
 
 export function registerRubricaHandlers(): void {
   ipcMain.handle('rubrica:list', (_e, empresaId?: number) => {
@@ -43,6 +43,12 @@ export function registerRubricaHandlers(): void {
       if (payload.tipo !== undefined && !TIPOS_VALIDOS.includes(payload.tipo as typeof TIPOS_VALIDOS[number]))
         return { success: false, error: 'Tipo inválido.' }
 
+      // Bloquear edição de rubricas globais
+      const existing = repo().getById(payload.id)
+      if (!existing) return { success: false, error: 'Rubrica não encontrada.' }
+      if (existing.empresa_id == null)
+        return { success: false, error: 'Rubricas globais não podem ser editadas.' }
+
       const r = repo().update(payload)
       return { success: true, data: r }
     } catch (err: unknown) {
@@ -52,7 +58,12 @@ export function registerRubricaHandlers(): void {
 
   ipcMain.handle('rubrica:delete', (_e, id: number) => {
     try {
-      const { action } = repo().deleteOrDeactivate(id)
+      const r = repo()
+      const exists = r.getById(id)
+      if (!exists) return { success: false, error: `Rubrica ${id} não encontrada.` }
+      if (exists.empresa_id == null)
+        return { success: false, error: 'Rubricas globais não podem ser excluídas.' }
+      const { action } = r.deleteOrDeactivate(id)
       return { success: true, data: undefined, action }
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) }

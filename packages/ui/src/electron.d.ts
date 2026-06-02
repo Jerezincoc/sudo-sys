@@ -65,6 +65,26 @@ export interface ElectronAPI {
   updateFuncionario: (payload: UpdateFuncionarioPayload) => Promise<IpcResult<Funcionario>>
   deleteFuncionario: (id: number) => Promise<IpcResult<void> & { action?: string }>
 
+  // Férias
+  listFerias: (empresaId: number) => Promise<Ferias[]>
+  getFerias: (id: number) => Promise<Ferias | null>
+  createFerias: (payload: CreateFeriasPayload) => Promise<IpcResult<Ferias>>
+  updateFerias: (payload: UpdateFeriasPayload) => Promise<IpcResult<Ferias>>
+  deleteFerias: (id: number) => Promise<IpcResult<void>>
+
+  // Rubricas
+  listRubricas: (empresaId?: number | null) => Promise<Rubrica[]>
+  getRubrica: (id: number) => Promise<Rubrica | null>
+  createRubrica: (payload: CreateRubricaPayload) => Promise<IpcResult<Rubrica>>
+  updateRubrica: (payload: UpdateRubricaPayload) => Promise<IpcResult<Rubrica>>
+  deleteRubrica: (id: number) => Promise<IpcResult<void> & { action?: string }>
+
+  // CBO
+  listCbo: () => Promise<{ codigo: string; descricao: string }[]>
+  cboListGrupos: () => Promise<{ codigo: string; descricao: string }[]>
+  cboListSubgrupo: (prefix: string) => Promise<{ codigo: string; descricao: string }[]>
+  cboSearch: (q: string) => Promise<{ codigo: string; descricao: string }[]>
+
   // Shell / Sistema
   /** Revela o arquivo no explorador do sistema operacional. */
   openPath: (filePath: string) => Promise<void>
@@ -102,20 +122,6 @@ export interface ElectronAPI {
   deleteRescisao: (id: number) => Promise<IpcResult<void>>
   calcularRescisao: (id: number) => Promise<IpcResult<Rescisao>>
 
-  // Rubricas
-  listRubricas: (empresaId?: number) => Promise<Rubrica[]>
-  getRubrica: (id: number) => Promise<Rubrica | null>
-  createRubrica: (payload: CreateRubricaPayload) => Promise<IpcResult<Rubrica>>
-  updateRubrica: (payload: UpdateRubricaPayload) => Promise<IpcResult<Rubrica>>
-  deleteRubrica: (id: number) => Promise<IpcResult<void> & { action?: string }>
-
-  // Férias
-  listFerias: (empresaId: number) => Promise<Ferias[]>
-  getFerias: (id: number) => Promise<Ferias | null>
-  createFerias: (payload: CreateFeriasPayload) => Promise<IpcResult<Ferias>>
-  updateFerias: (payload: UpdateFeriasPayload) => Promise<IpcResult<Ferias>>
-  deleteFerias: (id: number) => Promise<IpcResult<void>>
-
   // Ponto
   listPonto: (empresaId: number, mes?: number, ano?: number, funcionarioId?: number) => Promise<RegistroPonto[]>
   getPonto: (id: number) => Promise<RegistroPonto | null>
@@ -152,9 +158,6 @@ export interface ElectronAPI {
   deleteRelatorio: (id: number) => Promise<IpcResult<void>>
   executarRelatorio: (payload: ExecutarRelatorioPayload) => Promise<IpcResult<RelatorioLinhaFuncionario[]>>
   gerarPdfRelatorio: (payload: ExecutarRelatorioPayload) => Promise<IpcResult<{ filePath: string }>>
-
-  // CBO
-  listCbo: () => Promise<{ codigo: string; descricao: string }[]>
 }
 
 declare global {
