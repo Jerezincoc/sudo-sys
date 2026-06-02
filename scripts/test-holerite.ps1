@@ -57,12 +57,12 @@ function Cdp-Eval($expr) {
     return $null
 }
 
-# ── Etapa 1: folhaGerarPdf existe no electronAPI ──────────────────────────────
-$r = Cdp-Eval "typeof window.electronAPI.folhaGerarPdf"
+# ── Etapa 1: gerarHolerite existe no electronAPI ──────────────────────────────
+$r = Cdp-Eval "typeof window.electronAPI.gerarHolerite"
 if ($r.value -eq "function") {
-    Report "OK" "electronAPI.folhaGerarPdf existe" "typeof = `"$($r.value)`""
+    Report "OK" "electronAPI.gerarHolerite existe" "typeof = `"$($r.value)`""
 } else {
-    Report "NG" "electronAPI.folhaGerarPdf nao encontrado" "typeof = `"$($r.value)`""
+    Report "NG" "electronAPI.gerarHolerite nao encontrado" "typeof = `"$($r.value)`""
     $ws.Dispose(); exit 1
 }
 
@@ -84,7 +84,7 @@ $payload = @{
 $expr = @"
 (async function() {
   try {
-    var r = await window.electronAPI.folhaGerarPdf($payload);
+    var r = await window.electronAPI.gerarHolerite($payload);
     return JSON.stringify(r);
   } catch(e) {
     return JSON.stringify({ success: false, error: String(e) });
@@ -98,13 +98,15 @@ $parsed = $null
 try { $parsed = $r.value | ConvertFrom-Json } catch {}
 
 if ($parsed -and $parsed.success -eq $true -and $parsed.data.filePath -match '\.pdf$') {
-    Report "OK" "folhaGerarPdf retornou filePath valido" "filePath = $($parsed.data.filePath)"
+    Report "OK" "gerarHolerite retornou filePath valido" "filePath = $($parsed.data.filePath)"
 } elseif ($parsed) {
-    Report "NG" "folhaGerarPdf falhou" "error = $($parsed.error)"
+    Report "NG" "gerarHolerite falhou" "error = $($parsed.error)"
 } else {
-    Report "NG" "folhaGerarPdf resposta invalida" "raw = $($r.value)"
+    Report "NG" "gerarHolerite resposta invalida" "raw = $($r.value)"
 }
 
 $ws.Dispose()
 Write-Host "================================================================="
 Write-Host ""
+
+

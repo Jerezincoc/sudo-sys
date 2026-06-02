@@ -42,12 +42,14 @@ interface LancamentoFormData {
 
 function LancamentoFormModal({
   rubricas,
+  salarioBase,
   onSave,
   onClose,
   saving,
   error,
 }: {
   rubricas: Rubrica[]
+  salarioBase: number
   onSave: (d: LancamentoFormData) => void
   onClose: () => void
   saving: boolean
@@ -67,6 +69,7 @@ function LancamentoFormModal({
       rubrica_codigo: r.codigo,
       rubrica_nome: r.nome,
       rubrica_tipo: r.tipo as 'provento' | 'desconto' | 'informativo',
+      valor: r.codigo === '0001' ? String(salarioBase) : f.valor,
     }))
   }
 
@@ -94,14 +97,14 @@ function LancamentoFormModal({
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <div>
-            <label style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>
+            <label style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-primary)', display: 'block', marginBottom: 2 }}>
               Referência
             </label>
             <input type="number" value={form.referencia} onChange={(e) => setForm((f) => ({ ...f, referencia: e.target.value }))}
               style={{ width: '100%', height: 24, fontSize: 11, border: '1px solid var(--color-border-main)', borderRadius: 0, padding: '0 4px', boxSizing: 'border-box' }} />
           </div>
           <div>
-            <label style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>
+            <label style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-primary)', display: 'block', marginBottom: 2 }}>
               Valor (R$)
             </label>
             <input type="number" value={form.valor} onChange={(e) => setForm((f) => ({ ...f, valor: e.target.value }))}
@@ -636,6 +639,7 @@ export default function FolhaPage() {
       {showLancForm && (
         <LancamentoFormModal
           rubricas={rubricas}
+          salarioBase={funcionarios.find((f) => f.id === selectedFuncId)?.salario_base ?? 0}
           onSave={handleAddLancamento}
           onClose={() => setShowLancForm(false)}
           saving={lancSaving}
