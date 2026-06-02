@@ -97,33 +97,30 @@ function drawVia(doc: PDFKit.PDFDocument, data: HoleriteData, y0: number): void 
   doc.rect(CX, y0, CANHOTO_W, VIA_H)
     .lineWidth(0.3).strokeColor(BORDER_C).stroke()
 
-  // Tudo rotacionado -90°, centrado na faixa
-  // x_rot > 0 = topo do canhoto; x_rot < 0 = base do canhoto
-  // real_y = (y0 + VIA_H/2) - x_rot
-  const decText = 'DECLARO TER RECEBIDO A IMPORTÂNCIA LÍQUIDA DISCRIMINADA NESTE RECIBO.'
   doc.save()
   doc.translate(CX + CANHOTO_W / 2, y0 + VIA_H / 2)
   doc.rotate(-90)
+  // Após rotate(-90) com translate(545, y0+195):
+  // x_rot: positivo = topo da página, negativo = fundo. Range: [-195, +195]
+  // y_rot: positivo = direita do canhoto, negativo = esquerda. Range: [-30, +30]
 
-  // 1. Declaração — área superior (x_rot 50→160, real_y y0+145→y0+35)
-  doc.fontSize(5.5).font('Helvetica').fillColor('#444444')
-    .text(decText, 50, -4, { lineBreak: false, width: 110, align: 'center' })
+  // 1. Declaração — topo do canhoto (x_rot = +120 a +180)
+  doc.fontSize(6).font('Helvetica').fillColor('#333333')
+    .text('DECLARO TER RECEBIDO A', 120, -28, { lineBreak: false, width: 75, align: 'center' })
+  doc.fontSize(6).font('Helvetica').fillColor('#333333')
+    .text('IMPORTÂNCIA LÍQUIDA', 108, -20, { lineBreak: false, width: 75, align: 'center' })
+  doc.fontSize(6).font('Helvetica').fillColor('#333333')
+    .text('DISCRIMINADA NESTE RECIBO.', 96, -12, { lineBreak: false, width: 75, align: 'center' })
 
-  // 2. Linha de assinatura (x_rot=-40, real_y=y0+235)
-  doc.moveTo(-40, -22).lineTo(-40, 22)
-    .lineWidth(0.4).strokeColor('#555555').stroke()
+  // 2. Assinatura — meio do canhoto (x_rot = -20 a +40)
+  doc.fontSize(5.5).font('Helvetica-Bold').fillColor('#555555')
+    .text('ASSINATURA DO FUNCIONÁRIO', -20, -28, { lineBreak: false, width: 110, align: 'center' })
+  doc.moveTo(-20, -14).lineTo(90, -14).lineWidth(0.5).strokeColor('#333333').stroke()
 
-  // 3. "ASSINATURA DO FUNCIONÁRIO" — abaixo da linha (x_rot=-120..−45, real_y y0+315→y0+240)
-  doc.fontSize(4.5).font('Helvetica').fillColor(LABEL_C)
-    .text('ASSINATURA DO FUNCIONÁRIO', -120, -5, { lineBreak: false, width: 75, align: 'center' })
-
-  // 4. "DATA:" (x_rot=-155, real_y≈y0+350)
-  doc.fontSize(5).font('Helvetica').fillColor(LABEL_C)
-    .text('DATA:', -155, -20, { lineBreak: false, width: 44 })
-
-  // 5. Linha data (x_rot=-172, real_y≈y0+367)
-  doc.moveTo(-172, -22).lineTo(-172, 22)
-    .lineWidth(0.4).strokeColor('#555555').stroke()
+  // 3. Data — fundo do canhoto (x_rot = -120 a -60)
+  doc.fontSize(5.5).font('Helvetica-Bold').fillColor('#555555')
+    .text('DATA:', -130, -14, { lineBreak: false, width: 60, align: 'center' })
+  doc.moveTo(-130, -2).lineTo(-70, -2).lineWidth(0.5).strokeColor('#333333').stroke()
 
   doc.restore()
 
