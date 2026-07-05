@@ -37,11 +37,9 @@ export interface HoleriteData {
 // ── Layout constants ────────────────────────────────────────────────────────
 const ML         = 20      // left margin
 const BODY_W     = 495     // body width (table area)
-const CANHOTO_W  = 60      // right stub width
-const CX         = ML + BODY_W  // canhoto start x = 515
 const VIA_H      = 390     // each via height
 const ROW_H      = 13      // table row height
-const MIN_ROWS   = 19      // min rows (fills body)
+const MIN_ROWS   = 15      // min rows (fills body)
 
 // Section heights — fixed, sum <= VIA_H
 const EMPRESA_H     = 42
@@ -49,7 +47,8 @@ const FUNC_H        = 24
 const TABLE_HDR_H   = 13
 const FOOTER_TOT_H  = 36
 const FOOTER_BASE_H = 26
-// Rows budget: 390 - (42+24+13+36+26) = 249 → floor(249/13)=19 rows ✓
+const SIGN_H        = 52   // faixa de assinatura horizontal (fim de cada via)
+// Rows budget: 390 - (42+24+13+36+26+52) = 197 → floor(197/13)=15 rows ✓
 
 // Colors
 const BORDER_C = '#aaaaaa'
@@ -92,40 +91,6 @@ function fmtIrrfFaixa(base: number): string {
 function drawVia(doc: PDFKit.PDFDocument, data: HoleriteData, y0: number): void {
   const numRows = Math.max(data.lancamentos.length, MIN_ROWS)
   let y = y0
-
-  // ── Canhoto (faixa lateral direita) ─────────────────────────────────────
-  doc.rect(CX, y0, CANHOTO_W, VIA_H)
-    .lineWidth(0.3).strokeColor(BORDER_C).stroke()
-
-  // Tudo rotacionado -90°, centrado na faixa
-  // x_rot > 0 = topo do canhoto; x_rot < 0 = base do canhoto
-  // real_y = (y0 + VIA_H/2) - x_rot
-  const decText = 'DECLARO TER RECEBIDO A IMPORTÂNCIA LÍQUIDA DISCRIMINADA NESTE RECIBO.'
-  doc.save()
-  doc.translate(CX + CANHOTO_W / 2, y0 + VIA_H / 2)
-  doc.rotate(-90)
-
-  // 1. Declaração — área superior (x_rot 50→160, real_y y0+145→y0+35)
-  doc.fontSize(5.5).font('Helvetica').fillColor('#444444')
-    .text(decText, 50, -4, { lineBreak: false, width: 110, align: 'center' })
-
-  // 2. Linha de assinatura (x_rot=-40, real_y=y0+235)
-  doc.moveTo(-40, -22).lineTo(-40, 22)
-    .lineWidth(0.4).strokeColor('#555555').stroke()
-
-  // 3. "ASSINATURA DO FUNCIONÁRIO" — abaixo da linha (x_rot=-120..−45, real_y y0+315→y0+240)
-  doc.fontSize(4.5).font('Helvetica').fillColor(LABEL_C)
-    .text('ASSINATURA DO FUNCIONÁRIO', -120, -5, { lineBreak: false, width: 75, align: 'center' })
-
-  // 4. "DATA:" (x_rot=-155, real_y≈y0+350)
-  doc.fontSize(5).font('Helvetica').fillColor(LABEL_C)
-    .text('DATA:', -155, -20, { lineBreak: false, width: 44 })
-
-  // 5. Linha data (x_rot=-172, real_y≈y0+367)
-  doc.moveTo(-172, -22).lineTo(-172, 22)
-    .lineWidth(0.4).strokeColor('#555555').stroke()
-
-  doc.restore()
 
   // ── Cabeçalho Empresa ────────────────────────────────────────────────────
   doc.rect(ML, y, BODY_W, EMPRESA_H).lineWidth(0.3).strokeColor(BORDER_C).stroke()
@@ -277,11 +242,32 @@ function drawVia(doc: PDFKit.PDFDocument, data: HoleriteData, y0: number): void 
     doc.fontSize(8).font('Helvetica-Bold').fillColor('#111111')
       .text(b.value, bx + 2, y + 13, { lineBreak: false, width: baseColW - 4, align: 'right' })
   }
+  y += FOOTER_BASE_H
+
+  // ── Faixa de assinatura (horizontal, mesma orientação da página) ────────
+  doc.rect(ML, y, BODY_W, SIGN_H).lineWidth(0.3).strokeColor(BORDER_C).stroke()
+
+  doc.fontSize(7).font('Helvetica').fillColor('#333333')
+    .text('Declaro ter recebido a importância líquida discriminada neste holerite.',
+      ML + 10, y + 8, { lineBreak: false, width: BODY_W - 20 })
+
+  const sigLineY  = y + 34
+  const sigLabelY = y + 38
+  const sigLineW  = 300
+
+  doc.moveTo(ML + 10, sigLineY).lineTo(ML + 10 + sigLineW, sigLineY)
+    .lineWidth(0.5).strokeColor('#555555').stroke()
+  doc.fontSize(7).font('Helvetica').fillColor(LABEL_C)
+    .text('Assinatura do Funcionário', ML + 10, sigLabelY, { lineBreak: false, width: sigLineW })
+
+  const dataX = ML + 10 + sigLineW + 20
+  doc.fontSize(7).font('Helvetica').fillColor(LABEL_C)
+    .text('Data:  ____ / ____ / ________', dataX, sigLabelY, { lineBreak: false })
 }
 
 function drawSeparator(doc: PDFKit.PDFDocument, sepY: number): void {
   const x1 = ML
-  const x2 = CX + CANHOTO_W
+  const x2 = ML + BODY_W
   const midX = (x1 + x2) / 2
 
   doc.moveTo(x1, sepY).lineTo(midX - 8, sepY)
