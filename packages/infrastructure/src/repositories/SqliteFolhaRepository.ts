@@ -106,6 +106,13 @@ export class SqliteFolhaRepository {
     this.db.prepare('DELETE FROM folha_lancamentos WHERE id = ?').run(id)
   }
 
+  /** Remove lançamentos gerados automaticamente (INSS/IRRF/FGTS) antes de recalcular a folha, sem tocar nos manuais. */
+  deleteLancamentosAutomaticos(folhaId: number, funcionarioId: number): void {
+    this.db
+      .prepare("DELETE FROM folha_lancamentos WHERE folha_id = ? AND funcionario_id = ? AND origem = 'automatico'")
+      .run(folhaId, funcionarioId)
+  }
+
   listHolerites(folhaId: number): FolhaHolerite[] {
     return this.db
       .prepare('SELECT * FROM folha_holerites WHERE folha_id = ? ORDER BY funcionario_id ASC')

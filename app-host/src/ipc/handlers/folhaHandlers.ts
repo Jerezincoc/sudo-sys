@@ -96,12 +96,21 @@ export function registerFolhaHandlers(): void {
         .all(folha.empresa_id) as { id: number }[]
 
       const rubricaFlags = db.prepare(
-        'SELECT codigo, incide_inss, incide_irrf, incide_fgts FROM rubricas WHERE (empresa_id = ? OR empresa_id IS NULL) ORDER BY empresa_id DESC'
-      ).all(folha.empresa_id) as { codigo: string; incide_inss: number; incide_irrf: number; incide_fgts: number }[]
+        'SELECT id, codigo, incide_inss, incide_irrf, incide_fgts FROM rubricas WHERE (empresa_id = ? OR empresa_id IS NULL) ORDER BY empresa_id DESC'
+      ).all(folha.empresa_id) as { id: number; codigo: string; incide_inss: number; incide_irrf: number; incide_fgts: number }[]
       const rubricaMap = new Map(rubricaFlags.map((r) => [r.codigo, r]))
 
+      // Rubricas globais de encargos — reaproveita o seed existente (0100/0101);
+      // FGTS não tem rubrica própria seedada, então usa rubrica_id nulo.
+      const RUBRICA_INSS_COD = '0100'
+      const RUBRICA_IRRF_COD = '0101'
+      const RUBRICA_FGTS_COD = '0202'
+
       for (const { id: funcionarioId } of funcionarios) {
-        const lancamentos = repo.listLancamentos(folhaId, funcionarioId)
+        const todosLancamentos = repo.listLancamentos(folhaId, funcionarioId)
+        // Lançamentos automáticos de um cálculo anterior não entram na base —
+        // senão INSS/IRRF já descontados seriam contados de novo a cada recálculo.
+        const lancamentos = todosLancamentos.filter((l) => l.origem !== 'automatico')
         if (lancamentos.length === 0) continue
 
         let proventos = 0
@@ -141,6 +150,35 @@ export function registerFolhaHandlers(): void {
           valor_fgts:      fgts,
           status:          'calculado',
         })
+
+        // Sobrescreve (não duplica) os lançamentos automáticos desta folha+funcionário.
+        repo.deleteLancamentosAutomaticos(folhaId, funcionarioId)
+
+        if (inss.valor > 0) {
+          const rInss = rubricaMap.get(RUBRICA_INSS_COD)
+          repo.addLancamento({
+            folha_id: folhaId, funcionario_id: funcionarioId, empresa_id: folha.empresa_id,
+            rubrica_id: rInss?.id ?? null, rubrica_codigo: RUBRICA_INSS_COD, rubrica_nome: 'INSS',
+            rubrica_tipo: 'desconto', referencia: 0, valor: inss.valor, origem: 'automatico',
+          })
+        }
+        if (irrf.valor > 0) {
+          const rIrrf = rubricaMap.get(RUBRICA_IRRF_COD)
+          repo.addLancamento({
+            folha_id: folhaId, funcionario_id: funcionarioId, empresa_id: folha.empresa_id,
+            rubrica_id: rIrrf?.id ?? null, rubrica_codigo: RUBRICA_IRRF_COD, rubrica_nome: 'IRRF',
+            rubrica_tipo: 'desconto', referencia: 0, valor: irrf.valor, origem: 'automatico',
+          })
+        }
+        if (fgts > 0) {
+          // FGTS não é desconto do funcionário (não entra no líquido) — entra como
+          // linha informativa separada, mantendo a mesma separação do layout do holerite.
+          repo.addLancamento({
+            folha_id: folhaId, funcionario_id: funcionarioId, empresa_id: folha.empresa_id,
+            rubrica_id: null, rubrica_codigo: RUBRICA_FGTS_COD, rubrica_nome: 'FGTS Mês',
+            rubrica_tipo: 'informativo', referencia: 0, valor: fgts, origem: 'automatico',
+          })
+        }
       }
 
       const folhaAtualizada = repo.recalcularTotaisFolha(folhaId)
