@@ -27,16 +27,37 @@ export function calcularINSS(salarioBruto: number): { base: number; valor: numbe
   return { base: salarioBruto, valor: Math.round(inss * 100) / 100 }
 }
 
+// Lei 15.270/2025 (vigente desde 01/01/2026): redutor adicional sobre o IRRF
+// da tabela tradicional — isenção total até R$ 5.000 de rendimento tributável,
+// redução parcial entre R$ 5.000,01 e R$ 7.350,00, tabela tradicional pura acima disso.
+const REDUTOR_ISENCAO_ATE = 5000.00
+const REDUTOR_LIMITE_ATE  = 7350.00
+const REDUTOR_A = 978.62
+const REDUTOR_B = 0.133145
+
 export function calcularIRRF(baseCalculo: number, dependentes = 0): { base: number; valor: number } {
   const deducaoDependente = 189.59 * dependentes
   const base = Math.max(0, baseCalculo - deducaoDependente)
+
+  let irrfTabela = 0
   for (const faixa of IRRF_2025) {
     if (base <= faixa.ate) {
-      const valor = Math.max(0, base * faixa.aliquota - faixa.deducao)
-      return { base, valor: Math.round(valor * 100) / 100 }
+      irrfTabela = Math.max(0, base * faixa.aliquota - faixa.deducao)
+      break
     }
   }
-  return { base, valor: 0 }
+
+  // rendimentoTributavel = mesma base recebida (baseCalculo, já após INSS)
+  const rendimentoTributavel = baseCalculo
+  let valor = irrfTabela
+  if (rendimentoTributavel <= REDUTOR_ISENCAO_ATE) {
+    valor = 0
+  } else if (rendimentoTributavel <= REDUTOR_LIMITE_ATE) {
+    const redutor = REDUTOR_A - (REDUTOR_B * rendimentoTributavel)
+    valor = Math.max(0, irrfTabela - redutor)
+  }
+
+  return { base, valor: Math.round(valor * 100) / 100 }
 }
 
 export function calcularFGTS(salarioBruto: number): number {
