@@ -3,6 +3,7 @@ import type { Rubrica, CreateRubricaPayload, UpdateRubricaPayload } from '@sudo-
 import { usePageActionsStore } from '@/state/pageActionsSlice'
 import { useSelectedEmpresaStore } from '@/state/selectedEmpresaSlice'
 import RubricaForm from './RubricaForm'
+import VariablesDictionaryPage from './VariablesDictionaryPage'
 import ConfirmDialog from '@/components/feedback/ConfirmDialog'
 
 function TipoBadge({ tipo }: { tipo: string }) {
@@ -54,6 +55,7 @@ export default function RubricasPage() {
   const [saving, setSaving]         = useState(false)
   const [formError, setFormError]   = useState<string | null>(null)
   const [confirmDel, setConfirmDel] = useState<{ ids: number[]; title: string; message: string; danger: boolean } | null>(null)
+  const [showVariaveis, setShowVariaveis] = useState(false)
 
   const handleDeleteRef = useRef<() => void>(() => {})
   const loadRef = useRef<() => Promise<void>>(async () => {})
@@ -198,6 +200,14 @@ export default function RubricasPage() {
             style={{ height: 20, fontSize: 11, border: '1px solid var(--color-border-main)', background: 'var(--color-bg-white)', borderRadius: 0, padding: '0 6px', width: 160 }} />
           <div style={{ flex: 1 }} />
           {loading && <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>Carregando…</span>}
+          <button onClick={() => setShowVariaveis((v) => !v)}
+            style={{ height: 20, padding: '0 8px', fontSize: 10, fontWeight: showVariaveis ? 700 : 400,
+              border: '1px solid var(--color-border-main)', borderRadius: 0, cursor: 'pointer',
+              background: showVariaveis ? 'var(--color-brand)' : 'var(--color-bg-white)',
+              color: showVariaveis ? '#fff' : 'var(--color-text-secondary)' }}
+            title="Dicionário de variáveis de fórmula">
+            ƒ Variáveis
+          </button>
         </div>
 
         {/* Header */}
@@ -269,6 +279,12 @@ export default function RubricasPage() {
           )}
         </div>
       </div>
+
+      {showVariaveis && (
+        <div style={{ width: 340, flexShrink: 0, borderLeft: '1px solid var(--color-border-main)', display: 'flex', flexDirection: 'column' }}>
+          <VariablesDictionaryPage onClose={() => setShowVariaveis(false)} />
+        </div>
+      )}
 
       {formMode !== null && (
         <div style={{ width: 440, flexShrink: 0, borderLeft: '1px solid var(--color-border-main)', display: 'flex', flexDirection: 'column' }}>

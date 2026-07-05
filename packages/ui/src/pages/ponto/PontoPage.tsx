@@ -3,6 +3,7 @@ import type { RegistroPonto, Funcionario, CreatePontoPayload, UpdatePontoPayload
 import { usePageActionsStore } from '@/state/pageActionsSlice'
 import { useSelectedEmpresaStore } from '@/state/selectedEmpresaSlice'
 import BatidaForm from './BatidaForm'
+import EspelhoPreviewPdf from './EspelhoPreviewPdf'
 import ConfirmDialog from '@/components/feedback/ConfirmDialog'
 
 function StatusBadge({ tipo }: { tipo: string }) {
@@ -233,6 +234,15 @@ export default function PontoPage() {
 
           <div style={{ flex: 1 }} />
           {loading && <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>Carregando…</span>}
+          {visao === 'funcionario' && empresaIdNum != null && (
+            <EspelhoPreviewPdf
+              empresaId={empresaIdNum}
+              funcionarioId={filterFunc}
+              mes={mes}
+              ano={ano}
+              setStatus={setStatus}
+            />
+          )}
         </div>
 
         {/* Header */}
