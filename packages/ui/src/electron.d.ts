@@ -36,6 +36,10 @@ import type {
   UpdateRelatorioPayload,
   RelatorioLinhaFuncionario,
   ExecutarRelatorioPayload,
+  DocContratoParams,
+  DocAditivoParams,
+  DocValeParams,
+  DocAdvertenciaParams,
 } from '@sudo-sys/shared'
 
 type IpcResult<T = void> = { success: true; data: T } | { success: false; error: string }
@@ -158,6 +162,12 @@ export interface ElectronAPI {
   deleteRelatorio: (id: number) => Promise<IpcResult<void>>
   executarRelatorio: (payload: ExecutarRelatorioPayload) => Promise<IpcResult<RelatorioLinhaFuncionario[]>>
   gerarPdfRelatorio: (payload: ExecutarRelatorioPayload) => Promise<IpcResult<{ filePath: string }>>
+
+  // Documentos
+  docContrato: (payload: DocContratoParams) => Promise<IpcResult<{ filePath: string }>>
+  docAditivo: (payload: DocAditivoParams) => Promise<IpcResult<{ filePath: string }>>
+  docVale: (payload: DocValeParams) => Promise<IpcResult<{ filePath: string }>>
+  docAdvertencia: (payload: DocAdvertenciaParams) => Promise<IpcResult<{ filePath: string }>>
 }
 
 declare global {

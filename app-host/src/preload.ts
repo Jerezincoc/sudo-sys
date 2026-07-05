@@ -41,6 +41,10 @@ import type {
   UpdateRelatorioPayload,
   RelatorioLinhaFuncionario,
   ExecutarRelatorioPayload,
+  DocContratoParams,
+  DocAditivoParams,
+  DocValeParams,
+  DocAdvertenciaParams,
 } from '@sudo-sys/shared'
 
 type IpcResult<T> = { success: true; data: T } | { success: false; error: string }
@@ -296,4 +300,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   gerarPdfRelatorio: (payload: ExecutarRelatorioPayload): Promise<IpcResult<{ filePath: string }>> =>
     ipcRenderer.invoke('relatorio:gerar-pdf', payload),
+
+  // ── Documentos ────────────────────────────────────────────────────
+  docContrato: (payload: DocContratoParams): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('doc:contrato', payload),
+
+  docAditivo: (payload: DocAditivoParams): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('doc:aditivo', payload),
+
+  docVale: (payload: DocValeParams): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('doc:vale', payload),
+
+  docAdvertencia: (payload: DocAdvertenciaParams): Promise<IpcResult<{ filePath: string }>> =>
+    ipcRenderer.invoke('doc:advertencia', payload),
 })

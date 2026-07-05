@@ -337,7 +337,7 @@ export default function FuncionariosDaEmpresaPage() {
     setDocLoading(true)
     const r = await window.electronAPI.docContrato({ funcionarioId: selectedId, empresaId: empresaIdNum })
     setDocLoading(false)
-    if (!r.success || !r.data) { setStatus('Erro ao gerar contrato: ' + (r.error ?? ''), 'error'); return }
+    if (!r.success) { setStatus('Erro ao gerar contrato: ' + (r.error ?? ''), 'error'); return }
     setStatus('Contrato CLT gerado.', 'success')
     window.electronAPI.openPath(r.data.filePath)
   }
@@ -352,7 +352,7 @@ export default function FuncionariosDaEmpresaPage() {
     })
     setDocLoading(false)
     setAditivoOpen(false)
-    if (!r.success || !r.data) { setStatus('Erro ao gerar aditivo: ' + (r.error ?? ''), 'error'); return }
+    if (!r.success) { setStatus('Erro ao gerar aditivo: ' + (r.error ?? ''), 'error'); return }
     setStatus('Aditivo gerado.', 'success')
     window.electronAPI.openPath(r.data.filePath)
   }

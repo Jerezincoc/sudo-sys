@@ -14,6 +14,7 @@ import { registerFolhaHandlers } from './handlers/folhaHandlers'
 import { registerAdminHandlers } from './handlers/adminHandlers'
 import { registerRelatorioHandlers } from './handlers/relatorioHandlers'
 import { registerCboHandlers } from './handlers/cboHandlers'
+import { registerDocumentosHandlers } from './handlers/documentosHandlers'
 
 export async function registerAllHandlers(): Promise<void> {
   registerEmpresaHandlers()
@@ -33,4 +34,5 @@ export async function registerAllHandlers(): Promise<void> {
   registerAdminHandlers()
   registerRelatorioHandlers()
   registerCboHandlers()
+  registerDocumentosHandlers()
 }
