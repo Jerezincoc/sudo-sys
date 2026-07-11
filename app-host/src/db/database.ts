@@ -395,6 +395,14 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
     )`,
   },
+  {
+    name: '052_funcionario_dependentes_irrf',
+    sql: `ALTER TABLE funcionarios ADD COLUMN numero_dependentes_irrf INTEGER NOT NULL DEFAULT 0`,
+  },
+  {
+    name: '053_funcionario_regime_irrf',
+    sql: `ALTER TABLE funcionarios ADD COLUMN regime_irrf TEXT NOT NULL DEFAULT 'dependentes'`,
+  },
 ]
 
 function runMigrations(db: BetterSqlite3.Database): void {

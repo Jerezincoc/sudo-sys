@@ -40,6 +40,8 @@ export interface Funcionario {
   pis_pasep?: string | null
   ctps?: string | null
   cbo_codigo?: string | null
+  numero_dependentes_irrf?: number | null
+  regime_irrf?: 'dependentes' | 'simplificado' | null
   status: 'ativo' | 'inativo' | 'demitido'
   created_at: string
   updated_at: string

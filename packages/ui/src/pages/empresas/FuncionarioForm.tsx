@@ -83,6 +83,8 @@ function emptyForm(empresaId: number): FormData {
     escolaridade:    '',
     cargo:           '',
     cbo_codigo:      '',
+    numero_dependentes_irrf: 0,
+    regime_irrf:     'dependentes',
     departamento:    '',
     data_admissao:   '',
     data_demissao:   '',
@@ -275,6 +277,7 @@ const CONTRATO_OPTIONS = [{ value: 'clt', label: 'CLT' }, { value: 'pj', label: 
 const STATUS_OPTIONS   = [{ value: 'ativo', label: 'Ativo' }, { value: 'inativo', label: 'Inativo' }, { value: 'demitido', label: 'Demitido' }]
 const INSALUB_OPTIONS  = [{ value: '', label: 'Não' }, { value: '10', label: '10%' }, { value: '20', label: '20%' }, { value: '40', label: '40%' }]
 const UF_OPTIONS       = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'].map((uf) => ({ value: uf, label: uf }))
+const REGIME_IRRF_OPTIONS = [{ value: 'dependentes', label: 'Dependentes' }, { value: 'simplificado', label: 'Desconto Simplificado' }]
 
 // ── CboSearchField ────────────────────────────────────────────────────────
 
@@ -418,6 +421,8 @@ export default function FuncionarioForm({ funcionario, empresaId, onClose, onSav
       escolaridade:    funcionario.escolaridade    ?? '',
       cargo:           funcionario.cargo           ?? '',
       cbo_codigo:      funcionario.cbo_codigo      ?? '',
+      numero_dependentes_irrf: funcionario.numero_dependentes_irrf ?? 0,
+      regime_irrf:     funcionario.regime_irrf     ?? 'dependentes',
       departamento:    funcionario.departamento    ?? '',
       data_admissao:   funcionario.data_admissao,
       data_demissao:   funcionario.data_demissao   ?? '',
@@ -514,6 +519,8 @@ export default function FuncionarioForm({ funcionario, empresaId, onClose, onSav
           estado_civil:    form.estado_civil    || null,
           escolaridade:    form.escolaridade    || null,
           cargo:           form.cargo           || null,
+          numero_dependentes_irrf: form.numero_dependentes_irrf ?? 0,
+          regime_irrf:     (form.regime_irrf as Funcionario['regime_irrf']) ?? 'dependentes',
           departamento:    form.departamento    || null,
           data_admissao:   form.data_admissao!,
           data_demissao:   form.data_demissao   || null,
@@ -564,6 +571,8 @@ export default function FuncionarioForm({ funcionario, empresaId, onClose, onSav
           estado_civil:    form.estado_civil    || null,
           escolaridade:    form.escolaridade    || null,
           cargo:           form.cargo           || null,
+          numero_dependentes_irrf: form.numero_dependentes_irrf ?? 0,
+          regime_irrf:     (form.regime_irrf as Funcionario['regime_irrf']) ?? 'dependentes',
           departamento:    form.departamento    || null,
           data_admissao:   form.data_admissao,
           data_demissao:   form.data_demissao   || null,
@@ -834,6 +843,16 @@ export default function FuncionarioForm({ funcionario, empresaId, onClose, onSav
                   <Field label="Carga Horária (h/mês)" value={form.carga_horaria ?? ''}
                     onChange={(v) => set('carga_horaria', v === '' ? null : parseFloat(v))}
                     type="number" step="0.5" />
+                </div>
+              </Row>
+              <Row>
+                <SelectField label="Dedução IRRF" value={form.regime_irrf ?? 'dependentes'}
+                  onChange={(v) => set('regime_irrf', v as Funcionario['regime_irrf'])}
+                  options={REGIME_IRRF_OPTIONS} width={200} />
+                <div style={{ width: 150 }}>
+                  <Field label="Nº de Dependentes (IRRF)" value={form.numero_dependentes_irrf ?? 0}
+                    onChange={(v) => set('numero_dependentes_irrf', v === '' ? 0 : Math.max(0, parseInt(v, 10)))}
+                    type="number" step="1" disabled={form.regime_irrf === 'simplificado'} />
                 </div>
               </Row>
               <Row>

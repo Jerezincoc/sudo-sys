@@ -35,9 +35,17 @@ const REDUTOR_LIMITE_ATE  = 7350.00
 const REDUTOR_A = 978.62
 const REDUTOR_B = 0.133145
 
-export function calcularIRRF(baseCalculo: number, dependentes = 0): { base: number; valor: number } {
-  const deducaoDependente = 189.59 * dependentes
-  const base = Math.max(0, baseCalculo - deducaoDependente)
+// Desconto simplificado (orientação RFB dez/2025): valor fixo mensal que substitui
+// todas as demais deduções (dependentes, pensão etc.) quando escolhido pelo funcionário.
+const DESCONTO_SIMPLIFICADO = 607.20
+
+export function calcularIRRF(
+  baseCalculo: number,
+  dependentes = 0,
+  regimeIrrf: 'dependentes' | 'simplificado' = 'dependentes',
+): { base: number; valor: number } {
+  const deducao = regimeIrrf === 'simplificado' ? DESCONTO_SIMPLIFICADO : 189.59 * dependentes
+  const base = Math.max(0, baseCalculo - deducao)
 
   let irrfTabela = 0
   for (const faixa of IRRF_2025) {
@@ -47,8 +55,8 @@ export function calcularIRRF(baseCalculo: number, dependentes = 0): { base: numb
     }
   }
 
-  // rendimentoTributavel = mesma base recebida (baseCalculo, já após INSS)
-  const rendimentoTributavel = baseCalculo
+  // rendimentoTributavel = base já reduzida pela dedução de dependentes (após INSS)
+  const rendimentoTributavel = base
   let valor = irrfTabela
   if (rendimentoTributavel <= REDUTOR_ISENCAO_ATE) {
     valor = 0

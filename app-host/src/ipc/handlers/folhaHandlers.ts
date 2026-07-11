@@ -92,8 +92,8 @@ export function registerFolhaHandlers(): void {
       if (!folha) return { success: false, error: 'Folha não encontrada.' }
 
       const funcionarios = db
-        .prepare("SELECT id FROM funcionarios WHERE empresa_id = ? AND status = 'ativo'")
-        .all(folha.empresa_id) as { id: number }[]
+        .prepare("SELECT id, numero_dependentes_irrf, regime_irrf FROM funcionarios WHERE empresa_id = ? AND status = 'ativo'")
+        .all(folha.empresa_id) as { id: number; numero_dependentes_irrf: number; regime_irrf: 'dependentes' | 'simplificado' }[]
 
       const rubricaFlags = db.prepare(
         'SELECT id, codigo, incide_inss, incide_irrf, incide_fgts FROM rubricas WHERE (empresa_id = ? OR empresa_id IS NULL) ORDER BY empresa_id DESC'
@@ -106,7 +106,7 @@ export function registerFolhaHandlers(): void {
       const RUBRICA_IRRF_COD = '0101'
       const RUBRICA_FGTS_COD = '0202'
 
-      for (const { id: funcionarioId } of funcionarios) {
+      for (const { id: funcionarioId, numero_dependentes_irrf: dependentes, regime_irrf: regimeIrrf } of funcionarios) {
         const todosLancamentos = repo.listLancamentos(folhaId, funcionarioId)
         // Lançamentos automáticos de um cálculo anterior não entram na base —
         // senão INSS/IRRF já descontados seriam contados de novo a cada recálculo.
@@ -131,7 +131,7 @@ export function registerFolhaHandlers(): void {
         }
 
         const inss  = calcularINSS(baseInss)
-        const irrf  = calcularIRRF(baseIrrf - inss.valor)
+        const irrf  = calcularIRRF(baseIrrf - inss.valor, dependentes, regimeIrrf)
         const fgts  = calcularFGTS(baseFgts)
         const totalDescontos = descontosManuais + inss.valor + irrf.valor
         const liquido = Math.max(0, proventos - totalDescontos)
