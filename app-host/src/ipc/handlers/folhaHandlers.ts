@@ -130,8 +130,8 @@ export function registerFolhaHandlers(): void {
           }
         }
 
-        const inss  = calcularINSS(baseInss)
-        const irrf  = calcularIRRF(baseIrrf - inss.valor, dependentes, regimeIrrf)
+        const inss  = calcularINSS(baseInss, folha.competencia)
+        const irrf  = calcularIRRF(baseIrrf - inss.valor, dependentes, regimeIrrf, folha.competencia)
         const fgts  = calcularFGTS(baseFgts)
         const totalDescontos = descontosManuais + inss.valor + irrf.valor
         const liquido = Math.max(0, proventos - totalDescontos)

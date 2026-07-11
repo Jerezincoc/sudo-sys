@@ -9,7 +9,7 @@ export default function CustosSimuladorPage() {
   const [planoSaude, setPlanoSaude] = useState(0)
   const [regime, setRegime] = useState('CLT')
 
-  const MINIMO = 1412
+  const MINIMO = 1621 // salário mínimo nacional 2026 — Decreto nº 12.797/2025
 
   const calculo = useMemo(() => {
     const base = Number(salarioBase) || 0

@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit'
 import fs from 'fs'
+import { descreverFaixaIrrf } from '@sudo-sys/infrastructure/src/services/CalculoFolha'
 
 export interface HoleriteData {
   empresa: { razao_social: string; cnpj: string; endereco: string; cidade: string; uf: string }
@@ -78,14 +79,6 @@ function fmtCnpj(s: string) {
   const d = s.replace(/\D/g, '')
   if (d.length !== 14) return s
   return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`
-}
-
-function fmtIrrfFaixa(base: number): string {
-  if (base <= 2259.20) return 'Isento'
-  if (base <= 2826.65) return '7,5%'
-  if (base <= 3751.05) return '15%'
-  if (base <= 4664.68) return '22,5%'
-  return '27,5%'
 }
 
 function drawVia(doc: PDFKit.PDFDocument, data: HoleriteData, y0: number): void {
@@ -231,7 +224,7 @@ function drawVia(doc: PDFKit.PDFDocument, data: HoleriteData, y0: number): void 
     { label: 'Base Calc FGTS', value: fmtMoeda(data.totais.base_inss) },
     { label: 'FGTS Mês',       value: fmtMoeda(data.totais.fgts_mes)  },
     { label: 'Base IRRF',      value: fmtMoeda(data.totais.base_irrf) },
-    { label: 'Faixa IRRF',     value: fmtIrrfFaixa(data.totais.base_irrf) },
+    { label: 'Faixa IRRF',     value: descreverFaixaIrrf(data.totais.base_irrf, data.competencia) },
   ]
   for (let i = 0; i < bases.length; i++) {
     const b = bases[i]
