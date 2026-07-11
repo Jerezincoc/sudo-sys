@@ -6,6 +6,7 @@ import {
   ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { useUiStore } from '@/state/uiSlice'
+import { usePermission } from '@/permissions/usePermission'
 import { ROUTES } from '@/app/routes'
 
 interface NavItem { label: string; icon: React.ElementType; to: string }
@@ -47,7 +48,9 @@ const COL_W = 48
 
 export default function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useUiStore()
+  const { isAdmin } = usePermission()
   const w = sidebarCollapsed ? COL_W : EXP_W
+  const nav = isAdmin ? NAV : NAV.filter((g) => g.group !== 'ADMIN')
 
   return (
     <aside style={{
@@ -63,7 +66,7 @@ export default function Sidebar() {
     }}>
       {/* ── Nav ─────────────────────────────────────────────────── */}
       <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
-        {NAV.map(({ group, items }) => (
+        {nav.map(({ group, items }) => (
           <div key={group}>
             {/* Group header */}
             {!sidebarCollapsed ? (

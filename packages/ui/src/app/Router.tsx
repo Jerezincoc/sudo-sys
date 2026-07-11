@@ -20,7 +20,7 @@ const DocumentosPage      = lazy(() => import('@/pages/documentos/DocumentosPage
 
 const RelatoriosPage      = lazy(() => import('@/pages/relatorios/RelatoriosPage'))
 
-import PlaceholderPage from '@/components/layout/PlaceholderPage'
+import { RequireAdmin } from '@/permissions/guards'
 function PageLoader() {
   return (
     <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
@@ -58,7 +58,7 @@ export default function AppRouter({ initialState }: Props) {
           <Route path={ROUTES.RELATORIOS} element={<RelatoriosPage />} />
           <Route path={ROUTES.CBO}        element={<CboPage />} />
           <Route path={ROUTES.DOCUMENTOS} element={<DocumentosPage />} />
-          <Route path={ROUTES.ADMIN}      element={<AdminPage />} />
+          <Route path={ROUTES.ADMIN}      element={<RequireAdmin><AdminPage /></RequireAdmin>} />
           <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
         </Route>
       </Routes>

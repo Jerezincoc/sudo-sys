@@ -7,6 +7,7 @@ import { app, BrowserWindow, shell } from 'electron'
 import path from 'path'
 import { registerSetupHandlers } from './ipc/handlers/setupHandlers'
 import { registerAllHandlers } from './ipc/ipcRouter'
+import { installIpcAuthGuard } from './ipc/authGuard'
 import { initDatabase } from './db/database'
 
 // ── Dev vs Prod ──────────────────────────────────────────────────────────────
@@ -90,6 +91,7 @@ async function createWindow(): Promise<void> {
 
 // ── IPC ───────────────────────────────────────────────────────────────────────
 async function setupIpc(): Promise<void> {
+  installIpcAuthGuard() // precisa vir antes de qualquer ipcMain.handle
   registerSetupHandlers()
   initDatabase()        // garante DB + migrations antes dos handlers
   await registerAllHandlers()

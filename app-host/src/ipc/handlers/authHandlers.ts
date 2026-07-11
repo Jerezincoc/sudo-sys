@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { getDb } from '../../db/database'
 import { SqliteUsuarioRepository } from '@sudo-sys/infrastructure/src/repositories/SqliteUsuarioRepository'
 import { SimplePasswordHasher } from '@sudo-sys/infrastructure/src/auth/Argon2PasswordHasher'
+import { setSessionUser, clearSessionUser } from '../authGuard'
 import type { Usuario, LoginPayload } from '@sudo-sys/shared'
 
 function repo() {
@@ -33,7 +34,7 @@ export async function registerAuthHandlers(): Promise<void> {
   }
 
   // ── auth:login ───────────────────────────────────────────────────
-  ipcMain.handle('auth:login', async (_e, payload: LoginPayload) => {
+  ipcMain.handle('auth:login', async (e, payload: LoginPayload) => {
     try {
       const r2 = repo()
       const user = r2.findByEmail(payload.email)
@@ -51,6 +52,9 @@ export async function registerAuthHandlers(): Promise<void> {
       const token = crypto.randomUUID()
       const updated = r2.getById(user.id)!
       tokenMap.set(token, updated)
+      // Amarra a sessão ao WebContents que fez a chamada — é o que o authGuard
+      // central usa para autorizar todos os outros canais de IPC.
+      setSessionUser(e, updated)
 
       return { success: true, usuario: sanitize(updated), token }
     } catch (err: unknown) {
@@ -59,8 +63,9 @@ export async function registerAuthHandlers(): Promise<void> {
   })
 
   // ── auth:logout ──────────────────────────────────────────────────
-  ipcMain.handle('auth:logout', (_e, token: string) => {
+  ipcMain.handle('auth:logout', (e, token: string) => {
     if (token) tokenMap.delete(token)
+    clearSessionUser(e)
     return { success: true }
   })
 
