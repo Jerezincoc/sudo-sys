@@ -8,7 +8,8 @@
     "build": "pnpm --filter @sudo-sys/ui build && pnpm --filter @sudo-sys/app-host build",
     "dist": "pnpm build && pnpm --filter @sudo-sys/app-host dist",
     "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "postinstall": "electron-rebuild -f -w better-sqlite3 -m app-host"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.4",
