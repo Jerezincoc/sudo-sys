@@ -775,3 +775,35 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - `REC-0011`: aguardar decisão do Jeremias sobre quais rotas/canais precisam de restrição por papel (e com qual granularidade — admin-only, operador+, etc.) antes de aplicar qualquer guard novo — Status: Não executado.
 - **Próxima ação sugerida:**
   - Aguardar decisão do usuário sobre `REC-0011` antes de tocar em `Router.tsx`, `guards.tsx` ou `authGuard.ts`.
+
+### ACAO-0011 — 2026-09-11 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Diagnóstico / Levantamento de branches remotas não mergeadas
+- **Status:** Concluído
+- **Resumo:**
+  - Investigação das 3 branches remotas não mergeadas em `main` (`canhoto-wip`, `feature/core-foundation`, `feature/empresas-flow`), a pedido do usuário. Nenhum merge, delete ou outra alteração foi feito — só levantamento e avaliação de obsolescência.
+- **O que foi encontrado:**
+  - **`canhoto-wip`** (3 commits: `6d1135f`, `28cba88`, `3a781ff`; base `7c8c8b0`, já em `main`): as mudanças em `app-host/src/pdf/HoleriteRenderer.ts` ajustavam coordenadas de um "canhoto" (recibo) rotacionado no PDF do holerite. Esse conceito foi **substituído em `main`** pelo commit `e06fb6c` ("Substitui canhoto rotacionado do holerite por faixa de assinatura horizontal") — design diferente, torna essa parte da branch obsoleta. `scripts/seed-test.ps1` (217 linhas, seed de dados via CDP) **não existe em `main`**. Achado mais relevante: `scripts/test-holerite.ps1` **em `main` está desatualizado/quebrado** — ainda referencia `window.electronAPI.folhaGerarPdf`, que não existe mais em `app-host/src/preload.ts` (a API atual é `gerarHolerite`). A versão desse mesmo script na branch `canhoto-wip` já usa o nome correto `gerarHolerite`.
+  - **`feature/core-foundation`** (8 commits; base `150b2bf`, o **primeiro commit do repositório** — história 100% paralela a `main`): implementa uma reescrita completa em Clean Architecture, usando driver `sqlite3` assíncrono em vez do `better-sqlite3` síncrono usado hoje, com DI (`compositionRoot`), DTOs e ports incompatíveis com o `app-host` atual. Empresas/Funcionários, `AppShell`, dashboard e login foram todos reimplementados de forma mais completa em `main` depois (ex.: `empresaHandlers.ts` tem 529 linhas em `main` contra uma implementação equivalente bem mais simples nesta branch). Achado sem equivalente em `main`: um domínio inteiro de **"Chamados"** (entidade, repositório SQLite, casos de uso, handlers IPC) e um modelo de usuário com bcrypt + verificação de e-mail — nenhum dos dois existe em `main` hoje, nem como conceito.
+  - **`feature/empresas-flow`** (2 commits: `56c2690`, `d140562`; base também `150b2bf`, primeiro commit do repo): é o scaffolding mais antigo do projeto (`package.json` v0.0.1, pnpm@8.15.0). `empresaHandlers.ts` da branch tem 113 linhas com formato de resposta (`{ok, error}`) e imports por caminho relativo incompatíveis com a arquitetura atual do `app-host`.
+- **O que foi mudado:**
+  - Nenhum arquivo de código-fonte foi alterado, nenhuma branch foi mesclada ou deletada. Só este registro em `HISTORICO_AGENTES.md`.
+- **Avaliação por branch:**
+  - `canhoto-wip`: **majoritariamente obsoleta**, com 1 achado recuperável (fix do nome da API em `scripts/test-holerite.ts` — `main` está com o script de teste quebrado) e 1 arquivo potencialmente útil (`scripts/seed-test.ps1`, não existe em `main`).
+  - `feature/core-foundation`: **obsoleta na maior parte** (arquitetura abandonada, incompatível com o runtime atual), mas contém 1 achado sem equivalente em `main` (domínio de "Chamados" + modelo de usuário com bcrypt/verificação de e-mail) — não é recuperável tecnicamente por incompatibilidade de arquitetura, mas é uma decisão de produto/escopo que talvez nunca tenha sido levada ao `main`.
+  - `feature/empresas-flow`: **100% obsoleta** — scaffolding inicial do projeto, totalmente superado pela implementação atual de `main`.
+- **Por que foi feito:**
+  - O usuário pediu o levantamento antes de decidir se e como recuperar ou descartar cada branch — nenhuma decisão de merge/delete foi tomada nesta ação.
+- **Arquivos envolvidos (analisados, nenhum alterado):**
+  - `app-host/src/pdf/HoleriteRenderer.ts`, `scripts/test-holerite.ps1`, `scripts/seed-test.ps1` (via `origin/canhoto-wip`)
+  - Diversos arquivos de `packages/domain`, `packages/application`, `packages/infrastructure`, `app-host/src/ipc`, `packages/ui/src` (via `origin/feature/core-foundation`)
+  - `app-host/src/ipc/handlers/empresaHandlers.ts`, `packages/infrastructure/src/repositories/SqliteEmpresaRepository.ts`, `package.json` (via `origin/feature/empresas-flow`)
+- **Riscos ou observações:**
+  - O script `scripts/test-holerite.ps1` em `main` está referenciando uma API que não existe mais (`folhaGerarPdf` → `gerarHolerite`) — isso é um bug real em `main`, independente do destino da branch `canhoto-wip`, e pode ser corrigido separadamente sem precisar recuperar a branch.
+  - O domínio de "Chamados" (suporte/tickets) da `feature/core-foundation` não está documentado em nenhum outro lugar (`CONTEXTO_TOTAL.md` não menciona esse escopo) — vale confirmar com o usuário se ainda é um recurso desejado antes de descartar a branch de vez.
+- **Recomendações deixadas para próximos agentes:**
+  - `REC-0012`: corrigir `scripts/test-holerite.ps1` em `main` para usar `gerarHolerite` em vez de `folhaGerarPdf` (bug de script de teste, independente do destino das branches) — Status: Não executado.
+  - `REC-0013`: confirmar com o usuário se o domínio "Chamados" (visto em `feature/core-foundation`) ainda é um recurso desejado antes de decidir o destino final dessa branch — Status: Não executado.
+- **Próxima ação sugerida:**
+  - Aguardar decisão do usuário sobre o destino de cada branch (manter, deletar, ou recuperar partes específicas como o fix de `test-holerite.ps1` e/ou `seed-test.ps1`).
