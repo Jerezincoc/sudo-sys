@@ -705,3 +705,41 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - Recomenda-se validar a migration 054 novamente antes de aplicá-la em qualquer banco com funcionários já cadastrados, repetindo o passo de `SELECT DISTINCT regime_irrf` primeiro.
 - **Próxima ação sugerida:**
   - Executar a `REC-0009` (assets/instalador Electron) ou, alternativamente, `REC-0002`/`REC-0003` (segurança/testes automatizados), conforme prioridade do usuário.
+
+### ACAO-0009 — 2026-09-11 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Diagnóstico / Registro de contexto
+- **Status:** Concluído
+- **Resumo:**
+  - O usuário pediu para registrar em `ipcRouter.ts` três handlers IPC supostamente "órfãos": `custosHandlers.ts`, `extrasHandlers.ts`, `quickCalcHandlers.ts` (existiam como arquivo mas nunca eram chamados).
+  - Investigação mostrou que os três arquivos estão **vazios (0 bytes)** — não é um caso de "handler implementado mas não registrado", é ausência total de implementação. Não há função `register*Handlers()`, nem canal IPC, nem lógica de negócio em nenhum dos três.
+  - Nenhum código foi alterado ou registrado. Apenas este diagnóstico foi documentado, por decisão do usuário.
+- **O que foi encontrado:**
+  - `app-host/src/ipc/handlers/custosHandlers.ts`, `extrasHandlers.ts` e `quickCalcHandlers.ts`: todos com 0 bytes.
+  - `app-host/src/ipc/ipcRouter.ts`: registra apenas `empresa`, `auth`, `funcionario`, `rubrica`, `ferias`, `rescisao`, `ponto`, `folha`, `admin`, `relatorio`, `cbo`, `documentos` — nenhuma menção a `custos`, `extras` ou `quickcalc`.
+  - `app-host/src/preload.ts`: nenhuma ocorrência de `custos`, `extras` ou `quickcalc` na API `electronAPI` exposta via `contextBridge` — não há contrato IPC nenhum do lado do renderer para esses três domínios.
+  - `packages/ui/src/pages/extras/ExtrasPage.tsx`: também **0 bytes** (vazio) — não existe UI de "Extras" para testar.
+  - `packages/ui/src/pages/custos/CustosSimuladorPage.tsx` (199 linhas): não faz nenhuma chamada IPC (`window.electronAPI.*`/`ipcRenderer`); parece ser um simulador local, sem dependência de backend.
+  - `packages/ui/src/pages/quickcalc/QuickCalcPage.tsx` (214 linhas): chama apenas `window.electronAPI.listFuncionarios(...)`, que já existe e já está registrado via `funcionarioHandlers.ts`. Não chama nenhum canal `quickcalc:*`.
+- **O que foi mudado:**
+  - Nenhum arquivo de código-fonte foi alterado. Só este registro em `HISTORICO_AGENTES.md`.
+- **Por que foi feito:**
+  - Registrar os três handlers em `ipcRouter.ts` sem conteúdo neles não teria efeito funcional, e implementar a lógica de negócio de `custos`, `extras` e `quickcalc` do zero (canais, payloads, regras) estaria inventando comportamento não especificado — fora do escopo de uma tarefa de "registro de handler existente". O usuário foi consultado e optou por só documentar o achado nesta ação, sem implementar nada agora.
+- **Arquivos envolvidos (analisados, nenhum alterado):**
+  - `app-host/src/ipc/handlers/custosHandlers.ts`
+  - `app-host/src/ipc/handlers/extrasHandlers.ts`
+  - `app-host/src/ipc/handlers/quickCalcHandlers.ts`
+  - `app-host/src/ipc/ipcRouter.ts`
+  - `app-host/src/preload.ts`
+  - `packages/ui/src/pages/extras/ExtrasPage.tsx`
+  - `packages/ui/src/pages/custos/CustosSimuladorPage.tsx`
+  - `packages/ui/src/pages/quickcalc/QuickCalcPage.tsx`
+- **Riscos ou observações:**
+  - `CustosSimuladorPage.tsx` e `QuickCalcPage.tsx` têm UI substancial (199 e 214 linhas) mas rodam sem qualquer handler de backend correspondente — se a intenção original era persistir ou calcular algo no processo principal, essa parte nunca foi implementada.
+  - `ExtrasPage.tsx` e `extrasHandlers.ts` não têm nem UI nem backend — é um recurso puramente conceitual neste momento, sem nenhuma pista (rota, sidebar, tipo compartilhado) do que "Extras" deveria fazer.
+  - Recriar esses três recursos do zero exige decisão de produto (o que cada um deve calcular/persistir), não é um "registro" mecânico como os handlers já existentes.
+- **Recomendações deixadas para próximos agentes:**
+  - `REC-0010`: definir com o usuário o escopo funcional de `custos`, `extras` e `quickcalc` (canais IPC, payloads, regra de negócio) antes de implementar qualquer backend para eles — Status: Não executado.
+- **Próxima ação sugerida:**
+  - Retomar `REC-0009` (assets/instalador Electron) ou aguardar definição de escopo do usuário para os três recursos vazios.
