@@ -53,8 +53,8 @@ Antes de sugerir ou alterar qualquer coisa no projeto, todo agente deve:
 - **Stack principal:** Electron, React, TypeScript, Vite, SQLite e pnpm monorepo.
 - **Estado atual:** Protótipo funcional com baixa confiabilidade operacional e fiscal.
 - **Fase atual:** Estabilização do build e da distribuição Electron.
-- **Última ação registrada:** `ACAO-0008` — Claude refez duas correções perdidas por falta de commit em sessão anterior: redutor de IRRF da Lei 15.270/2025 usando salário bruto (não base líquida) e migration `054_funcionario_regime_irrf_check` (CHECK constraint em `regime_irrf`). Ambas commitadas e enviadas a `origin/main`. Ver `HISTORICO_AGENTES.md`.
-- **Próxima ação recomendada:** `REC-0009` — finalizar os assets e a higiene do pacote Electron.
+- **Última ação registrada:** `ACAO-0012` — Claude investigou o TODO em `relatorioHandlers.ts:115` (campos `competencia.vt`/`competencia.vr` do motor de Relatórios Personalizados, hoje hardcoded em `0`). Foi **só diagnóstico**: nenhuma correção de código foi feita nessa ação. Ver `HISTORICO_AGENTES.md` para o detalhamento completo (inclui também `ACAO-0009` a `ACAO-0011`, diagnósticos anteriores ainda não refletidos individualmente neste resumo).
+- **Próxima ação recomendada:** aguardando decisão do usuário sobre qual recomendação executar primeiro — candidatas ativas: `REC-0009`, `REC-0002`, `REC-0003`, `REC-0011`, `REC-0012`, `REC-0013`, `REC-0014` (ver seção 7).
 - **Uso em produção:** Não recomendado antes das correções críticas e dos testes de cálculo.
 
 ## 2. Objetivo do projeto
@@ -262,6 +262,56 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Origem:** Codex
 - **Data:** 2026-09-11
 
+### REC-0010
+
+- **Status:** Não executado
+- **Recomendação:** Definir com o usuário o escopo funcional de `custos`, `extras` e `quickcalc` (canais IPC, payloads, regra de negócio) antes de implementar qualquer backend para eles.
+- **Motivo:** `custosHandlers.ts`, `extrasHandlers.ts` e `quickCalcHandlers.ts` estão vazios (0 bytes) — não há função, canal IPC ou lógica para "registrar"; `ExtrasPage.tsx` também está vazia. Implementar do zero exige decisão de produto, não é registro mecânico.
+- **Prioridade:** Não definida — **A confirmar** com o usuário.
+- **Origem:** Claude
+- **Data:** 2026-09-11
+- **Referência:** `ACAO-0009`.
+
+### REC-0011
+
+- **Status:** Não executado
+- **Recomendação:** Decidir quais rotas/canais IPC precisam de restrição por papel (e com qual granularidade — admin-only, operador+, etc.) antes de aplicar qualquer guard novo em `Router.tsx`/`guards.tsx`/`authGuard.ts`.
+- **Motivo:** Das 14 rotas do frontend, só `/admin` tem guard de UI (`RequireAdmin`); no backend, só 4 canais (`usuario:list/create/delete`, `admin:backup`) exigem papel admin — todos os outros ~76 canais exigem só sessão autenticada, qualquer papel. Não existe distinção prática entre `operador` e `visualizador` em nenhum lugar do código hoje.
+- **Prioridade:** Não definida — **A confirmar** com o usuário.
+- **Origem:** Claude
+- **Data:** 2026-09-11
+- **Referência:** `ACAO-0010`.
+
+### REC-0012
+
+- **Status:** Não executado
+- **Recomendação:** Corrigir `scripts/test-holerite.ps1` em `main` para usar `window.electronAPI.gerarHolerite` em vez de `folhaGerarPdf` (que não existe mais em `app-host/src/preload.ts`).
+- **Motivo:** O script de teste manual de geração de holerite está quebrado em `main`; a branch remota não mergeada `canhoto-wip` já tem a correção do nome, independente do destino dessa branch.
+- **Prioridade:** Baixa (script de teste manual, não afeta runtime da aplicação)
+- **Origem:** Claude
+- **Data:** 2026-09-11
+- **Referência:** `ACAO-0011`.
+
+### REC-0013
+
+- **Status:** Não executado
+- **Recomendação:** Confirmar com o usuário se o domínio "Chamados" (suporte/tickets), visto na branch remota não mergeada `feature/core-foundation`, ainda é um recurso desejado para o produto antes de decidir o destino final dessa branch.
+- **Motivo:** Esse domínio (entidade, repositório, casos de uso, handlers IPC) não existe em `main` nem está documentado em `CONTEXTO_TOTAL.md`; a branch em si é tecnicamente incompatível com a arquitetura atual (usa `sqlite3` assíncrono em vez de `better-sqlite3`), então não é "recuperável" por merge — só como referência de escopo.
+- **Prioridade:** Não definida — **A confirmar** com o usuário.
+- **Origem:** Claude
+- **Data:** 2026-09-11
+- **Referência:** `ACAO-0011`.
+
+### REC-0014
+
+- **Status:** Não executado, aguardando decisão do usuário
+- **Recomendação:** Decidir se os campos `competencia.vt`/`competencia.vr` do motor de Relatórios Personalizados devem passar a ler de lançamentos automáticos de VT/VR em `folha:calcular` (correção arquitetural — VT/VR virariam lançamento automático, como INSS/IRRF/FGTS) ou se uma leitura aproximada (lançamento manual existente, ou o campo de configuração do funcionário) é aceitável por ora.
+- **Motivo:** Hoje `relatorioHandlers.ts:115` retorna `0` fixo para VT/VR porque nada no cálculo de folha gera lançamento automático para essas rubricas (`0102`/`0103`) — diferente de INSS/IRRF/FGTS. Não há uma correção pequena que seja também correta; a decisão de qual caminho seguir é de produto, não só técnica.
+- **Prioridade:** Não definida — **A confirmar** com o usuário.
+- **Origem:** Claude
+- **Data:** 2026-09-11
+- **Referência:** `ACAO-0012`. **Não executar sem decisão explícita do usuário.**
+
 ## 8. Ambiente padrão do projeto
 
 - **Estratégia de ambiente:** Documentada em `README_AMBIENTE.md`; instalação e desenvolvimento validados; versões fixadas provisoriamente na `ACAO-0005`.
@@ -300,9 +350,19 @@ Nenhum agente deve corrigir erro de execução antes de verificar se o ambiente 
 
 ## 10. Próximo passo recomendado
 
-1. Executar a `REC-0009` para finalizar os assets, remover fontes excedentes do ASAR e validar o instalador completo.
-2. Executar a `REC-0002` em etapa separada para eliminar a credencial padrão conhecida.
-3. Manter a `REC-0008` planejada para uma migração controlada, sem misturá-la às correções funcionais.
+Não há uma única próxima ação definida — várias recomendações estão ativas e não executadas, aguardando priorização do usuário:
+
+1. `REC-0009` — finalizar os assets da distribuição Electron, remover fontes excedentes do ASAR e validar o instalador completo.
+2. `REC-0002` — eliminar a credencial padrão conhecida (risco de segurança crítico).
+3. `REC-0003` — criar testes automatizados para cálculos trabalhistas críticos.
+4. `REC-0008` — planejar (sem executar ainda) a migração controlada de Node 20 para uma linha LTS suportada.
+5. `REC-0010` — definir o escopo funcional de `custos`/`extras`/`quickcalc` antes de implementar qualquer backend para eles.
+6. `REC-0011` — decidir a granularidade de RBAC por rota/canal antes de aplicar qualquer guard novo.
+7. `REC-0012` — corrigir `scripts/test-holerite.ps1` em `main` (nome de API desatualizado; baixa prioridade, script de teste manual).
+8. `REC-0013` — confirmar se o domínio "Chamados" ainda é um recurso desejado.
+9. `REC-0014` — decidir o tratamento de VT/VR no motor de Relatórios Personalizados. **Não executar sem decisão explícita do usuário.**
+
+Nenhuma dessas foi executada nesta sincronização de documentação (`ACAO-0013`).
 
 ## 11. Referência do histórico
 

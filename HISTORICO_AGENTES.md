@@ -840,3 +840,30 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - `REC-0014`: decidir com o usuário se VT/VR devem passar a ser lançamentos automáticos em `folha:calcular` (correção arquitetural, maior) ou se um valor aproximado (lançamento manual existente, ou campo de configuração do funcionário) é aceitável por ora para o relatório personalizado — Status: Não executado.
 - **Próxima ação sugerida:**
   - Aguardar decisão do usuário sobre `REC-0014` antes de tocar em `relatorioHandlers.ts:115`.
+
+### ACAO-0013 — 2026-09-11 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Sincronização de documentação / Contexto
+- **Status:** Concluído
+- **Resumo:**
+  - `CONTEXTO_TOTAL.md` foi sincronizado com o histórico até `ACAO-0012`. Ele ainda apontava `ACAO-0008` como última ação registrada e não listava as recomendações `REC-0010` a `REC-0014`, o que podia confundir agentes futuros sobre o estado real do projeto.
+- **O que foi mudado:**
+  - `CONTEXTO_TOTAL.md`: seção 1 (`Última ação registrada` → `ACAO-0012`, com nota explícita de que foi só diagnóstico sobre VT/VR, sem correção de código; `Próxima ação recomendada` → lista das recomendações ativas em vez de uma única); seção 7 (adicionadas as entradas `REC-0010`, `REC-0011`, `REC-0012`, `REC-0013`, `REC-0014`, no mesmo formato das existentes); seção 10 (`Próximo passo recomendado` reescrita para listar todas as recomendações pendentes, sem escolher uma automaticamente).
+  - `HISTORICO_AGENTES.md`: esta entrada (`ACAO-0013`), registrando a sincronização.
+  - Nenhum código-fonte, regra de negócio, cálculo, autenticação, autorização ou relatório foi alterado.
+- **O que foi melhorado:**
+  - Agentes futuros terão uma visão resumida (`CONTEXTO_TOTAL.md`) coerente com o histórico detalhado (`HISTORICO_AGENTES.md`), sem precisar ler as 12 entradas de histórico para saber que `ACAO-0009` a `ACAO-0012` existem e o que geraram.
+- **Por que foi feito:**
+  - Evitar divergência entre `CONTEXTO_TOTAL.md` e `HISTORICO_AGENTES.md` — o usuário identificou que o resumo estava 4 ações atrasado em relação ao histórico.
+- **Arquivos envolvidos:**
+  - `CONTEXTO_TOTAL.md`
+  - `HISTORICO_AGENTES.md`
+  - `README_AMBIENTE.md` — lido para conferência, não alterado (nenhuma informação nova de ambiente surgiu nas ações `ACAO-0009` a `ACAO-0012`).
+- **Riscos ou observações:**
+  - Nenhuma prioridade foi atribuída ou reordenada entre as recomendações pendentes — isso continua sendo decisão do usuário, não desta sincronização.
+  - `REC-0014` foi marcada explicitamente como "não executar sem decisão explícita do usuário", conforme instrução recebida.
+- **Recomendações deixadas para próximos agentes:**
+  - Nenhuma nova recomendação — esta ação só sincronizou documentação existente.
+- **Próxima ação sugerida:**
+  - Decidir se a próxima execução será `REC-0009`, `REC-0002`, `REC-0003` ou `REC-0014` (ou outra das recomendações pendentes listadas em `CONTEXTO_TOTAL.md`).
