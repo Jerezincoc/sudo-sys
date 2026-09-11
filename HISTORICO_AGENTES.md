@@ -807,3 +807,36 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - `REC-0013`: confirmar com o usuário se o domínio "Chamados" (visto em `feature/core-foundation`) ainda é um recurso desejado antes de decidir o destino final dessa branch — Status: Não executado.
 - **Próxima ação sugerida:**
   - Aguardar decisão do usuário sobre o destino de cada branch (manter, deletar, ou recuperar partes específicas como o fix de `test-holerite.ps1` e/ou `seed-test.ps1`).
+
+### ACAO-0012 — 2026-09-11 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Diagnóstico / Investigação de TODO pendente
+- **Status:** Concluído
+- **Resumo:**
+  - Investigação do TODO em `relatorioHandlers.ts:115` (campos `competencia.vt`/`competencia.vr` do motor de Relatórios Personalizados sempre retornam `0`, comentário "buscar de lançamentos" pendente). Nenhuma correção foi aplicada — só diagnóstico e estimativa de tamanho, a pedido do usuário.
+- **O que foi encontrado:**
+  - `app-host/src/ipc/handlers/relatorioHandlers.ts:115`: dentro de `relatorio:executar`, ao montar os campos de nível 1.1, `vt`/`vr` são hardcoded em `0` (`else if (key === 'vt' || key === 'vr') dadosComp[campo.id] = 0 // TODO: buscar de lancamentos`), enquanto `salario_bruto`/`inss`/`irrf`/`fgts`/`liquido` já são lidos de `folha_holerites`.
+  - Os campos `competencia.vt` e `competencia.vr` (`packages/shared/src/constants/camposRelatorio.ts:19-20`) são colunas selecionáveis no construtor de Relatórios Personalizados — qualquer relatório do usuário que inclua essas colunas hoje sempre mostra `0`.
+  - Diferente de INSS/IRRF/FGTS (persistidos como lançamentos automáticos em `folha_lancamentos` a cada `folha:calcular`, correção `[11a]` desta sessão), **VT/VR nunca são inseridos como lançamento automaticamente**. `app-host/src/ipc/handlers/folhaHandlers.ts` só auto-gera lançamentos para as rubricas `0100` (INSS), `0101` (IRRF) e `0202` (FGTS).
+  - VT/VR existem em dois lugares desconectados do cálculo de folha: (1) campos diretos em `funcionarios` — `vale_transporte` (`INTEGER DEFAULT 0`, parece flag sim/não) e `vale_refeicao` (`REAL DEFAULT 0`, valor fixo mensal), usados só em `funcionarioHandlers.ts` (CRUD) e `FichaFuncionarioRenderer.ts` (exibição na ficha do funcionário); (2) rubricas catalogadas `0102` (Vale Transporte, desconto 6% percentual) e `0103` (Vale Refeição, desconto fixo) no seed `031b_rubricas_seed`, que só geram lançamento se alguém adicionar manualmente via `LancamentosEditor.tsx` para aquela competência — sem garantia de que isso tenha sido feito para nenhum funcionário.
+- **O que foi mudado:**
+  - Nenhum arquivo de código-fonte foi alterado. Só este registro em `HISTORICO_AGENTES.md`.
+- **Avaliação de tamanho da correção:**
+  - Não é troca simples de constante por query — há duas leituras possíveis com resultados diferentes, sem uma claramente correta sem decisão de produto: (1) somar lançamentos com rubrica `0102`/`0103` (troca pequena, mas frágil — mostraria `0` para a maioria dos funcionários, já que nada gera esse lançamento automaticamente); (2) ler direto de `funcionarios.vale_transporte`/`vale_refeicao` (troca pequena, mas reflete a configuração atual do funcionário, não necessariamente o valor daquela competência histórica). A correção arquiteturalmente correta — VT/VR passarem a ser lançamentos automáticos em `folha:calcular`, como INSS/IRRF/FGTS — é trabalho novo de cálculo/persistência, mesma categoria de tamanho da `REC-0004` (recálculo de folha transacional/idempotente) já pendente, fora do escopo desta sessão.
+- **Por que foi feito:**
+  - O usuário pediu o diagnóstico e a estimativa de tamanho antes de decidir qual abordagem seguir (leitura imprecisa rápida vs. cálculo automático correto) — nenhuma decisão foi tomada nesta ação.
+- **Arquivos envolvidos (analisados, nenhum alterado):**
+  - `app-host/src/ipc/handlers/relatorioHandlers.ts`
+  - `packages/shared/src/constants/camposRelatorio.ts`
+  - `app-host/src/ipc/handlers/folhaHandlers.ts`
+  - `app-host/src/db/database.ts` (schema de `funcionarios` e seed de rubricas)
+  - `app-host/src/ipc/handlers/funcionarioHandlers.ts`
+  - `app-host/src/pdf/FichaFuncionarioRenderer.ts`
+- **Riscos ou observações:**
+  - Se alguém corrigir esse TODO lendo só `funcionarios.vale_transporte`/`vale_refeicao` sem entender que são configuração atual (não histórico), relatórios de competências passadas podem ficar sutilmente errados se o funcionário mudou de VT/VR depois.
+  - O mesmo problema estrutural (ausência de lançamento automático) provavelmente afeta qualquer outro relatório ou tela que dependa de "quanto foi de VT/VR" numa competência específica — não é exclusivo deste TODO.
+- **Recomendações deixadas para próximos agentes:**
+  - `REC-0014`: decidir com o usuário se VT/VR devem passar a ser lançamentos automáticos em `folha:calcular` (correção arquitetural, maior) ou se um valor aproximado (lançamento manual existente, ou campo de configuração do funcionário) é aceitável por ora para o relatório personalizado — Status: Não executado.
+- **Próxima ação sugerida:**
+  - Aguardar decisão do usuário sobre `REC-0014` antes de tocar em `relatorioHandlers.ts:115`.
