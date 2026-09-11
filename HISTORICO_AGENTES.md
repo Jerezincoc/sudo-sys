@@ -743,3 +743,35 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - `REC-0010`: definir com o usuário o escopo funcional de `custos`, `extras` e `quickcalc` (canais IPC, payloads, regra de negócio) antes de implementar qualquer backend para eles — Status: Não executado.
 - **Próxima ação sugerida:**
   - Retomar `REC-0009` (assets/instalador Electron) ou aguardar definição de escopo do usuário para os três recursos vazios.
+
+### ACAO-0010 — 2026-09-11 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Diagnóstico / Levantamento de cobertura RBAC
+- **Status:** Concluído
+- **Resumo:**
+  - Levantamento de quais rotas do frontend (`packages/ui/src/app/Router.tsx`) têm algum guard de permissão e quais não têm nenhum, a pedido do usuário. Nenhuma mudança de código foi feita — é só o achado, para o Jeremias decidir com calma quais rotas precisam de restrição e com qual granularidade (a distinção `operador`/`visualizador` hoje não existe em lugar nenhum).
+- **O que foi encontrado:**
+  - `Router.tsx`: das 14 rotas registradas, só `/admin` tem guard (`RequireAdmin`). As outras 13 (`/dashboard`, `/empresas`, `/funcionarios`, `/folha`, `/rubricas`, `/ferias`, `/rescisao`, `/ponto`, `/custos`, `/quickcalc`, `/relatorios`, `/cbo`, `/documentos`) não têm nenhum wrapper de permissão — renderizam para qualquer usuário autenticado.
+  - `packages/ui/src/permissions/guards.tsx`: `RequireAdmin` usa `usePermission().isAdmin` e redireciona para o Dashboard se não for admin. Comentário no próprio arquivo já deixa claro que essa checagem é só de UI (esconder tela) e não substitui a checagem no backend.
+  - `packages/ui/src/permissions/usePermission.ts`: só distingue `isAdmin` (role === `'admin'`). Não existe checagem ou distinção de UI para os papéis `operador` e `visualizador` (`packages/ui/src/state/sessionSlice.ts` define `role: 'admin' | 'operador' | 'visualizador'`) — os dois são tratados de forma idêntica em todo o frontend hoje.
+  - `app-host/src/ipc/authGuard.ts` (gate central de IPC, adicionado antes desta ação): por padrão, todo canal exige sessão autenticada, qualquer papel. Só 4 canais em `CANAIS_ADMIN` exigem especificamente papel `admin`: `usuario:list`, `usuario:create`, `usuario:delete`, `admin:backup`. Todos os demais ~76 canais (Folha, Rescisão, Funcionários, Relatórios, etc.) são acessíveis a qualquer usuário logado, incluindo `visualizador`.
+  - Ou seja: a única distinção de papel que existe hoje, tanto na UI quanto no backend, é "é admin" vs "não é admin" — e mesmo essa distinção, no backend, cobre só 4 canais específicos de gestão de usuários/backup, não a tela `/admin` como um todo.
+- **O que foi mudado:**
+  - Nenhum arquivo de código-fonte foi alterado. Só este registro em `HISTORICO_AGENTES.md`.
+- **Por que foi feito:**
+  - O usuário pediu o levantamento antes de decidir quais rotas (ex.: Folha) realmente precisam de restrição — não é óbvio que devam ser admin-only, podendo caber um papel intermediário (`operador`) que hoje nem existe como distinção prática no código.
+- **Arquivos envolvidos (analisados, nenhum alterado):**
+  - `packages/ui/src/app/Router.tsx`
+  - `packages/ui/src/app/routes.ts`
+  - `packages/ui/src/permissions/guards.tsx`
+  - `packages/ui/src/permissions/usePermission.ts`
+  - `packages/ui/src/state/sessionSlice.ts`
+  - `app-host/src/ipc/authGuard.ts`
+- **Riscos ou observações:**
+  - Se a intenção de produto é ter 3 níveis reais de acesso (`admin`/`operador`/`visualizador`), falta tanto a matriz de permissões por módulo quanto os guards de UI correspondentes — hoje só existe o binário admin/não-admin.
+  - Qualquer novo canal IPC que não for explicitamente adicionado a `CANAIS_PUBLICOS` ou `CANAIS_ADMIN` em `authGuard.ts` fica protegido por padrão (fail-safe) — mas só até o nível "exige login", não até um papel específico, a menos que alguém o adicione a `CANAIS_ADMIN`.
+- **Recomendações deixadas para próximos agentes:**
+  - `REC-0011`: aguardar decisão do Jeremias sobre quais rotas/canais precisam de restrição por papel (e com qual granularidade — admin-only, operador+, etc.) antes de aplicar qualquer guard novo — Status: Não executado.
+- **Próxima ação sugerida:**
+  - Aguardar decisão do usuário sobre `REC-0011` antes de tocar em `Router.tsx`, `guards.tsx` ou `authGuard.ts`.
