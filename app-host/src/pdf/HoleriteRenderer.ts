@@ -1,6 +1,6 @@
 import PDFDocument from 'pdfkit'
 import fs from 'fs'
-import { descreverFaixaIrrf } from '@sudo-sys/infrastructure/src/services/CalculoFolha'
+import { descreverFaixaIrrf } from '@sudo-sys/infrastructure'
 
 export interface HoleriteData {
   empresa: { razao_social: string; cnpj: string; endereco: string; cidade: string; uf: string }

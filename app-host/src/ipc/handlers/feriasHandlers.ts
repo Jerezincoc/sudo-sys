@@ -1,9 +1,9 @@
 import { ipcMain, app } from 'electron'
 import path from 'path'
 import { getDb } from '../../db/database'
-import { SqliteFeriasRepository } from '@sudo-sys/infrastructure/src/repositories/SqliteFeriasRepository'
-import { SqliteFuncionarioRepository } from '@sudo-sys/infrastructure/src/repositories/SqliteFuncionarioRepository'
-import { SqliteEmpresaRepository } from '@sudo-sys/infrastructure/src/repositories/SqliteEmpresaRepository'
+import { SqliteFeriasRepository } from '@sudo-sys/infrastructure'
+import { SqliteFuncionarioRepository } from '@sudo-sys/infrastructure'
+import { SqliteEmpresaRepository } from '@sudo-sys/infrastructure'
 import type { CreateFeriasPayload, UpdateFeriasPayload } from '@sudo-sys/shared'
 import { FeriasRenderer } from '../../pdf/FeriasRenderer'
 

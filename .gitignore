@@ -11,6 +11,7 @@ packages/*/dist/
 # ── Electron ──────────────────────────────────────────────
 release/
 out/
+/.dev-user-data/
 
 # ── Env / Secrets ─────────────────────────────────────────
 .env

@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron'
 import crypto from 'crypto'
 import { getDb } from '../../db/database'
-import { SqliteUsuarioRepository } from '@sudo-sys/infrastructure/src/repositories/SqliteUsuarioRepository'
-import { SimplePasswordHasher } from '@sudo-sys/infrastructure/src/auth/Argon2PasswordHasher'
+import { SqliteUsuarioRepository } from '@sudo-sys/infrastructure'
+import { SimplePasswordHasher } from '@sudo-sys/infrastructure'
 import { setSessionUser, clearSessionUser } from '../authGuard'
 import type { Usuario, LoginPayload } from '@sudo-sys/shared'
 
