@@ -53,7 +53,7 @@ Antes de sugerir ou alterar qualquer coisa no projeto, todo agente deve:
 - **Stack principal:** Electron, React, TypeScript, Vite, SQLite e pnpm monorepo.
 - **Estado atual:** Protótipo funcional com baixa confiabilidade operacional e fiscal.
 - **Fase atual:** Estabilização do build e da distribuição Electron.
-- **Última ação registrada:** `ACAO-0007` — fechamento da etapa, conferência para commit e handoff para o próximo agente. Ver `HISTORICO_AGENTES.md`.
+- **Última ação registrada:** `ACAO-0008` — Claude refez duas correções perdidas por falta de commit em sessão anterior: redutor de IRRF da Lei 15.270/2025 usando salário bruto (não base líquida) e migration `054_funcionario_regime_irrf_check` (CHECK constraint em `regime_irrf`). Ambas commitadas e enviadas a `origin/main`. Ver `HISTORICO_AGENTES.md`.
 - **Próxima ação recomendada:** `REC-0009` — finalizar os assets e a higiene do pacote Electron.
 - **Uso em produção:** Não recomendado antes das correções críticas e dos testes de cálculo.
 
@@ -118,6 +118,12 @@ O processo principal executa operações síncronas de SQLite, hash de senha, fi
 ### Testes
 
 Não há testes automatizados funcionais. Os arquivos de teste identificados estão vazios, não há framework de testes configurado e não existe script `test` funcional na raiz.
+
+### Motor de cálculo (IRRF) e schema de funcionários
+
+A `ACAO-0008` corrigiu `calcularIRRF` (`packages/infrastructure/src/services/CalculoFolha.ts`): o redutor da Lei 15.270/2025 (teto R$7.350, fórmula `978,62 - 0,133145 × rendimento`) agora usa o salário bruto do funcionário (5º parâmetro opcional `salarioBruto`, com fallback para a base líquida se omitido), não mais a base já líquida de INSS/dependentes — evitando redução indevida de IRRF para quem tem bruto acima do teto mas base líquida na faixa de transição. `folhaHandlers.ts` já passa `baseIrrf` (pré-INSS) nesse parâmetro.
+
+A tabela `funcionarios` (`app-host/src/db/database.ts`) ganhou a migration `054_funcionario_regime_irrf_check`, restringindo `regime_irrf` a `'dependentes'`/`'simplificado'` via CHECK constraint (recriação de tabela, padrão SQLite). Aplicada e validada no banco de dev real, que estava vazio de funcionários no momento da aplicação.
 
 ### Build
 

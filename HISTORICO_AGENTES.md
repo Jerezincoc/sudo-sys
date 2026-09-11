@@ -660,3 +660,48 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - O instalador completo, os assets pendentes e a exclusão de fontes TypeScript do ASAR continuam sem validação final.
 - **Próxima ação sugerida:**
   - Claude deve executar somente a `REC-0009`, após ler os três documentos de referência.
+
+### ACAO-0008 — 2026-09-11 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Correção de cálculo / Migration de banco / Recuperação de trabalho perdido
+- **Status:** Concluído
+- **Resumo:**
+  - Duas correções haviam sido feitas e validadas numa sessão anterior (redutor de IRRF da Lei 15.270/2025 e uma migration 054 com CHECK constraint em `regime_irrf`), mas nunca chegaram a ser commitadas — o ambiente onde foram feitas divergia deste, e o trabalho foi perdido. Esta ação refaz as duas correções neste ambiente e garante que cada uma termine com commit e push antes de ser considerada concluída.
+  - Também foi feito o push do commit `62e0803` (do Codex, `chore: stabilize internal package build and dev environment`), que estava local e à frente de `origin/main`, sem ter sido enviado ao remoto ainda.
+- **O que foi encontrado:**
+  - `calcularIRRF` em `packages/infrastructure/src/services/CalculoFolha.ts` aplicava o redutor da Lei 15.270/2025 sobre `rendimentoTributavel = base` (já líquida de INSS e da dedução de dependentes/simplificado), não sobre o salário bruto. Isso fazia com que funcionários com bruto acima do teto de R$7.350 (ex: R$8.500) ainda recebessem redução indevida do IRRF, por a base líquida cair abaixo do teto.
+  - Cenário de teste (bruto R$8.500, 2 dependentes, tabela tradicional, competência 2026-01): IRRF calculado incorretamente em ≈R$1.023,83 antes da correção; esperado ≈R$1.052,77 (tabela cheia, sem redução).
+  - `app-host/src/db/database.ts` não tinha nenhuma migration 054; a última era `053_funcionario_regime_irrf`, que criava a coluna `regime_irrf` sem nenhuma restrição de valores aceitos.
+  - Banco de dev real (`.dev-user-data/banco/sudosys.db`) estava com 0 registros em `funcionarios` — sem risco de dado existente violar o novo CHECK.
+- **O que foi mudado:**
+  - `packages/infrastructure/src/services/CalculoFolha.ts`: `calcularIRRF` ganhou um 5º parâmetro opcional `salarioBruto`; o redutor da Lei 15.270/2025 passou a usar `salarioBruto ?? base` como `rendimentoTributavel`. A tabela progressiva de IRRF continua usando a base já líquida, normalmente.
+  - `app-host/src/ipc/handlers/folhaHandlers.ts` (linha do cálculo de IRRF): a chamada de `calcularIRRF` passou a incluir `baseIrrf` (soma de proventos com `incide_irrf`, calculada antes de subtrair o INSS) como 5º argumento.
+  - `app-host/src/db/database.ts`: adicionada `054_funcionario_regime_irrf_check`, recriando `funcionarios` (padrão SQLite de recriação de tabela para adicionar CHECK — `ALTER TABLE ADD CONSTRAINT` não existe no SQLite) com `CHECK (regime_irrf IN ('dependentes', 'simplificado'))` na coluna `regime_irrf`. Nenhum índice ou trigger próprio de `funcionarios` foi encontrado no histórico de migrations, então não havia nada além da tabela para recriar; FKs de outras tabelas (`folha_lancamentos`, `ferias`, `ponto`, `rescisoes`) apontam pelo nome e continuaram válidas.
+  - Migration 054 aplicada diretamente no banco de dev real (`.dev-user-data/banco/sudosys.db`), após validação numa cópia e com backup do arquivo original salvo em `.dev-user-data/banco/backup_pre_054_<timestamp>/` (dentro de `.dev-user-data`, portanto fora do controle de versão).
+- **Validações executadas:**
+  - `pnpm typecheck`: passou em todos os workspaces após cada uma das duas correções.
+  - Redutor de IRRF: cenário R$8.500/2 dependentes/tradicional/2026-01 recalculado manualmente com a lógica corrigida → IRRF = R$1.052,77 (esperado).
+  - Migration 054 testada primeiro numa cópia isolada do banco de dev real (arquivo `.db` + `.db-wal` + `.db-shm` copiados para preservar dados não checkpointados): `sqlite_master` confirmou o CHECK presente na tabela final; contagem de linhas de `funcionarios` preservada (0 antes e depois); `PRAGMA integrity_check` retornou `ok`; `PRAGMA foreign_key_check` retornou limpo; `INSERT` com `regime_irrf = 'invalido'` foi rejeitado pelo CHECK; `INSERT` com `regime_irrf = 'simplificado'` foi aceito normalmente.
+  - Só depois dessa validação a migration foi aplicada ao banco de dev real, com backup prévio do arquivo original.
+- **Por que foi feito:**
+  - As duas correções já haviam sido implementadas e validadas antes, mas o trabalho foi perdido por nunca ter sido commitado nem enviado ao remoto entre sessões/ambientes diferentes. O usuário pediu que desta vez cada correção terminasse com commit e push antes de ser considerada concluída, para eliminar esse risco.
+- **Arquivos envolvidos:**
+  - `packages/infrastructure/src/services/CalculoFolha.ts`
+  - `app-host/src/ipc/handlers/folhaHandlers.ts`
+  - `app-host/src/db/database.ts`
+  - `HISTORICO_AGENTES.md`
+  - `CONTEXTO_TOTAL.md`
+- **Commits e push:**
+  - Push do commit pendente do Codex: `62e0803` (`chore: stabilize internal package build and dev environment`) — `origin/main` avançou de `0273154` para `62e0803`.
+  - Fix do redutor IRRF: commit `76fe2b9` (`fix(irrf): redutor Lei 15.270/2025 usa salario bruto, nao base liquida`) — pushed para `origin/main`.
+  - Migration 054 + este registro: commitados e pushed juntos (`feat(db): adiciona CHECK constraint em regime_irrf (migration 054)`) — ver `git log origin/main` para o hash exato, gerado após este registro ser escrito.
+- **Riscos ou observações:**
+  - O banco de dev real usado para testar e aplicar a migration tinha 0 funcionários cadastrados; a migration não foi testada com volume real de dados nem com valores de `regime_irrf` fora do domínio esperado (porque não existiam). Se o banco de produção/dev de outro ambiente tiver dados, rodar `SELECT DISTINCT regime_irrf FROM funcionarios` antes de aplicar lá.
+  - O parâmetro `salarioBruto` em `calcularIRRF` é opcional (`salarioBruto ?? base`) para não quebrar chamadas existentes que não o passem; qualquer novo call site do cálculo de IRRF deve passar esse parâmetro para se beneficiar da correção.
+  - Este é o segundo agente (depois do Codex) a registrar ações neste arquivo no mesmo dia; a numeração sequencial `ACAO-0008` foi confirmada lendo as entradas anteriores antes de escrever esta.
+- **Recomendações deixadas para próximos agentes:**
+  - `REC-0009` (do Codex) continua pendente: finalizar assets e higiene do pacote Electron.
+  - Recomenda-se validar a migration 054 novamente antes de aplicá-la em qualquer banco com funcionários já cadastrados, repetindo o passo de `SELECT DISTINCT regime_irrf` primeiro.
+- **Próxima ação sugerida:**
+  - Executar a `REC-0009` (assets/instalador Electron) ou, alternativamente, `REC-0002`/`REC-0003` (segurança/testes automatizados), conforme prioridade do usuário.
