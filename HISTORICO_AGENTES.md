@@ -528,11 +528,11 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 
 ### REC-0009 — 2026-09-11 — Codex
 
-- **Status:** Não executado
+- **Status:** Parcial
 - **Recomendação:** Finalizar a higiene e os assets da distribuição Electron, copiando o CSV de CBO e o ícone, removendo fontes TypeScript excedentes do ASAR e validando o instalador completo.
 - **Motivo:** A distribuição já resolve os pacotes por `dist`, mas ainda inclui fontes desnecessárias e possui assets e etapas finais de empacotamento pendentes.
 - **Prioridade:** Alta
-- **Ação relacionada:** `ACAO-0006`
+- **Ações relacionadas:** recomendada na `ACAO-0006`; executada parcialmente na `ACAO-0014`.
 
 ### ACAO-0006 — 2026-09-11 — Codex
 
@@ -867,3 +867,61 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - Nenhuma nova recomendação — esta ação só sincronizou documentação existente.
 - **Próxima ação sugerida:**
   - Decidir se a próxima execução será `REC-0009`, `REC-0002`, `REC-0003` ou `REC-0014` (ou outra das recomendações pendentes listadas em `CONTEXTO_TOTAL.md`).
+
+### ACAO-0014 — 2026-09-11 — Codex
+
+- **Autor da ação:** Codex
+- **Tipo de ação:** Correção de build / Assets / Empacotamento Electron
+- **Status:** Parcial
+- **Resumo:**
+  - A `REC-0009` foi executada quanto à inclusão do CSV completo de CBO, exclusão de fontes TypeScript, geração do pacote e instalador NSIS e smoke test isolado.
+  - O ícone oficial e a execução real do instalador permanecem pendentes por ausência de asset válido e risco de alterar o ambiente instalado do usuário.
+- **O que foi encontrado:**
+  - O único CSV completo está em `app-host/src/data/cbo_lista.csv`, com 99.372 bytes.
+  - A migration `023_cbo_completo` procura o arquivo em `dist/main/data/cbo_lista.csv` no runtime compilado.
+  - Não existe `.ico`, `.icns`, PNG ou SVG de aplicação no repositório; o caminho configurado `app-host/build/icon.ico` não existe e o `electron-builder` usa o ícone padrão do Electron.
+  - O ASAR anterior continha 147 arquivos TypeScript dos workspaces e mais 14 arquivos TypeScript de dependências de PostgreSQL.
+  - O coletor de dependências locais do `electron-builder` avalia os workspaces a partir da raiz do repositório; por isso, o padrão eficaz usa `packages/<workspace>/src`.
+- **O que foi mudado:**
+  - `app-host/package.json`: adicionado um `FileSet` que copia `src/data/cbo_lista.csv` para `dist/main/data/cbo_lista.csv` no pacote.
+  - `app-host/package.json`: adicionadas exclusões para os diretórios `src` dos quatro workspaces e para todos os arquivos `.ts`/`.tsx` do ASAR.
+  - `README_AMBIENTE.md`: documentado o fluxo, as evidências e as limitações restantes.
+  - `CONTEXTO_TOTAL.md`: atualizado o build atual, a última ação, o status da `REC-0009` e o próximo passo.
+  - `HISTORICO_AGENTES.md`: registrada esta ação e atualizado o status da `REC-0009`.
+  - Nenhum arquivo TypeScript, regra de negócio, cálculo, autenticação, autorização, dependência ou lockfile foi alterado.
+- **Validações executadas:**
+  - `pnpm install --frozen-lockfile`: passou em 3,3 s com pnpm 9.15.9.
+  - `pnpm typecheck`: passou em todos os workspaces.
+  - `pnpm build`: passou; o Vite processou 1.646 módulos e o `app-host` compilou normalmente.
+  - Pacote Electron em diretório: gerado com sucesso em saída isolada.
+  - Instalador NSIS: gerado com sucesso, com 84.843.224 bytes e SHA-256 `CE00DE9F17830B573F383C4158EFFC2318BE10F8EB8C1BE7EBA64C3EDA81884E`.
+  - Inspeção do ASAR final: zero `.ts`/`.tsx`, zero diretórios `src` dos workspaces e zero imports JavaScript para `@sudo-sys/*/src`.
+  - CSV no ASAR: presente em `dist/main/data/cbo_lista.csv`, com 99.372 bytes e SHA-256 idêntico à origem.
+  - Smoke test: o executável abriu `#/setup` sem `MODULE_NOT_FOUND`, erro de preload, ABI ou CSV ausente.
+  - Banco temporário do smoke test: tabela `cbo` criada com 2.495 registros.
+  - O `userData` temporário foi removido e os quatro processos do pacote foram encerrados; nenhum processo permaneceu ativo.
+  - O banco real em `%APPDATA%\Electron\banco` e seus arquivos WAL/SHM mantiveram os metadados previamente registrados.
+- **O que foi melhorado:**
+  - A migration de CBO passa a encontrar o arquivo completo no pacote final.
+  - O ASAR deixa de distribuir fontes TypeScript cruas e conteúdo interno dos diretórios `src` dos workspaces.
+  - A geração do instalador Windows foi comprovada e o payload executável passou em smoke test com dados isolados.
+- **Por que foi feito:**
+  - Para encerrar os riscos de asset ausente e fontes cruas identificados após a correção dos imports públicos, sem alterar comportamento funcional.
+- **Arquivos envolvidos:**
+  - `app-host/package.json`
+  - `app-host/src/data/cbo_lista.csv` — analisado, não alterado.
+  - `app-host/src/db/migrations/023_cbo_completo.ts` — analisado, não alterado.
+  - `README_AMBIENTE.md`
+  - `CONTEXTO_TOTAL.md`
+  - `HISTORICO_AGENTES.md`
+- **Riscos ou observações:**
+  - O instalador e os executáveis estão sem assinatura (`NotSigned`).
+  - O instalador não foi executado para evitar alterar atalhos, registro ou uma instalação existente; instalação e desinstalação reais permanecem **A confirmar**.
+  - Um ícone oficial continua ausente. Nenhum asset foi inventado ou gerado nesta ação.
+  - A saída padrão pode continuar bloqueada por um `app.asar` antigo nesta máquina; as validações usaram diretórios isolados.
+  - Linux, macOS, assinatura Windows e notarização macOS permanecem **A confirmar**.
+- **Recomendações deixadas para próximos agentes:**
+  - `REC-0009` permanece parcial: fornecer um asset oficial e validar instalação/desinstalação do NSIS em uma máquina virtual ou ambiente Windows descartável.
+  - Executar a `REC-0002` em ação separada, mediante autorização, por ser o próximo risco crítico bem delimitado.
+- **Próxima ação sugerida:**
+  - Executar somente a `REC-0002`, após autorização específica, sem misturar RBAC ou outras recomendações.

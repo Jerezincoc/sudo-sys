@@ -106,7 +106,7 @@ Não usar `npm install`, Yarn ou Bun, pois isso ignora o padrão do workspace e 
 | `pnpm install --frozen-lockfile` | Passou com Node 20.20.2 e pnpm 9.15.9; a validação após fixar versões terminou sem alterar o lockfile. |
 | `pnpm dev` | Passou após a `ACAO-0004`: gera o preload, reconstrói `better-sqlite3` para Electron e usa `userData` exclusivo de desenvolvimento. |
 | `pnpm build` | Passou após a `ACAO-0006`; compila os quatro pacotes internos antes da UI e do `app-host`. |
-| `pnpm dist` | A geração no diretório padrão falhou porque um `app.asar` antigo estava bloqueado pelo Windows. Um pacote em diretório alternativo foi gerado e passou no smoke test; o instalador completo permanece **A confirmar**. |
+| `pnpm dist` | O fluxo equivalente em saída isolada gerou o pacote e o instalador NSIS completo na `ACAO-0014`. A saída padrão ainda pode falhar enquanto o `app.asar` antigo estiver bloqueado pelo Windows; a instalação efetiva do NSIS permanece **A confirmar**. |
 | `pnpm typecheck` | Passou após a `ACAO-0006`; o fluxo compila os pacotes internos antes de verificar os workspaces. |
 | `pnpm lint` | Falso positivo: retorna sucesso sem executar lint real. |
 | `pnpm test` | Não existe. |
@@ -183,6 +183,14 @@ Desde a `ACAO-0006`, os pacotes internos possuem build explícito e API pública
 
 As validações da `ACAO-0006` confirmaram que os `require()` emitidos usam `@sudo-sys/infrastructure`, que os quatro pacotes resolvem para `dist/index.js` e que não há imports por `/src` no código-fonte nem no JavaScript gerado. O pacote de diretório alternativo abriu `#/setup` a partir do `app.asar`, sem erro de módulo, preload ou ABI.
 
+Desde a `ACAO-0014`, a configuração `build.files` também:
+
+- copia `app-host/src/data/cbo_lista.csv` para `dist/main/data/cbo_lista.csv` dentro do ASAR, exatamente no caminho esperado pela migration `023_cbo_completo`;
+- exclui os diretórios `src` dos quatro workspaces publicados por `dist`;
+- exclui arquivos `.ts` e `.tsx` restantes das dependências empacotadas.
+
+O ASAR final continha zero arquivos `.ts`/`.tsx`, zero diretórios `src` dos workspaces e zero imports JavaScript para `@sudo-sys/*/src`. O CSV empacotado tinha 99.372 bytes e SHA-256 idêntico ao arquivo de origem. Em um `userData` temporário novo, o aplicativo abriu `#/setup` e a tabela `cbo` recebeu 2.495 registros.
+
 Comandos usados para validar o fluxo:
 
 ```powershell
@@ -195,11 +203,10 @@ pnpm --filter @sudo-sys/app-host dist
 
 Limitações restantes:
 
-- O `electron-builder` ainda incluiu fontes TypeScript dos workspaces no ASAR, embora o runtime validado use somente `dist`; a exclusão desse conteúdo permanece pendente.
-- O CSV completo de CBO ainda pode não ser copiado para `app-host/dist/main/data/cbo_lista.csv`.
-- O ícone configurado em `app-host/build/icon.ico` pode estar ausente.
+- Não existe `.ico`, `.icns`, PNG ou SVG de aplicação válido no repositório. O `electron-builder` usa o ícone padrão do Electron; um ícone oficial permanece pendente e não deve ser inventado por agentes.
 - A saída padrão de `pnpm --filter @sudo-sys/app-host dist` pode falhar localmente enquanto um `app.asar` antigo permanecer bloqueado pelo Windows.
-- O instalador completo, a assinatura do executável Windows, a assinatura e a notarização macOS permanecem **A confirmar**.
+- O instalador NSIS foi gerado, mas não foi executado porque uma instalação silenciosa pode alterar atalhos, registro e uma instalação existente do usuário. A instalação real permanece **A confirmar**.
+- O instalador e os executáveis não estão assinados. Assinatura Windows, assinatura e notarização macOS permanecem **A confirmar**.
 
 Todo pacote de distribuição precisa de smoke test real. Esse teste deve abrir o aplicativo empacotado, verificar o carregamento do processo principal e do preload, abrir o SQLite e executar ao menos um fluxo IPC seguro. Apenas rodar `electron-builder` não atende essa validação.
 
@@ -338,7 +345,7 @@ O runtime usa SQLite e não depende de um serviço de banco separado. Um Compose
 |---|---|
 | Ambiente | Node 20.20.2 e pnpm 9.15.9 fixados provisoriamente; Node 20 está fora de suporte; migração para LTS e validação em Linux/macOS continuam pendentes; risco de ABI nativo permanece. |
 | Script | O preparo automático do `pnpm dev` foi corrigido na `ACAO-0004`; o build dos pacotes internos foi integrado na `ACAO-0006`; scripts de lint e teste continuam ausentes ou ineficazes. |
-| Build | Imports por `/src` foram removidos e o pacote passou no smoke test; CBO, ícone, fontes TypeScript excedentes no ASAR e instalador completo continuam pendentes. |
+| Build | Imports por `/src` e fontes TypeScript excedentes foram removidos do pacote; o CSV de CBO e o instalador NSIS foram gerados e o pacote passou no smoke test. Ícone oficial, assinatura e instalação real continuam pendentes. |
 | Configuração | `pnpm lint` é falso positivo; `@types/node` 22.19.19 está desalinhado com o runtime Node 20; PostgreSQL é apenas aparente no runtime; `config.json` pode guardar informação sensível. |
 | Código | `pnpm typecheck` passa; demais bugs funcionais estão registrados em `CONTEXTO_TOTAL.md` e `HISTORICO_AGENTES.md`. |
 
@@ -396,7 +403,7 @@ Também deve registrar as versões de Node, pnpm e Electron e evitar reinstalar 
 - Garantir preload em instalação limpa.
 - Copiar assets necessários.
 - Criar smoke test do pacote.
-- **Status:** parcial. A `ACAO-0006` concluiu o build dos pacotes internos, os exports públicos, a remoção dos imports por `/src` e um smoke test do pacote em diretório. A cópia de assets, a remoção de fontes excedentes do ASAR e a validação do instalador completo continuam pendentes.
+- **Status:** parcial. A `ACAO-0006` concluiu o build dos pacotes internos e a `ACAO-0014` incluiu o CSV, eliminou fontes TypeScript do ASAR, gerou o instalador NSIS e repetiu o smoke test. Permanecem pendentes um ícone oficial, assinatura e execução controlada do instalador.
 
 ### Fase 5 — Avaliar Docker
 

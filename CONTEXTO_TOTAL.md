@@ -53,8 +53,8 @@ Antes de sugerir ou alterar qualquer coisa no projeto, todo agente deve:
 - **Stack principal:** Electron, React, TypeScript, Vite, SQLite e pnpm monorepo.
 - **Estado atual:** Protótipo funcional com baixa confiabilidade operacional e fiscal.
 - **Fase atual:** Estabilização do build e da distribuição Electron.
-- **Última ação registrada:** `ACAO-0012` — Claude investigou o TODO em `relatorioHandlers.ts:115` (campos `competencia.vt`/`competencia.vr` do motor de Relatórios Personalizados, hoje hardcoded em `0`). Foi **só diagnóstico**: nenhuma correção de código foi feita nessa ação. Ver `HISTORICO_AGENTES.md` para o detalhamento completo (inclui também `ACAO-0009` a `ACAO-0011`, diagnósticos anteriores ainda não refletidos individualmente neste resumo).
-- **Próxima ação recomendada:** aguardando decisão do usuário sobre qual recomendação executar primeiro — candidatas ativas: `REC-0009`, `REC-0002`, `REC-0003`, `REC-0011`, `REC-0012`, `REC-0013`, `REC-0014` (ver seção 7).
+- **Última ação registrada:** `ACAO-0014` — execução parcial da `REC-0009`, com CSV de CBO no pacote, remoção de fontes TypeScript do ASAR, geração do instalador NSIS e smoke test isolado.
+- **Próxima ação recomendada:** `REC-0002` — eliminar a credencial padrão conhecida em uma ação de segurança separada, mediante autorização específica.
 - **Uso em produção:** Não recomendado antes das correções críticas e dos testes de cálculo.
 
 ## 2. Objetivo do projeto
@@ -127,7 +127,7 @@ A tabela `funcionarios` (`app-host/src/db/database.ts`) ganhou a migration `054_
 
 ### Build
 
-Os quatro pacotes internos agora geram JavaScript e declarações em `dist`, expõem entradas públicas e são compilados antes dos consumidores. Os 19 imports privados do `app-host` foram substituídos pela API pública de `@sudo-sys/infrastructure`; não restaram imports por `/src` no código-fonte ou no JavaScript gerado. Um pacote Electron em diretório alternativo abriu `#/setup` a partir do `app.asar`, sem `MODULE_NOT_FOUND`, erro de preload ou ABI. Permanecem pendentes a cópia do CSV completo de CBO, o ícone, a exclusão de fontes TypeScript excedentes do ASAR e a validação do instalador completo.
+Os quatro pacotes internos geram JavaScript e declarações em `dist`, expõem entradas públicas e são compilados antes dos consumidores. Os 19 imports privados do `app-host` foram substituídos pela API pública de `@sudo-sys/infrastructure`. A `ACAO-0014` incluiu o CSV completo de CBO no caminho esperado do ASAR, removeu todos os `.ts`/`.tsx` e diretórios `src` dos workspaces empacotados, gerou o instalador NSIS e abriu `#/setup` com 2.495 CBOs em banco temporário. Permanecem pendentes um ícone oficial, assinatura e execução controlada do instalador.
 
 ### Manutenção
 
@@ -255,12 +255,13 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 
 ### REC-0009
 
-- **Status:** Não executado
+- **Status:** Parcial
 - **Recomendação:** Finalizar a higiene e os assets da distribuição Electron, copiando o CSV de CBO e o ícone, removendo fontes TypeScript excedentes do ASAR e validando o instalador completo.
 - **Motivo:** O runtime já usa JavaScript compilado, mas o pacote ainda contém fontes desnecessárias e não possui todos os assets ou validações finais de distribuição confirmados.
 - **Prioridade:** Alta
 - **Origem:** Codex
 - **Data:** 2026-09-11
+- **Execução:** `ACAO-0014` incluiu e validou o CSV, eliminou fontes TypeScript, gerou o NSIS e passou no smoke test. Ícone oficial, assinatura e instalação efetiva permanecem **A confirmar**.
 
 ### REC-0010
 
@@ -350,19 +351,14 @@ Nenhum agente deve corrigir erro de execução antes de verificar se o ambiente 
 
 ## 10. Próximo passo recomendado
 
-Não há uma única próxima ação definida — várias recomendações estão ativas e não executadas, aguardando priorização do usuário:
+Após a estabilização parcial da distribuição, a próxima ação técnica recomendada é:
 
-1. `REC-0009` — finalizar os assets da distribuição Electron, remover fontes excedentes do ASAR e validar o instalador completo.
-2. `REC-0002` — eliminar a credencial padrão conhecida (risco de segurança crítico).
-3. `REC-0003` — criar testes automatizados para cálculos trabalhistas críticos.
-4. `REC-0008` — planejar (sem executar ainda) a migração controlada de Node 20 para uma linha LTS suportada.
-5. `REC-0010` — definir o escopo funcional de `custos`/`extras`/`quickcalc` antes de implementar qualquer backend para eles.
-6. `REC-0011` — decidir a granularidade de RBAC por rota/canal antes de aplicar qualquer guard novo.
-7. `REC-0012` — corrigir `scripts/test-holerite.ps1` em `main` (nome de API desatualizado; baixa prioridade, script de teste manual).
-8. `REC-0013` — confirmar se o domínio "Chamados" ainda é um recurso desejado.
-9. `REC-0014` — decidir o tratamento de VT/VR no motor de Relatórios Personalizados. **Não executar sem decisão explícita do usuário.**
+1. `REC-0002` — eliminar a credencial padrão conhecida, risco crítico ainda pendente.
+2. `REC-0003` — criar testes automatizados para cálculos trabalhistas críticos.
+3. Concluir a parte remanescente da `REC-0009` somente quando houver ícone oficial e um ambiente autorizado para testar a instalação.
+4. Manter `REC-0008`, `REC-0010`, `REC-0011`, `REC-0012`, `REC-0013` e `REC-0014` separadas; `REC-0014` exige decisão explícita do usuário.
 
-Nenhuma dessas foi executada nesta sincronização de documentação (`ACAO-0013`).
+A `REC-0009` foi executada parcialmente na `ACAO-0014`. Nenhuma outra recomendação foi iniciada nessa ação.
 
 ## 11. Referência do histórico
 

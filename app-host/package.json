@@ -43,6 +43,15 @@
       "dist/preload/**/*",
       "dist/renderer/**/*",
       "node_modules/**/*",
+      "!packages/{application,domain,infrastructure,shared}/src{,/**/*}",
+      "!**/*.{ts,tsx}",
+      {
+        "from": "src/data",
+        "to": "dist/main/data",
+        "filter": [
+          "cbo_lista.csv"
+        ]
+      },
       "package.json"
     ],
     "win": {
