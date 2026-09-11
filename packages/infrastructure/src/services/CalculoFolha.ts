@@ -106,6 +106,7 @@ export function calcularIRRF(
   dependentes = 0,
   regimeIrrf: 'dependentes' | 'simplificado' = 'dependentes',
   competencia?: string,
+  salarioBruto?: number,
 ): { base: number; valor: number } {
   const { faixas } = tabelaVigente(TABELAS_IRRF, competencia)
   const deducao = regimeIrrf === 'simplificado' ? DESCONTO_SIMPLIFICADO : 189.59 * dependentes
@@ -119,8 +120,9 @@ export function calcularIRRF(
     }
   }
 
-  // rendimentoTributavel = base já reduzida pela dedução de dependentes (após INSS)
-  const rendimentoTributavel = base
+  // Receita Federal, "Exemplos de Aplicação da Lei 15.270/2025": o redutor usa o
+  // salário do funcionário, não a base de cálculo (já líquida de INSS/dependentes).
+  const rendimentoTributavel = salarioBruto ?? base
   let valor = irrfTabela
   const redutorVigente = (competencia ?? REDUTOR_VIGENTE_DESDE) >= REDUTOR_VIGENTE_DESDE
   if (redutorVigente && rendimentoTributavel <= REDUTOR_ISENCAO_ATE) {
