@@ -9,7 +9,11 @@ import { runInTransaction } from '../db/sqlite/SqliteTx'
 // reimplementa a lógica de IRRF/INSS (já coberta por `CalculoFolha.test.ts`) — testa
 // especificamente o contrato de transação/idempotência que a REC-0004 pediu, usando um
 // banco SQLite real (em memória), com o mesmo schema de `folha_lancamentos`/
-// `folha_holerites` criado pelas migrations 042/043/056 do `app-host`.
+// `folha_holerites` criado pelas migrations 042/043/056 do `app-host`. A migration 056
+// virou um índice único PARCIAL (só `origem = 'automatico'`) depois de uma correção de
+// escopo — a versão original (UNIQUE de tabela envolvendo todos os `origem`) bloqueava
+// também lançamentos manuais duplicados, o que nunca foi um problema real e podia travar
+// um caso de uso legítimo (ex.: dois adiantamentos manuais na mesma competência).
 function criarBancoDeTeste(): Database.Database {
   const db = new Database(':memory:')
   db.pragma('foreign_keys = OFF')
@@ -30,7 +34,7 @@ function criarBancoDeTeste(): Database.Database {
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
-    -- Mesmo shape pós-migration 056 (com o UNIQUE novo da REC-0004).
+    -- Mesmo shape pos-migration 056 (indice unico parcial, so sobre origem = 'automatico').
     CREATE TABLE folha_lancamentos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       folha_id INTEGER NOT NULL,
@@ -44,9 +48,12 @@ function criarBancoDeTeste(): Database.Database {
       valor REAL NOT NULL DEFAULT 0,
       origem TEXT DEFAULT 'manual',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(folha_id, funcionario_id, rubrica_codigo, origem)
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE UNIQUE INDEX idx_folha_lancamentos_automatico_unico
+    ON folha_lancamentos(folha_id, funcionario_id, rubrica_codigo, origem)
+    WHERE origem = 'automatico';
 
     CREATE TABLE folha_holerites (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -174,7 +181,7 @@ describe('REC-0004: recálculo de folha — transação e idempotência', () => 
     expect(holerite.total_descontos).toBe(200)
   })
 
-  it('a constraint UNIQUE nova rejeita duas linhas automáticas iguais inseridas fora do fluxo de delete-então-insert', () => {
+  it('o índice único parcial rejeita duas linhas automáticas iguais inseridas fora do fluxo de delete-então-insert', () => {
     repo.addLancamento({
       folha_id: FOLHA_ID, funcionario_id: FUNCIONARIO_ID, empresa_id: EMPRESA_ID,
       rubrica_codigo: '0100', rubrica_nome: 'INSS', rubrica_tipo: 'desconto',
@@ -187,5 +194,22 @@ describe('REC-0004: recálculo de folha — transação e idempotência', () => 
         valor: 250, origem: 'automatico',
       })
     }).toThrow(/UNIQUE constraint failed/)
+  })
+
+  it('lançamentos MANUAIS com a mesma rubrica na mesma folha+funcionário continuam permitidos (sem regressão)', () => {
+    // Ex.: dois adiantamentos manuais na mesma competência, mesma rubrica — caso de uso
+    // legítimo que a versão original (UNIQUE de tabela, corrigida nesta ação) bloquearia
+    // por engano. O `beforeEach` já insere 1 manual de rubrica '0001'; este teste adiciona
+    // um segundo com a mesma rubrica.
+    expect(() => {
+      repo.addLancamento({
+        folha_id: FOLHA_ID, funcionario_id: FUNCIONARIO_ID, empresa_id: EMPRESA_ID,
+        rubrica_codigo: '0001', rubrica_nome: 'Adiantamento', rubrica_tipo: 'provento',
+        valor: 500, origem: 'manual',
+      })
+    }).not.toThrow()
+
+    const manuais = repo.listLancamentos(FOLHA_ID, FUNCIONARIO_ID).filter((l) => l.origem === 'manual')
+    expect(manuais).toHaveLength(2)
   })
 })

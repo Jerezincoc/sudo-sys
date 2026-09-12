@@ -985,9 +985,38 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - `packages/infrastructure/src/repositories/SqliteFolhaRepository.test.ts` (novo)
 - **Riscos ou observações:**
   - **A constraint nova vale para `origem = 'manual'` também, não só `'automatico'`.** Não foi encontrada nenhuma trava na UI (`LancamentosEditor.tsx`) impedindo hoje o usuário de adicionar dois lançamentos manuais com a mesma rubrica na mesma folha+funcionário (ex.: dois adiantamentos sob o mesmo código de rubrica) — com a migration `056`, isso passaria a ser rejeitado com `UNIQUE constraint failed` em vez de aceito. Implementado assim porque foi a especificação explícita do usuário e não há dado real hoje que dependa desse comportamento (confirmado na checagem pré-migration), mas fica registrado como um risco funcional a observar: se esse padrão de uso for legítimo e necessário, a constraint precisará ser revista (ex.: incluir algo que diferencie múltiplos manuais da mesma rubrica, como um `sequencial`, ou restringir o `UNIQUE` só a `origem = 'automatico'` via índice parcial).
+  - **Addendum (`ACAO-0017`):** esse risco se confirmou real e foi corrigido — a migration `056` foi trocada de `UNIQUE` de tabela (todos os `origem`) para um índice único parcial (só `origem = 'automatico'`), antes de rodar em qualquer banco real. Ver `ACAO-0017` para o detalhamento.
   - O item 3 do diagnóstico (lock de concorrência) foi deliberadamente deixado de fora, por instrução do usuário — ver `REC-0015` abaixo.
   - A transação única cobre `folha:calcular` (recálculo). Outros handlers de folha com múltiplas escritas (`folha:lancamentos:add`, `folha:lancamentos:delete`) continuam com escrita única cada um, então não têm o mesmo risco de estado parcial — não precisaram de mudança.
 - **Recomendações deixadas para próximos agentes:**
   - `REC-0015` (Nova) — **Status:** Não executado. **Recomendação:** Implementar um lock de concorrência para `folha:calcular` (ex.: campo/estado `status = 'calculando'` checado no início do handler, rejeitando uma segunda chamada sobreposta para a mesma folha). **Motivo:** item 3 do diagnóstico da `REC-0004` — hoje não existe nenhum controle de concorrência; a proteção atual contra "clicar calcular duas vezes rápido" é só um efeito colateral do event loop síncrono de um único processo Node, não uma garantia deliberada. **Só é necessário se/quando o sistema deixar de ser single-user/single-instância** (hoje documentado como tal); não é uma correção urgente enquanto essa premissa se mantiver. **Prioridade:** Não definida — a confirmar com o usuário se/quando o cenário multiusuário for avaliado. **Origem:** Claude. **Data:** 2026-09-12. **Referência:** `ACAO-0016`.
 - **Próxima ação sugerida:**
   - Retomar a priorização já listada em `CONTEXTO_TOTAL.md` (`REC-0009`, `REC-0008`, `REC-0010` a `REC-0013`, `REC-0015`, e o restante de `REC-0003`), conforme decisão do usuário. `REC-0014` continua bloqueada até decisão explícita.
+
+### ACAO-0017 — 2026-09-12 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Correção de escopo (ajuste de uma tarefa anterior deste mesmo agente)
+- **Status:** Concluído
+- **Resumo:**
+  - Corrigido o escopo da migration `056` (introduzida na `ACAO-0016`, `REC-0004`): o usuário identificou que o `UNIQUE(folha_id, funcionario_id, rubrica_codigo, origem)` de tabela inteira bloqueava também lançamentos **manuais** duplicados (mesma rubrica, mesma folha+funcionário) — um caso de uso legítimo (ex.: dois adiantamentos manuais na mesma competência) que nunca foi um problema real. O problema original da `REC-0004` (item d do diagnóstico) era só a ausência de proteção de schema para os lançamentos **automáticos**. Isso não é um bug novo introduzido por mim nesta ação — é uma correção do escopo que eu mesmo tinha implementado largo demais na `ACAO-0016`.
+- **Confirmação antes de mexer na migration 056:** checado, via Electron real, se `056_folha_lancamentos_unique` já tinha sido aplicada em algum banco real (produção em `%APPDATA%\Electron\banco\sudosys.db`, e o de dev em `.dev-user-data`) — **não tinha rodado em nenhum dos dois** (o de dev nem existia; o de produção não tinha a entrada em `_migrations`). Por isso a migration `056` foi **editada diretamente**, em vez de criar uma `057` nova — não há histórico de migration já aplicada para preservar.
+- **O que foi mudado:**
+  - `app-host/src/db/database.ts`: a migration `056_folha_lancamentos_unique` deixou de recriar a tabela `folha_lancamentos` com `UNIQUE` de coluna e passou a ser um `CREATE UNIQUE INDEX idx_folha_lancamentos_automatico_unico ON folha_lancamentos(folha_id, funcionario_id, rubrica_codigo, origem) WHERE origem = 'automatico'` — um índice único **parcial**, sem precisar do padrão de recriação de tabela (SQLite permite `CREATE INDEX` direto; só `ADD CONSTRAINT` de coluna exige recriar a tabela, que era o caso anterior).
+  - `packages/infrastructure/src/repositories/SqliteFolhaRepository.test.ts`: schema do banco de teste atualizado para refletir o índice parcial (em vez do `UNIQUE` de coluna); comentário do arquivo atualizado explicando a correção de escopo; teste da constraint renomeado para deixar claro que é sobre o índice parcial; adicionado 1 teste novo confirmando que dois lançamentos manuais com a mesma rubrica agora são aceitos sem erro (regressão que a versão anterior teria introduzido).
+- **Validações executadas:**
+  - Rodado o SQL exato da migration corrigida direto num banco SQLite real (fora do harness de teste, script ad-hoc) inserindo: 2 automáticos duplicados → rejeitado com `UNIQUE constraint failed` (comportamento preservado); 2 manuais duplicados → aceito sem erro (regressão corrigida).
+  - `pnpm --filter @sudo-sys/infrastructure test`: **11/11 testes passaram** (7 do `REC-0003` + 4 da `REC-0004`, um a mais que antes por causa do novo teste de "manual duplicado permitido"). Nenhum teste precisou ser corrigido por ter assumido a constraint ampla incorretamente — o teste de rollback e o de idempotência já usavam só `origem = 'automatico'` nos casos de duplicação, então continuaram válidos como estavam; só o teste da constraint em si precisou de rename e o novo teste foi adicionado.
+  - `pnpm typecheck` (todos os 7 workspaces): passou limpo.
+- **Por que foi feito:**
+  - O usuário identificou corretamente que a correção da `ACAO-0016` tinha escopo maior do que o problema documentado na `REC-0004`/diagnóstico original — a constraint devia proteger só contra duplicação dos automáticos gerados por `folha:calcular`, não restringir o uso de lançamentos manuais, que é uma área do sistema fora do escopo da `REC-0004`.
+- **Arquivos envolvidos:**
+  - `app-host/src/db/database.ts`
+  - `packages/infrastructure/src/repositories/SqliteFolhaRepository.test.ts`
+- **Riscos ou observações:**
+  - Nenhum risco novo introduzido. O item de risco registrado na `ACAO-0016` sobre a constraint ampla está resolvido por esta ação (ver addendum na `ACAO-0016`).
+  - Como a migration `056` foi editada em vez de virar uma `057`, qualquer ambiente que por algum motivo já tivesse rodado a versão antiga da `056` (nenhum encontrado nesta checagem) ficaria com o schema errado e precisaria de intervenção manual — não é o caso de nenhum banco conhecido hoje, mas vale confirmar de novo em qualquer ambiente que não foi checado aqui antes de considerar a migration definitivamente segura em todo lugar.
+- **Recomendações deixadas para próximos agentes:**
+  - Nenhuma nova recomendação.
+- **Próxima ação sugerida:**
+  - Retomar a priorização já listada em `CONTEXTO_TOTAL.md`, conforme decisão do usuário.
