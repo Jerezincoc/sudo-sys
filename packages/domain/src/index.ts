@@ -21,7 +21,8 @@ export * from './enums/Modulo'
 export * from './enums/TemplatePdf'
 
 // Formula engine
-export * from './formula'
+export type { FormulaNode, FormulaOperador, FormulaToken, FormulaTokenType, FormulaValidationResult } from './formula'
+export { FormulaTokenizer, FormulaSyntaxError, FormulaParser, FormulaEvaluator, FormulaEvaluationError, FormulaValidator, VARIAVEIS_CONHECIDAS, contarDiasUteis } from './formula'
 
 // Services
 export * from './services/CalculadoraTotais'

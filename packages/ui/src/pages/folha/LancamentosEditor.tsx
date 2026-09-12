@@ -1,8 +1,92 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import type { FolhaCompetencia, FolhaLancamento, Funcionario, Rubrica, CreateLancamentoPayload } from '@sudo-sys/shared'
+import { FormulaEvaluator, FormulaEvaluationError, FormulaValidator, contarDiasUteis } from '@sudo-sys/domain'
 
 function fmtMoeda(v: number) {
   return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function calcularDiasMes(competencia: string): number {
+  const [ano, mes] = competencia.split('-').map(Number)
+  return new Date(ano, mes, 0).getDate()
+}
+
+/**
+ * Resolve o contexto (`ctx: Record<string,number>`) das 15 variáveis de
+ * fórmula para um funcionário numa competência específica. O motor
+ * (`FormulaEvaluator`) não busca dado nenhum sozinho — essa resolução é a
+ * parte de "integração" que ficou de fora da implementação do motor em si.
+ *
+ * Decisões de fallback (documentadas aqui por não serem óbvias):
+ * - HORAS_TRABALHADAS/EXTRAS_50/EXTRAS_100/FALTA: se não houver nenhum
+ *   registro de ponto para o funcionário na competência, `ponto:espelho`
+ *   já retorna totais zerados (não lança erro) — 0 é o valor real "não
+ *   trabalhou/não bateu ponto ainda", não uma aproximação.
+ * - BASE_INSS/BASE_IRRF: lidos do holerite já calculado da folha, se existir
+ *   (`folha:holerites:get`). Se a folha ainda não foi calculada nenhuma vez,
+ *   não existe holerite — fallback 0 (não há base ainda, é o estado real).
+ * - BASE_FGTS: `folha_holerites` não persiste uma coluna própria de base de
+ *   FGTS (só `valor_fgts`, o valor já calculado). Como o cálculo de FGTS é
+ *   sempre `valor = base * 0.08` (sem faixas/teto), a base é recuperável de
+ *   forma exata a partir do valor persistido (`valor_fgts / 0.08`) — não é
+ *   uma aproximação, é a mesma conta invertida. Sem holerite, fallback 0.
+ */
+async function resolverContextoFormula(
+  funcionario: Funcionario,
+  folha: FolhaCompetencia,
+): Promise<Record<string, number>> {
+  const salario = funcionario.salario_base
+  const cargaHoraria = funcionario.carga_horaria ?? 220
+  const salarioHora = cargaHoraria > 0 ? salario / cargaHoraria : 0
+  const diasMes = calcularDiasMes(folha.competencia)
+  const diasUteis = contarDiasUteis(folha.competencia)
+
+  let horasTrabalhadas = 0
+  let horasExtras50 = 0
+  let horasExtras100 = 0
+  let horasFalta = 0
+  if (window.electronAPI) {
+    const [anoStr, mesStr] = folha.competencia.split('-')
+    const espelhoRes = await window.electronAPI.espelhoPonto(
+      folha.empresa_id, funcionario.id, Number(mesStr), Number(anoStr),
+    )
+    if (espelhoRes.success) {
+      horasTrabalhadas = espelhoRes.data.total_trabalhadas
+      horasExtras50 = espelhoRes.data.total_extras_50
+      horasExtras100 = espelhoRes.data.total_extras_100
+      horasFalta = espelhoRes.data.total_faltas
+    }
+  }
+
+  let baseInss = 0
+  let baseIrrf = 0
+  let baseFgts = 0
+  if (window.electronAPI) {
+    const holerite = await window.electronAPI.getHolerite(folha.id, funcionario.id)
+    if (holerite) {
+      baseInss = holerite.base_inss
+      baseIrrf = holerite.base_irrf
+      baseFgts = holerite.valor_fgts / 0.08
+    }
+  }
+
+  return {
+    SALARIO: salario,
+    CARGA_HORARIA: cargaHoraria,
+    SALARIO_HORA: salarioHora,
+    VALE_REFEICAO: funcionario.vale_refeicao ?? 0,
+    PLANO_SAUDE: funcionario.plano_saude ?? 0,
+    DIAS_MES: diasMes,
+    SALARIO_DIA: diasMes > 0 ? salario / diasMes : 0,
+    DIAS_UTEIS: diasUteis,
+    HORAS_TRABALHADAS: horasTrabalhadas,
+    HORAS_EXTRAS_50: horasExtras50,
+    HORAS_EXTRAS_100: horasExtras100,
+    HORAS_FALTA: horasFalta,
+    BASE_INSS: baseInss,
+    BASE_IRRF: baseIrrf,
+    BASE_FGTS: baseFgts,
+  }
 }
 
 interface LancamentoFormData {
@@ -16,12 +100,16 @@ interface LancamentoFormData {
 
 function LancamentoFormModal({
   rubricas,
+  funcionario,
+  folha,
   onSave,
   onClose,
   saving,
   error,
 }: {
   rubricas: Rubrica[]
+  funcionario: Funcionario | null
+  folha: FolhaCompetencia
   onSave: (d: LancamentoFormData) => void
   onClose: () => void
   saving: boolean
@@ -31,10 +119,16 @@ function LancamentoFormModal({
     rubrica_id: null, rubrica_codigo: '', rubrica_nome: '', rubrica_tipo: 'provento',
     referencia: '0', valor: '0',
   })
+  const [calculandoFormula, setCalculandoFormula] = useState(false)
+  const [formulaError, setFormulaError] = useState<string | null>(null)
+
+  const rubricaSelecionada = rubricas.find((r) => r.id === form.rubrica_id) ?? null
+  const podeCalcularFormula = rubricaSelecionada?.modo_valor === 'formula' && !!rubricaSelecionada.formula
 
   function handleRubrica(id: string) {
     const r = rubricas.find((x) => x.id === parseInt(id, 10))
     if (!r) return
+    setFormulaError(null)
     setForm((f) => ({
       ...f,
       rubrica_id: r.id,
@@ -42,6 +136,29 @@ function LancamentoFormModal({
       rubrica_nome: r.nome,
       rubrica_tipo: r.tipo as 'provento' | 'desconto' | 'informativo',
     }))
+  }
+
+  async function handleCalcularFormula() {
+    if (!rubricaSelecionada?.formula || !funcionario) return
+    setFormulaError(null)
+
+    const validacao = new FormulaValidator().validate(rubricaSelecionada.formula)
+    if (!validacao.valid) {
+      setFormulaError(`Fórmula inválida: ${validacao.errors.join('; ')}`)
+      return
+    }
+
+    setCalculandoFormula(true)
+    try {
+      const ctx = await resolverContextoFormula(funcionario, folha)
+      const resultado = new FormulaEvaluator().evaluate(rubricaSelecionada.formula, ctx)
+      setForm((f) => ({ ...f, valor: resultado.toFixed(2) }))
+    } catch (err) {
+      const msg = err instanceof FormulaEvaluationError ? err.message : String(err)
+      setFormulaError(`Não foi possível calcular: ${msg}`)
+    } finally {
+      setCalculandoFormula(false)
+    }
   }
 
   return (
@@ -78,10 +195,34 @@ function LancamentoFormModal({
             <label style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>
               Valor (R$)
             </label>
-            <input type="number" value={form.valor} onChange={(e) => setForm((f) => ({ ...f, valor: e.target.value }))}
-              style={{ width: '100%', height: 24, fontSize: 11, border: '1px solid var(--color-border-main)', borderRadius: 0, padding: '0 4px', boxSizing: 'border-box' }} />
+            <div style={{ display: 'flex', gap: 4 }}>
+              <input type="number" value={form.valor} onChange={(e) => setForm((f) => ({ ...f, valor: e.target.value }))}
+                style={{ width: '100%', height: 24, fontSize: 11, border: '1px solid var(--color-border-main)', borderRadius: 0, padding: '0 4px', boxSizing: 'border-box' }} />
+              {podeCalcularFormula && (
+                <button
+                  type="button"
+                  onClick={handleCalcularFormula}
+                  disabled={calculandoFormula || !funcionario}
+                  title={`Calcular a partir da fórmula: ${rubricaSelecionada?.formula}`}
+                  style={{
+                    width: 24, height: 24, flexShrink: 0, fontSize: 12, fontWeight: 700,
+                    border: '1px solid var(--color-brand)', background: 'var(--color-bg-white)',
+                    color: 'var(--color-brand)', cursor: calculandoFormula ? 'wait' : 'pointer', borderRadius: 0,
+                  }}
+                >
+                  {calculandoFormula ? '…' : 'ƒ'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
+
+        {podeCalcularFormula && (
+          <div style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
+            Fórmula da rubrica: <code>{rubricaSelecionada!.formula}</code>
+          </div>
+        )}
+        {formulaError && <div style={{ fontSize: 11, color: '#c0392b' }}>{formulaError}</div>}
 
         {error && <div style={{ fontSize: 11, color: '#c0392b' }}>{error}</div>}
 
@@ -239,6 +380,8 @@ export default function LancamentosEditor({ folha, funcionarios, rubricas, onFol
       {showForm && (
         <LancamentoFormModal
           rubricas={rubricas}
+          funcionario={funcionarios.find((f) => f.id === selectedFuncId) ?? null}
+          folha={folha}
           onSave={handleAdd}
           onClose={() => setShowForm(false)}
           saving={saving}

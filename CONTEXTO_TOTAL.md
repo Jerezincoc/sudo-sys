@@ -53,8 +53,8 @@ Antes de sugerir ou alterar qualquer coisa no projeto, todo agente deve:
 - **Stack principal:** Electron, React, TypeScript, Vite, SQLite e pnpm monorepo.
 - **Estado atual:** Protótipo funcional com baixa confiabilidade operacional e fiscal.
 - **Fase atual:** Estabilização do build e da distribuição Electron.
-- **Última ação registrada:** `ACAO-0018` — Claude implementou de verdade o motor de fórmulas (item `[7a]`): `FormulaTokenizer`, `FormulaAst`, `FormulaParser`, `FormulaEvaluator` e `FormulaValidator` em `packages/domain/src/formula/`, para a gramática já documentada em `VariablesDictionaryPage.tsx` (operadores `+ - * / ( )`, 15 variáveis nomeadas via `ctx`). **Não conectado a nenhum handler** (`folhaHandlers.ts`, `LancamentosEditor.tsx`, `RubricaForm.tsx`) — integração é decisão de produto separada, deliberadamente fora do escopo. 25 testes novos, 36/36 no total (`pnpm test`). Ver `HISTORICO_AGENTES.md` para o detalhamento completo (inclui também `ACAO-0009` a `ACAO-0017`, ações anteriores).
-- **Próxima ação recomendada:** aguardando decisão do usuário sobre qual recomendação executar em seguida — candidatas ativas: `REC-0009`, `REC-0008`, `REC-0010`, `REC-0011`, `REC-0012`, `REC-0013`, `REC-0014`, `REC-0015`, o restante de `REC-0003` (Rescisão/Férias/Ponto), e a decisão de integração do motor de fórmulas (`[7a]`) (ver seção 7).
+- **Última ação registrada:** `ACAO-0019` — Claude conectou o motor de fórmulas (`ACAO-0018`) ao `LancamentosEditor.tsx`: botão manual "ƒ" (visível só quando a rubrica é `modo_valor='formula'`) que resolve o contexto real (funcionário, competência, ponto, holerite já calculado), valida e preenche o campo Valor sob demanda — sem travar edição manual. `[7a]` **agora está Executado** (motor + integração). Validado via UI real (Electron + CDP): rubrica `SALARIO * 0.05` para funcionário com salário R$3.000 preencheu corretamente R$150,00; fórmula inválida mostrou erro claro sem crash. Precisou migrar `packages/domain` de CommonJS para ESM (mesmo padrão de `@sudo-sys/shared`) — CJS nunca teve consumidor real e não bundlava corretamente no Vite/Rollup da UI. Ver `HISTORICO_AGENTES.md` para o detalhamento completo (inclui também `ACAO-0009` a `ACAO-0018`, ações anteriores).
+- **Próxima ação recomendada:** aguardando decisão do usuário sobre qual recomendação executar em seguida — candidatas ativas: `REC-0009`, `REC-0008`, `REC-0010`, `REC-0011`, `REC-0012`, `REC-0013`, `REC-0014`, `REC-0015`, e o restante de `REC-0003` (Rescisão/Férias/Ponto) (ver seção 7).
 - **Uso em produção:** Não recomendado antes das correções críticas e dos testes de cálculo.
 
 ## 2. Objetivo do projeto
@@ -68,7 +68,7 @@ O escopo fiscal definitivo, incluindo eSocial, obrigações acessórias e uso mu
 - **`packages/ui`:** interface React/Vite, páginas, formulários, componentes, rotas, estado Zustand e cliente IPC. É uma das áreas mais completas do projeto.
 - **`app-host`:** processo principal e preload do Electron, registro dos handlers IPC, inicialização do banco SQLite, autenticação, configuração inicial e geração de PDFs. É o backend efetivo da aplicação.
 - **`packages/shared`:** tipos e contratos compartilhados entre UI e host. Parte dos arquivos planejados está vazia.
-- **`packages/domain`:** entidades, enums, value objects, serviços e motor de fórmulas da arquitetura de domínio pretendida. Essa camada não governa o runtime atual e a maior parte contém implementações muito pequenas ou incompletas. Exceção: o motor de fórmulas (`formula/`) foi implementado de verdade na `ACAO-0018` (tokenizer, parser, AST, evaluator, validator, com 25 testes) — mas continua **sem nenhum consumidor em runtime**; nenhum handler do `app-host` ou tela da UI o chama ainda.
+- **`packages/domain`:** entidades, enums, value objects, serviços e motor de fórmulas da arquitetura de domínio pretendida. A maior parte dessa camada não governa o runtime atual e contém implementações muito pequenas ou incompletas. Exceção: o motor de fórmulas (`formula/`) foi implementado na `ACAO-0018` e conectado à UI na `ACAO-0019` (botão "ƒ" em `LancamentosEditor.tsx`) — é a primeira e única parte de `packages/domain` com um consumidor real em runtime. Publicado como **ESM** (não CommonJS como `application`/`infrastructure`, per `DEC-0004`) desde a `ACAO-0019`, para ser importável pelo bundle Vite da UI.
 - **`packages/application`:** portas, DTOs e casos de uso da Clean Architecture pretendida. A maioria dos casos de uso está vazia e o runtime atual não usa essa camada.
 - **`packages/infrastructure`:** repositórios SQLite, hash de senha e serviço de cálculo de folha. Parte desta camada é usada diretamente pelo `app-host`; vários arquivos planejados continuam vazios.
 - **`config`:** arquivos de configuração padrão. Os arquivos identificados no diagnóstico estão vazios.
@@ -168,12 +168,22 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 
 ### DEC-0004
 
-- **Status:** Ativa
+- **Status:** Parcialmente superada (ver `DEC-0005`)
 - **Decisão:** Publicar `@sudo-sys/shared` como ESM e `@sudo-sys/domain`, `@sudo-sys/application` e `@sudo-sys/infrastructure` como CommonJS na configuração atual.
 - **Motivo:** O renderer Vite consome exports nomeados de `shared`, enquanto o processo principal Electron emitido atualmente usa `require()`.
 - **Impacto:** Os consumidores usam a API pública de cada pacote em `dist`; qualquer mudança futura de formato deve validar UI, host, desenvolvimento e pacote Electron em conjunto.
 - **Autor/origem:** Codex
 - **Data:** 2026-09-11
+
+### DEC-0005
+
+- **Status:** Ativa
+- **Decisão:** `@sudo-sys/domain` passa a ser publicado como **ESM** (não mais CommonJS), revisando a parte de `DEC-0004` específica a esse pacote. `application` e `infrastructure` continuam CommonJS, sem mudança.
+- **Motivo:** A `ACAO-0019` precisou importar o motor de fórmulas (`FormulaEvaluator`/`FormulaValidator`/`contarDiasUteis`) direto no `packages/ui` (bundle Vite/Rollup). O formato CommonJS original de `domain` não bundlava corretamente nesse contexto (Rollup não resolvia os exports nomeados através da cadeia de barrels, mesmo com o shape de módulo comprovadamente correto em runtime). Como `@sudo-sys/domain` nunca teve nenhum consumidor real em CommonJS (`app-host` não o importa; `application` só usa `import type`, que independe do formato de saída), a razão original de `DEC-0004` para esse pacote específico não se aplicava na prática.
+- **Impacto:** `packages/domain` segue o mesmo padrão de `@sudo-sys/shared` (`"type": "module"`, condição `"import"` no `package.json`, `tsconfig.json` herdando `ESNext`/`bundler` do `tsconfig.base.json`). Se `app-host` algum dia precisar importar `@sudo-sys/domain` diretamente (hoje não importa), isso vai exigir validação — `app-host` compila para CommonJS.
+- **Autor/origem:** Claude
+- **Data:** 2026-09-12
+- **Ação relacionada:** `ACAO-0019`
 
 ## 7. Recomendações ativas para próximos agentes
 
@@ -374,7 +384,8 @@ Nenhum agente deve corrigir erro de execução antes de verificar se o ambiente 
 7. `REC-0013` — confirmar se o domínio "Chamados" ainda é um recurso desejado.
 8. `REC-0014` — decidir o tratamento de VT/VR no motor de Relatórios Personalizados. **Não executar sem decisão explícita do usuário.**
 9. `REC-0015` — lock de concorrência para `folha:calcular`. Só necessário se/quando o sistema deixar de ser single-user/single-instância.
-10. `[7a]` (motor de fórmulas) — **motor implementado na `ACAO-0018`, integração pendente.** Decidir com o Jeremias onde/como conectar `FormulaEvaluator` ao fluxo real (ex.: botão de auto-preencher em `LancamentosEditor.tsx`, ou lançamento automático em `folha:calcular`) antes de qualquer código novo nessa área. Sem essa decisão, o motor continua sem nenhum efeito observável no sistema.
+
+`[7a]` (motor de fórmulas) foi concluído na `ACAO-0019` — motor implementado (`ACAO-0018`) e conectado à UI (botão "ƒ" em `LancamentosEditor.tsx`), validado via UI real. Não é mais um item pendente.
 
 ## 11. Referência do histórico
 
