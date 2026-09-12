@@ -53,8 +53,8 @@ Antes de sugerir ou alterar qualquer coisa no projeto, todo agente deve:
 - **Stack principal:** Electron, React, TypeScript, Vite, SQLite e pnpm monorepo.
 - **Estado atual:** Protótipo funcional com baixa confiabilidade operacional e fiscal.
 - **Fase atual:** Estabilização do build e da distribuição Electron.
-- **Última ação registrada:** `ACAO-0017` — Claude corrigiu o escopo da migration `056` (introduzida na `ACAO-0016`): o índice de unicidade sobre `folha_lancamentos` passou de `UNIQUE` de tabela (bloqueava também lançamentos manuais duplicados, um caso de uso legítimo) para um índice único **parcial**, restrito a `origem = 'automatico'`. A migration ainda não tinha rodado em nenhum banco real, então foi editada diretamente (não virou `057`). Ver `HISTORICO_AGENTES.md` para o detalhamento completo (inclui também `ACAO-0009` a `ACAO-0016`, ações anteriores).
-- **Próxima ação recomendada:** aguardando decisão do usuário sobre qual recomendação executar em seguida — candidatas ativas: `REC-0009`, `REC-0008`, `REC-0010`, `REC-0011`, `REC-0012`, `REC-0013`, `REC-0014`, `REC-0015`, e o restante de `REC-0003` (Rescisão/Férias/Ponto) (ver seção 7).
+- **Última ação registrada:** `ACAO-0018` — Claude implementou de verdade o motor de fórmulas (item `[7a]`): `FormulaTokenizer`, `FormulaAst`, `FormulaParser`, `FormulaEvaluator` e `FormulaValidator` em `packages/domain/src/formula/`, para a gramática já documentada em `VariablesDictionaryPage.tsx` (operadores `+ - * / ( )`, 15 variáveis nomeadas via `ctx`). **Não conectado a nenhum handler** (`folhaHandlers.ts`, `LancamentosEditor.tsx`, `RubricaForm.tsx`) — integração é decisão de produto separada, deliberadamente fora do escopo. 25 testes novos, 36/36 no total (`pnpm test`). Ver `HISTORICO_AGENTES.md` para o detalhamento completo (inclui também `ACAO-0009` a `ACAO-0017`, ações anteriores).
+- **Próxima ação recomendada:** aguardando decisão do usuário sobre qual recomendação executar em seguida — candidatas ativas: `REC-0009`, `REC-0008`, `REC-0010`, `REC-0011`, `REC-0012`, `REC-0013`, `REC-0014`, `REC-0015`, o restante de `REC-0003` (Rescisão/Férias/Ponto), e a decisão de integração do motor de fórmulas (`[7a]`) (ver seção 7).
 - **Uso em produção:** Não recomendado antes das correções críticas e dos testes de cálculo.
 
 ## 2. Objetivo do projeto
@@ -68,7 +68,7 @@ O escopo fiscal definitivo, incluindo eSocial, obrigações acessórias e uso mu
 - **`packages/ui`:** interface React/Vite, páginas, formulários, componentes, rotas, estado Zustand e cliente IPC. É uma das áreas mais completas do projeto.
 - **`app-host`:** processo principal e preload do Electron, registro dos handlers IPC, inicialização do banco SQLite, autenticação, configuração inicial e geração de PDFs. É o backend efetivo da aplicação.
 - **`packages/shared`:** tipos e contratos compartilhados entre UI e host. Parte dos arquivos planejados está vazia.
-- **`packages/domain`:** entidades, enums, value objects, serviços e motor de fórmulas da arquitetura de domínio pretendida. Essa camada não governa o runtime atual e contém implementações muito pequenas ou incompletas.
+- **`packages/domain`:** entidades, enums, value objects, serviços e motor de fórmulas da arquitetura de domínio pretendida. Essa camada não governa o runtime atual e a maior parte contém implementações muito pequenas ou incompletas. Exceção: o motor de fórmulas (`formula/`) foi implementado de verdade na `ACAO-0018` (tokenizer, parser, AST, evaluator, validator, com 25 testes) — mas continua **sem nenhum consumidor em runtime**; nenhum handler do `app-host` ou tela da UI o chama ainda.
 - **`packages/application`:** portas, DTOs e casos de uso da Clean Architecture pretendida. A maioria dos casos de uso está vazia e o runtime atual não usa essa camada.
 - **`packages/infrastructure`:** repositórios SQLite, hash de senha e serviço de cálculo de folha. Parte desta camada é usada diretamente pelo `app-host`; vários arquivos planejados continuam vazios.
 - **`config`:** arquivos de configuração padrão. Os arquivos identificados no diagnóstico estão vazios.
@@ -117,7 +117,7 @@ O processo principal executa operações síncronas de SQLite, hash de senha, fi
 
 ### Testes
 
-Desde a `ACAO-0015` existe um framework de testes (`vitest`) e uma suíte funcional (`pnpm test`), mas cobrindo só o motor de cálculo IRRF/INSS/FGTS (`packages/infrastructure/src/services/CalculoFolha.test.ts`, 7 testes). Rescisão, férias, ponto e os demais cálculos trabalhistas continuam sem nenhum teste automatizado (`REC-0003` parcialmente executada).
+Desde a `ACAO-0015` existe um framework de testes (`vitest`) e uma suíte funcional (`pnpm test`, raiz), hoje cobrindo: motor de cálculo IRRF/INSS/FGTS (`packages/infrastructure/src/services/CalculoFolha.test.ts`, 7 testes), transação/idempotência do recálculo de folha (`packages/infrastructure/src/repositories/SqliteFolhaRepository.test.ts`, 4 testes) e o motor de fórmulas (`packages/domain/src/formula/Formula.test.ts`, 25 testes) — **36 testes no total**. Rescisão, férias, ponto e os demais cálculos trabalhistas continuam sem nenhum teste automatizado (`REC-0003` parcialmente executada).
 
 ### Motor de cálculo (IRRF) e schema de funcionários
 
@@ -341,7 +341,7 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Comando de typecheck:** `pnpm typecheck`; passou na `ACAO-0006` e compila os pacotes internos antes da verificação.
 - **Comando de lint:** `pnpm lint`. Atualmente não executa lint real.
 - **Comando de build:** `pnpm build`; compila `shared`, `domain`, `application` e `infrastructure` antes da UI e do `app-host`.
-- **Comando de teste:** `pnpm test` (raiz) ou `pnpm --filter @sudo-sys/infrastructure test` — roda a suíte `vitest` do motor de cálculo IRRF/INSS/FGTS (`ACAO-0015`). Cobertura ainda restrita a esse motor; outras áreas (Rescisão, Férias, Ponto) continuam sem teste automatizado.
+- **Comando de teste:** `pnpm test` (raiz) roda `packages/domain` e `packages/infrastructure` em sequência (36 testes no total); `pnpm --filter @sudo-sys/domain test` ou `pnpm --filter @sudo-sys/infrastructure test` isoladamente. Cobertura restrita a IRRF/INSS/FGTS, transação de folha e motor de fórmulas; outras áreas (Rescisão, Férias, Ponto) continuam sem teste automatizado.
 - **Desenvolvimento limpo:** Validado. `pnpm dev` gera preload e reconstrói `better-sqlite3` automaticamente antes de iniciar Electron.
 - **Isolamento do banco de desenvolvimento:** Confirmado em `<raiz>/.dev-user-data`, via `--user-data-dir` explícito; Linux e macOS continuam **A confirmar**.
 
@@ -374,6 +374,7 @@ Nenhum agente deve corrigir erro de execução antes de verificar se o ambiente 
 7. `REC-0013` — confirmar se o domínio "Chamados" ainda é um recurso desejado.
 8. `REC-0014` — decidir o tratamento de VT/VR no motor de Relatórios Personalizados. **Não executar sem decisão explícita do usuário.**
 9. `REC-0015` — lock de concorrência para `folha:calcular`. Só necessário se/quando o sistema deixar de ser single-user/single-instância.
+10. `[7a]` (motor de fórmulas) — **motor implementado na `ACAO-0018`, integração pendente.** Decidir com o Jeremias onde/como conectar `FormulaEvaluator` ao fluxo real (ex.: botão de auto-preencher em `LancamentosEditor.tsx`, ou lançamento automático em `folha:calcular`) antes de qualquer código novo nessa área. Sem essa decisão, o motor continua sem nenhum efeito observável no sistema.
 
 ## 11. Referência do histórico
 

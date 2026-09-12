@@ -1,1 +1,6 @@
+export * from './FormulaAst'
+export * from './FormulaTokenizer'
+export * from './FormulaParser'
 export * from './FormulaEvaluator'
+export * from './FormulaValidator'
+export * from './DiasUteis'

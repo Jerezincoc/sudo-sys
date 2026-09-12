@@ -1020,3 +1020,51 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - Nenhuma nova recomendação.
 - **Próxima ação sugerida:**
   - Retomar a priorização já listada em `CONTEXTO_TOTAL.md`, conforme decisão do usuário.
+
+### ACAO-0018 — 2026-09-12 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Implementação (motor isolado, sem integração)
+- **Status:** Concluído — **motor implementado, integração pendente (decisão de produto)**
+- **Resumo:**
+  - Item [7a]: implementados de verdade os 5 stubs de `packages/domain/src/formula/` (`FormulaTokenizer`, `FormulaAst`, `FormulaParser`, `FormulaEvaluator`, `FormulaValidator`), para a gramática já documentada em `VariablesDictionaryPage.tsx` (operadores `+ - * / ( )`, 15 variáveis nomeadas). **Não** foi conectado a `folhaHandlers.ts`, `LancamentosEditor.tsx` ou `RubricaForm.tsx` — por instrução explícita do usuário, a integração é uma decisão de produto separada. O motor continua sem nenhum consumidor em runtime, exatamente como diagnosticado na conversa anterior a esta ação.
+- **O que foi implementado:**
+  - `FormulaAst.ts`: tipo `FormulaNode` (união discriminada: `numero`, `variavel`, `unario`, `binario`).
+  - `FormulaTokenizer.ts`: tokeniza números (com ponto decimal), identificadores (`[A-Za-z_][A-Za-z0-9_]*`), operadores `+ - * /` e parênteses; lança `FormulaSyntaxError` em caractere desconhecido ou número malformado (ex.: `1.2.3`).
+  - `FormulaParser.ts`: parser recursivo descendente com a gramática padrão de precedência (`expressao := termo (('+'|'-') termo)*`, `termo := fator (('*'|'/') fator)*`, `fator := '-'? primario`, `primario := NUMERO | IDENTIFICADOR | '(' expressao ')'`). Suporta unário negativo (`-SALARIO`). Lança `FormulaSyntaxError` para: fórmula vazia, parêntese não fechado, operando faltando, operador duplicado (ex.: `"5 + + 3"`, pois `+` não é aceito como início de `fator`), token sobrando após uma expressão válida (ex.: `"5 5"`).
+  - `FormulaEvaluator.ts`: `evaluate(formula, ctx)` — faz parse e avalia a AST contra o contexto recebido. **Não busca dado nenhum sozinho** (conforme pedido): toda variável vem de `ctx: Record<string, number>`.
+  - `FormulaValidator.ts`: `validate(formula)` — faz parse (capturando erro de sintaxe sem lançar, retornando `{valid: false, errors: [...]}`) e depois verifica se toda variável referenciada está entre as 15 documentadas (`VARIAVEIS_CONHECIDAS`, exportada). **Mudança de assinatura em relação ao stub original** (`validate(_ast: unknown)` → `validate(formula: string)`): decidido porque o stub nunca teve consumidor (dead code) e, para detectar erro de sintaxe como pedido, o validator precisa ser dono do parse — se só recebesse a AST já pronta, uma fórmula sintaticamente inválida nunca chegaria a ele.
+  - `packages/domain/src/formula/DiasUteis.ts` (novo arquivo, não um stub pré-existente): `contarDiasUteis(competencia: string): number` — conta dias de segunda a sexta de uma competência `"AAAA-MM"` (mesma convenção de string usada em `folha_competencias.competencia`/`diasDoMes()` de `CalculoFolha.ts`). Implementado porque, conforme já levantado no diagnóstico anterior, não existia nenhuma função reutilizável de "contar dias úteis do mês" em lugar nenhum do projeto — só detecção de fim de semana embutida no renderer de PDF do espelho de ponto. **Não considera feriados** (nenhuma fonte de feriados existe no projeto hoje). Não foi conectada a `DIAS_UTEIS` como variável de contexto — isso também é integração, fora do escopo.
+  - `packages/domain/src/formula/index.ts`: passou a exportar os 5 arquivos acima (antes só exportava `FormulaEvaluator`).
+- **Decisões de comportamento tomadas e documentadas em código (pedido explícito do usuário para reportar):**
+  - **Variável ausente do `ctx` em tempo de avaliação:** `FormulaEvaluator` lança `FormulaEvaluationError` (`"Variável desconhecida no contexto: X"`), em vez de tratar como `0` silenciosamente. Motivo: um valor de rubrica errado por variável esquecida no contexto é pior do que a rubrica falhar de forma visível.
+  - **Divisão por zero:** `FormulaEvaluator` lança `FormulaEvaluationError` (`"Divisão por zero."`), em vez de propagar `Infinity`/`NaN`. Motivo: numa folha de pagamento, um `Infinity`/`NaN` gravado silenciosamente como valor de lançamento é um risco financeiro maior do que interromper o cálculo com um erro claro no momento em que ele acontece.
+- **Validações executadas:**
+  - Criada `packages/domain/src/formula/Formula.test.ts` (25 testes, `vitest`, mesmo padrão do `REC-0003`): os 3 exemplos reais documentados na UI (`SALARIO * 0.05`, `SALARIO_HORA * 1.5 * HORAS_EXTRAS_50`, `BASE_INSS * 0.08`); precedência de operador (`"2 + 3 * 4"` → `14`, não `20`); parênteses simples e aninhados; unário negativo; divisão combinada com subtração; divisão por zero direta e via subexpressão (ambas lançam); variável ausente do contexto (lança); 6 casos de erro de sintaxe no parser (parêntese não fechado, operador duplicado, operando faltando, fórmula vazia/só espaço, caractere desconhecido, token sobrando); validator aceitando os 3 exemplos e as 15 variáveis individualmente, rejeitando variável desconhecida (com nome exato no erro), rejeitando os 2 erros de sintaxe sem tentar avaliar, e reportando múltiplos erros de uma vez (`"FOO + BAR"` → 2 erros); `contarDiasUteis` para janeiro/2026 (22 dias úteis) e fevereiro/2026 (20 dias úteis) — valores conferidos por script Node antes de escrever a asserção, não chutados.
+  - `pnpm --filter @sudo-sys/domain test`: **25/25 passaram** na primeira execução, sem precisar ajustar nenhuma implementação.
+  - Instalado `vitest@^3.2.4` em `packages/domain` (mesma versão do `REC-0003`, compatível com `vite@5.x` já fixado pela UI, sem aviso de peer dependency) e adicionado script `"test"`; `packages/domain/tsconfig.json` ganhou `exclude` do arquivo de teste (mesmo ajuste já feito em `infrastructure` no `REC-0003`) — confirmado rebuild limpo sem `*.test.*` em `dist/`.
+  - `package.json` (raiz): `"test"` passou a rodar `domain` e depois `infrastructure` (`pnpm --filter @sudo-sys/domain test && pnpm --filter @sudo-sys/infrastructure test`) — `pnpm test`: **36/36 testes passaram** (25 novos + 11 já existentes).
+  - `pnpm typecheck` (todos os 7 workspaces): passou limpo.
+- **Por que foi feito:**
+  - O usuário pediu explicitamente para construir só o motor, deixando a integração (onde e como conectar ao cálculo de folha) para decisão de produto posterior — a gramática e as variáveis já estavam de fato documentadas em código de UI (`VariablesDictionaryPage.tsx`), então não havia ambiguidade de design a resolver para essa parte.
+- **Arquivos envolvidos:**
+  - `packages/domain/src/formula/FormulaAst.ts`
+  - `packages/domain/src/formula/FormulaTokenizer.ts`
+  - `packages/domain/src/formula/FormulaParser.ts`
+  - `packages/domain/src/formula/FormulaEvaluator.ts`
+  - `packages/domain/src/formula/FormulaValidator.ts`
+  - `packages/domain/src/formula/DiasUteis.ts` (novo)
+  - `packages/domain/src/formula/index.ts`
+  - `packages/domain/src/formula/Formula.test.ts` (novo)
+  - `packages/domain/package.json`
+  - `packages/domain/tsconfig.json`
+  - `package.json`
+- **Riscos ou observações:**
+  - **O motor continua sem nenhum consumidor em runtime.** Nenhuma rubrica em produção usa `modo_valor = 'formula'` hoje (confirmado no diagnóstico anterior) e nada em `folhaHandlers.ts`/`LancamentosEditor.tsx`/`RubricaForm.tsx` foi tocado — esta ação não muda o comportamento observável do sistema para nenhum usuário. `[7a]` **não deve ser marcado como totalmente concluído** enquanto a integração não for decidida e feita.
+  - `VariableDictionary.ts` (stub irmão em `packages/domain/src/formula/`) **não foi tocado** — fora do escopo explícito desta tarefa (só os 5 arquivos listados + a utilidade de dias úteis).
+  - A lista `VARIAVEIS_CONHECIDAS` em `FormulaValidator.ts` duplica manualmente os 15 nomes já existentes em `packages/ui/src/pages/rubricas/VariablesDictionaryPage.tsx` (`FORMULA_VARIAVEIS`) — não há hoje um pacote compartilhado entre UI e domínio para essa lista viver uma única vez. Se um dos dois lugares for atualizado no futuro (nova variável), o outro precisa ser atualizado manualmente até essa duplicação ser resolvida — provavelmente parte natural do trabalho de integração.
+  - `contarDiasUteis` não considera feriados nem tem teste de virada de ano/ano bissexto além dos dois meses testados — suficiente para provar a lógica de dias úteis Mon-Sex, mas quem for integrar `DIAS_UTEIS` de verdade deve avaliar se feriados importam para o caso de uso real antes de usar em produção.
+- **Recomendações deixadas para próximos agentes:**
+  - Nenhuma nova `REC` formal — a decisão de integração (onde plugar o motor: botão "calcular a partir da fórmula" em `LancamentosEditor.tsx`? Automático em `folha:calcular` como um novo tipo de lançamento?) foi explicitamente reservada para o usuário decidir com o Jeremias, fora do escopo de uma recomendação técnica unilateral.
+- **Próxima ação sugerida:**
+  - Aguardar decisão do usuário/Jeremias sobre o desenho da integração do motor de fórmulas ao fluxo de cálculo de folha, antes de qualquer código novo nessa área.
