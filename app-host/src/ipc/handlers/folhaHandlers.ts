@@ -2,7 +2,7 @@ import { ipcMain, app } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import { getDb } from '../../db/database'
-import { SqliteFolhaRepository } from '@sudo-sys/infrastructure'
+import { SqliteFolhaRepository, runInTransaction } from '@sudo-sys/infrastructure'
 import { calcularINSS, calcularIRRF, calcularFGTS } from '@sudo-sys/infrastructure'
 import { HoleriteRenderer } from '../../pdf/HoleriteRenderer'
 import type { CreateFolhaPayload, CreateLancamentoPayload } from '@sudo-sys/shared'
@@ -106,83 +106,94 @@ export function registerFolhaHandlers(): void {
       const RUBRICA_IRRF_COD = '0101'
       const RUBRICA_FGTS_COD = '0202'
 
-      for (const { id: funcionarioId, numero_dependentes_irrf: dependentes, regime_irrf: regimeIrrf } of funcionarios) {
-        const todosLancamentos = repo.listLancamentos(folhaId, funcionarioId)
-        // Lançamentos automáticos de um cálculo anterior não entram na base —
-        // senão INSS/IRRF já descontados seriam contados de novo a cada recálculo.
-        const lancamentos = todosLancamentos.filter((l) => l.origem !== 'automatico')
-        if (lancamentos.length === 0) continue
+      // Todo o recálculo (todos os funcionários + totais da folha + status) roda como
+      // uma única transação — mesmo padrão de granularidade usado em 023_cbo_completo.ts
+      // (uma transação por operação, não uma por linha/iteração). Cobre os dois níveis de
+      // inconsistência possíveis num crash no meio do processo: dentro de um funcionário
+      // (holerite já com totais novos mas lançamentos ainda com os antigos) e entre
+      // funcionários (alguns já recalculados, outros não, folha nunca marcada como
+      // 'processada'). Um rollback parcial (só por funcionário) deixaria o segundo caso
+      // sem proteção; não há ganho em não cobrir a folha inteira de uma vez.
+      const folhaAtualizada = runInTransaction(db, () => {
+        for (const { id: funcionarioId, numero_dependentes_irrf: dependentes, regime_irrf: regimeIrrf } of funcionarios) {
+          const todosLancamentos = repo.listLancamentos(folhaId, funcionarioId)
+          // Lançamentos automáticos de um cálculo anterior não entram na base —
+          // senão INSS/IRRF já descontados seriam contados de novo a cada recálculo.
+          const lancamentos = todosLancamentos.filter((l) => l.origem !== 'automatico')
+          if (lancamentos.length === 0) continue
 
-        let proventos = 0
-        let descontosManuais = 0
-        let baseInss = 0
-        let baseIrrf = 0
-        let baseFgts = 0
-        for (const l of lancamentos) {
-          if (l.rubrica_tipo === 'provento') {
-            proventos += l.valor
-            const flags = rubricaMap.get(l.rubrica_codigo)
-            if (!flags || flags.incide_inss) baseInss += l.valor
-            if (!flags || flags.incide_irrf) baseIrrf += l.valor
-            if (!flags || flags.incide_fgts) baseFgts += l.valor
-          } else if (l.rubrica_tipo === 'desconto') {
-            descontosManuais += l.valor
+          let proventos = 0
+          let descontosManuais = 0
+          let baseInss = 0
+          let baseIrrf = 0
+          let baseFgts = 0
+          for (const l of lancamentos) {
+            if (l.rubrica_tipo === 'provento') {
+              proventos += l.valor
+              const flags = rubricaMap.get(l.rubrica_codigo)
+              if (!flags || flags.incide_inss) baseInss += l.valor
+              if (!flags || flags.incide_irrf) baseIrrf += l.valor
+              if (!flags || flags.incide_fgts) baseFgts += l.valor
+            } else if (l.rubrica_tipo === 'desconto') {
+              descontosManuais += l.valor
+            }
+          }
+
+          const inss  = calcularINSS(baseInss, folha.competencia)
+          const irrf  = calcularIRRF(baseIrrf - inss.valor, dependentes, regimeIrrf, folha.competencia, baseIrrf)
+          const fgts  = calcularFGTS(baseFgts)
+          const totalDescontos = descontosManuais + inss.valor + irrf.valor
+          const liquido = Math.max(0, proventos - totalDescontos)
+
+          repo.upsertHolerite({
+            folha_id:        folhaId,
+            funcionario_id:  funcionarioId,
+            empresa_id:      folha.empresa_id,
+            total_proventos: proventos,
+            total_descontos: totalDescontos,
+            valor_liquido:   liquido,
+            base_inss:       baseInss,
+            valor_inss:      inss.valor,
+            base_irrf:       irrf.base,
+            valor_irrf:      irrf.valor,
+            valor_fgts:      fgts,
+            status:          'calculado',
+          })
+
+          // Sobrescreve (não duplica) os lançamentos automáticos desta folha+funcionário.
+          repo.deleteLancamentosAutomaticos(folhaId, funcionarioId)
+
+          if (inss.valor > 0) {
+            const rInss = rubricaMap.get(RUBRICA_INSS_COD)
+            repo.addLancamento({
+              folha_id: folhaId, funcionario_id: funcionarioId, empresa_id: folha.empresa_id,
+              rubrica_id: rInss?.id ?? null, rubrica_codigo: RUBRICA_INSS_COD, rubrica_nome: 'INSS',
+              rubrica_tipo: 'desconto', referencia: 0, valor: inss.valor, origem: 'automatico',
+            })
+          }
+          if (irrf.valor > 0) {
+            const rIrrf = rubricaMap.get(RUBRICA_IRRF_COD)
+            repo.addLancamento({
+              folha_id: folhaId, funcionario_id: funcionarioId, empresa_id: folha.empresa_id,
+              rubrica_id: rIrrf?.id ?? null, rubrica_codigo: RUBRICA_IRRF_COD, rubrica_nome: 'IRRF',
+              rubrica_tipo: 'desconto', referencia: 0, valor: irrf.valor, origem: 'automatico',
+            })
+          }
+          if (fgts > 0) {
+            // FGTS não é desconto do funcionário (não entra no líquido) — entra como
+            // linha informativa separada, mantendo a mesma separação do layout do holerite.
+            repo.addLancamento({
+              folha_id: folhaId, funcionario_id: funcionarioId, empresa_id: folha.empresa_id,
+              rubrica_id: null, rubrica_codigo: RUBRICA_FGTS_COD, rubrica_nome: 'FGTS Mês',
+              rubrica_tipo: 'informativo', referencia: 0, valor: fgts, origem: 'automatico',
+            })
           }
         }
 
-        const inss  = calcularINSS(baseInss, folha.competencia)
-        const irrf  = calcularIRRF(baseIrrf - inss.valor, dependentes, regimeIrrf, folha.competencia, baseIrrf)
-        const fgts  = calcularFGTS(baseFgts)
-        const totalDescontos = descontosManuais + inss.valor + irrf.valor
-        const liquido = Math.max(0, proventos - totalDescontos)
-
-        repo.upsertHolerite({
-          folha_id:        folhaId,
-          funcionario_id:  funcionarioId,
-          empresa_id:      folha.empresa_id,
-          total_proventos: proventos,
-          total_descontos: totalDescontos,
-          valor_liquido:   liquido,
-          base_inss:       baseInss,
-          valor_inss:      inss.valor,
-          base_irrf:       irrf.base,
-          valor_irrf:      irrf.valor,
-          valor_fgts:      fgts,
-          status:          'calculado',
-        })
-
-        // Sobrescreve (não duplica) os lançamentos automáticos desta folha+funcionário.
-        repo.deleteLancamentosAutomaticos(folhaId, funcionarioId)
-
-        if (inss.valor > 0) {
-          const rInss = rubricaMap.get(RUBRICA_INSS_COD)
-          repo.addLancamento({
-            folha_id: folhaId, funcionario_id: funcionarioId, empresa_id: folha.empresa_id,
-            rubrica_id: rInss?.id ?? null, rubrica_codigo: RUBRICA_INSS_COD, rubrica_nome: 'INSS',
-            rubrica_tipo: 'desconto', referencia: 0, valor: inss.valor, origem: 'automatico',
-          })
-        }
-        if (irrf.valor > 0) {
-          const rIrrf = rubricaMap.get(RUBRICA_IRRF_COD)
-          repo.addLancamento({
-            folha_id: folhaId, funcionario_id: funcionarioId, empresa_id: folha.empresa_id,
-            rubrica_id: rIrrf?.id ?? null, rubrica_codigo: RUBRICA_IRRF_COD, rubrica_nome: 'IRRF',
-            rubrica_tipo: 'desconto', referencia: 0, valor: irrf.valor, origem: 'automatico',
-          })
-        }
-        if (fgts > 0) {
-          // FGTS não é desconto do funcionário (não entra no líquido) — entra como
-          // linha informativa separada, mantendo a mesma separação do layout do holerite.
-          repo.addLancamento({
-            folha_id: folhaId, funcionario_id: funcionarioId, empresa_id: folha.empresa_id,
-            rubrica_id: null, rubrica_codigo: RUBRICA_FGTS_COD, rubrica_nome: 'FGTS Mês',
-            rubrica_tipo: 'informativo', referencia: 0, valor: fgts, origem: 'automatico',
-          })
-        }
-      }
-
-      const folhaAtualizada = repo.recalcularTotaisFolha(folhaId)
-      repo.update({ id: folhaId, status: 'processada' })
+        const atualizada = repo.recalcularTotaisFolha(folhaId)
+        repo.update({ id: folhaId, status: 'processada' })
+        return atualizada
+      })
 
       return { success: true, data: { ...folhaAtualizada, status: 'processada' } }
     } catch (err) {

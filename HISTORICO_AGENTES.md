@@ -237,11 +237,11 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 
 ### REC-0004 — 2026-09-11 — Codex
 
-- **Status:** Não executado
+- **Status:** Executado
 - **Recomendação:** Tornar o recálculo da folha transacional e idempotente.
 - **Motivo:** Evitar dados parcialmente atualizados em caso de erro.
 - **Prioridade:** Alta
-- **Ação relacionada:** `ACAO-0001`
+- **Ações relacionadas:** recomendada na `ACAO-0001`; diagnosticada (sem código alterado, só levantamento) numa conversa anterior à `ACAO-0016` — não registrada como ação própria por instrução do usuário de só diagnosticar naquele momento; executada na `ACAO-0016`.
 
 ### REC-0005 — 2026-09-11 — ChatGPT/Codex
 
@@ -951,3 +951,43 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - Nenhuma nova recomendação. `REC-0003` passa para `Parcialmente executado` em `CONTEXTO_TOTAL.md` e nesta seção; o escopo restante (Rescisão, Férias, Ponto e demais cálculos) continua pendente de decisão do usuário sobre prioridade.
 - **Próxima ação sugerida:**
   - Retomar a priorização já listada em `CONTEXTO_TOTAL.md` (`REC-0009`, `REC-0008`, `REC-0010` a `REC-0014`, e o restante de `REC-0003`), conforme decisão do usuário.
+
+### ACAO-0016 — 2026-09-12 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Correção de confiabilidade / Transação / Schema
+- **Status:** Concluído
+- **Resumo:**
+  - Executados os itens 1 e 2 do diagnóstico da `REC-0004` (item 3 — lock de concorrência — ficou de fora por instrução do usuário, virou `REC-0015`): o recálculo de folha em `folha:calcular` (`folhaHandlers.ts`) agora roda inteiro dentro de uma única transação SQLite (`runInTransaction`), e `folha_lancamentos` ganhou `UNIQUE(folha_id, funcionario_id, rubrica_codigo, origem)` via migration `056`.
+- **Diagnóstico prévio (conversa anterior a esta ação, sem código alterado):** confirmado que o cálculo era uma sequência de `.run()` soltos sem transação; que um crash no meio do processo podia deixar holerite com totais novos e lançamentos com os antigos (ou vice-versa) tanto dentro de um funcionário quanto entre funcionários da mesma folha; que lançamentos manuais já sobreviviam corretamente ao recálculo (não eram apagados nem duplicados); e que não havia nenhum controle de concorrência nem constraint de unicidade em `folha_lancamentos`.
+- **ITEM 1 — Transação:**
+  - `app-host/src/ipc/handlers/folhaHandlers.ts`: todo o corpo do recálculo (loop de todos os funcionários da folha — `upsertHolerite` → `deleteLancamentosAutomaticos` → até 3 `addLancamento` por funcionário — mais `recalcularTotaisFolha` e `update({status: 'processada'})` no final) passou a rodar dentro de `runInTransaction(db, () => { ... })`, importado de `@sudo-sys/infrastructure`.
+  - **Granularidade escolhida:** uma transação única para a folha inteira (todos os funcionários), não uma transação por funcionário — mesmo padrão de `023_cbo_completo.ts` (uma transação por operação, não uma por linha/iteração do loop). Justificativa registrada em comentário no próprio código: o diagnóstico anterior identificou inconsistência possível em dois níveis — dentro de um funcionário (holerite com totais novos + lançamentos com os antigos) e entre funcionários (alguns recalculados, outros não, folha nunca marcada `'processada'`). Uma transação por funcionário resolveria só o primeiro nível; só a transação única cobre os dois.
+  - `packages/infrastructure/src/index.ts`: `runInTransaction` (que já existia em `db/sqlite/SqliteTx.ts` desde antes, mas nunca tinha sido exportado nem usado fora do seed de CBO) passou a ser exportado publicamente, para o `app-host` poder importá-lo pela API pública do pacote (mesmo padrão dos demais exports, sem import por `/src`).
+- **ITEM 2 — Constraint UNIQUE:**
+  - Antes de aplicar: rodado um script ad-hoc (Electron real, banco de produção em `%APPDATA%\Electron\banco\sudosys.db`, aberto em modo `readonly`, sem gravação) checando `GROUP BY folha_id, funcionario_id, rubrica_codigo, origem HAVING COUNT(*) > 1` em `folha_lancamentos` — **zero grupos duplicados encontrados** (o banco real tinha só 1 lançamento no total). Confirmado que a migration é segura de aplicar nesse banco.
+  - `app-host/src/db/database.ts`: nova migration `056_folha_lancamentos_unique` — mesmo padrão de recriação de tabela da migration `054` (SQLite não suporta `ALTER TABLE ADD CONSTRAINT`): `PRAGMA foreign_keys = OFF`, cria `folha_lancamentos_new` com `UNIQUE(folha_id, funcionario_id, rubrica_codigo, origem)`, copia os dados, `DROP`+`RENAME`, `PRAGMA foreign_keys = ON`. Nenhuma outra tabela tem FK apontando para `folha_lancamentos.id`, então não há cascata a ajustar.
+- **Validação (Passo pedido pelo usuário):**
+  - Criado `packages/infrastructure/src/repositories/SqliteFolhaRepository.test.ts` (3 testes novos, usando banco SQLite real em memória com o schema pós-migration 056, na mesma camada de teste do `REC-0003` — não foi possível testar o handler `folha:calcular` em si porque ele vive no `app-host`, que depende do módulo `electron` e não tem framework de teste configurado; os testes cobrem os mesmos métodos de repositório e o mesmo `runInTransaction` que o handler usa, na mesma sequência de chamadas):
+    1. **Rollback completo:** simulado um `throw` dentro do callback passado a `runInTransaction` (sem tocar em `folhaHandlers.ts` — só no callback de teste), entre `deleteLancamentosAutomaticos` e o `addLancamento` do automático novo. Confirmado: o holerite continua com os totais **antigos** e o lançamento automático antigo continua existindo — nada mudou, exatamente como esperado de uma transação atômica.
+    2. **Idempotência:** o mesmo ciclo `upsertHolerite`→`deleteLancamentosAutomaticos`→`addLancamento` (dentro de `runInTransaction`) rodado duas vezes seguidas — confirmado 1 único lançamento automático (não duplicou) e o lançamento manual intacto (mesmo valor, mesma linha).
+    3. **Constraint em ação:** inserir manualmente duas linhas `automatico` com a mesma `folha_id`+`funcionario_id`+`rubrica_codigo` fora do fluxo de delete-então-insert agora lança `UNIQUE constraint failed`, provando que a proteção não depende só da lógica da aplicação.
+  - `pnpm --filter @sudo-sys/infrastructure test`: **10/10 testes passaram** (7 da suíte do `REC-0003` + 3 novos), sem alterar nenhum valor esperado da suíte de IRRF/INSS/FGTS.
+  - `pnpm typecheck` (todos os 7 workspaces): passou limpo.
+  - `pnpm --filter @sudo-sys/infrastructure build`: rebuild limpo confirmou que os dois arquivos de teste (o do `REC-0003` e o novo) continuam fora de `dist/` (exclude já configurado na `ACAO-0015`).
+- **Achado de ambiente durante a validação (não é bug de código, registrado para o próximo agente não se confundir):** ao rodar `pnpm --filter @sudo-sys/infrastructure test` pela primeira vez após esta sessão, os 3 testes novos falharam com erro de ABI do `better-sqlite3` (`NODE_MODULE_VERSION 128` vs `115` exigido) — porque o binário nativo tinha sido recompilado para a ABI do Electron (128) durante o teste de UI da `ACAO-0014`/`ACAO-0016` anterior, e `vitest` roda sob Node puro (ABI 115). `pnpm rebuild better-sqlite3` não teve efeito (não reconstrói de fato quando o pacote já tem um binário presente, mesmo que para a ABI errada). A correção foi rodar `prebuild-install`/`node-gyp rebuild --release` diretamente dentro de `node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3` para forçar o binário de volta à ABI do Node. **Consequência prática:** depois de rodar os testes, `pnpm dev`/o Electron real vão precisar reconstruir `better-sqlite3` de novo para a ABI do Electron antes de abrir — isso já acontece automaticamente hoje via `electron:dev:prepare` (que roda `electron-rebuild -f -w better-sqlite3` antes de todo `pnpm dev`), então não é uma ação manual nova, mas explica por que alternar entre "rodar os testes" e "rodar o app" nesta máquina exige esse rebuild de ida e volta.
+- **Por que foi feito:**
+  - `REC-0004` (Alta): o diagnóstico anterior confirmou que a ausência de transação era uma lacuna real (não só teórica) e que a peça técnica para resolvê-la (`runInTransaction`) já existia no projeto, sem uso. A constraint UNIQUE fecha a mesma lacuna por um segundo caminho independente (schema, não só lógica de aplicação), coerente com o que o diagnóstico anterior apontou sobre `folha_lancamentos` não ter nenhuma proteção de unicidade ao contrário de `folha_holerites`.
+- **Arquivos envolvidos:**
+  - `app-host/src/db/database.ts`
+  - `app-host/src/ipc/handlers/folhaHandlers.ts`
+  - `packages/infrastructure/src/index.ts`
+  - `packages/infrastructure/src/repositories/SqliteFolhaRepository.test.ts` (novo)
+- **Riscos ou observações:**
+  - **A constraint nova vale para `origem = 'manual'` também, não só `'automatico'`.** Não foi encontrada nenhuma trava na UI (`LancamentosEditor.tsx`) impedindo hoje o usuário de adicionar dois lançamentos manuais com a mesma rubrica na mesma folha+funcionário (ex.: dois adiantamentos sob o mesmo código de rubrica) — com a migration `056`, isso passaria a ser rejeitado com `UNIQUE constraint failed` em vez de aceito. Implementado assim porque foi a especificação explícita do usuário e não há dado real hoje que dependa desse comportamento (confirmado na checagem pré-migration), mas fica registrado como um risco funcional a observar: se esse padrão de uso for legítimo e necessário, a constraint precisará ser revista (ex.: incluir algo que diferencie múltiplos manuais da mesma rubrica, como um `sequencial`, ou restringir o `UNIQUE` só a `origem = 'automatico'` via índice parcial).
+  - O item 3 do diagnóstico (lock de concorrência) foi deliberadamente deixado de fora, por instrução do usuário — ver `REC-0015` abaixo.
+  - A transação única cobre `folha:calcular` (recálculo). Outros handlers de folha com múltiplas escritas (`folha:lancamentos:add`, `folha:lancamentos:delete`) continuam com escrita única cada um, então não têm o mesmo risco de estado parcial — não precisaram de mudança.
+- **Recomendações deixadas para próximos agentes:**
+  - `REC-0015` (Nova) — **Status:** Não executado. **Recomendação:** Implementar um lock de concorrência para `folha:calcular` (ex.: campo/estado `status = 'calculando'` checado no início do handler, rejeitando uma segunda chamada sobreposta para a mesma folha). **Motivo:** item 3 do diagnóstico da `REC-0004` — hoje não existe nenhum controle de concorrência; a proteção atual contra "clicar calcular duas vezes rápido" é só um efeito colateral do event loop síncrono de um único processo Node, não uma garantia deliberada. **Só é necessário se/quando o sistema deixar de ser single-user/single-instância** (hoje documentado como tal); não é uma correção urgente enquanto essa premissa se mantiver. **Prioridade:** Não definida — a confirmar com o usuário se/quando o cenário multiusuário for avaliado. **Origem:** Claude. **Data:** 2026-09-12. **Referência:** `ACAO-0016`.
+- **Próxima ação sugerida:**
+  - Retomar a priorização já listada em `CONTEXTO_TOTAL.md` (`REC-0009`, `REC-0008`, `REC-0010` a `REC-0013`, `REC-0015`, e o restante de `REC-0003`), conforme decisão do usuário. `REC-0014` continua bloqueada até decisão explícita.

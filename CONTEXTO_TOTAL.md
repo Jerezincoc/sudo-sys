@@ -53,8 +53,8 @@ Antes de sugerir ou alterar qualquer coisa no projeto, todo agente deve:
 - **Stack principal:** Electron, React, TypeScript, Vite, SQLite e pnpm monorepo.
 - **Estado atual:** Protótipo funcional com baixa confiabilidade operacional e fiscal.
 - **Fase atual:** Estabilização do build e da distribuição Electron.
-- **Última ação registrada:** `ACAO-0015` — Claude introduziu o primeiro framework de testes automatizados do projeto (`vitest`, instalado só em `packages/infrastructure`) e criou uma suíte para o motor de cálculo IRRF/INSS/FGTS (`CalculoFolha.ts`), cobrindo 4 cenários de IRRF e 1 teste de guarda de competência do redutor da Lei 15.270/2025 — 7/7 testes passando. Escopo restrito a esse motor por instrução do usuário; Rescisão, Férias e Ponto continuam sem testes. Ver `HISTORICO_AGENTES.md` para o detalhamento completo (inclui também `ACAO-0009` a `ACAO-0014`, ações anteriores).
-- **Próxima ação recomendada:** aguardando decisão do usuário sobre qual recomendação executar em seguida — candidatas ativas: `REC-0009`, `REC-0008`, `REC-0010`, `REC-0011`, `REC-0012`, `REC-0013`, `REC-0014`, e o restante de `REC-0003` (Rescisão/Férias/Ponto) (ver seção 7).
+- **Última ação registrada:** `ACAO-0016` — Claude tornou `folha:calcular` transacional (todo o recálculo da folha — todos os funcionários, holerites e lançamentos automáticos — roda dentro de uma única `runInTransaction`) e adicionou `UNIQUE(folha_id, funcionario_id, rubrica_codigo, origem)` em `folha_lancamentos` (migration `056`). Validado com 3 testes novos (rollback completo, idempotência, constraint em ação) — 10/10 testes passando. Ver `HISTORICO_AGENTES.md` para o detalhamento completo (inclui também `ACAO-0009` a `ACAO-0015`, ações anteriores).
+- **Próxima ação recomendada:** aguardando decisão do usuário sobre qual recomendação executar em seguida — candidatas ativas: `REC-0009`, `REC-0008`, `REC-0010`, `REC-0011`, `REC-0012`, `REC-0013`, `REC-0014`, `REC-0015`, e o restante de `REC-0003` (Rescisão/Férias/Ponto) (ver seção 7).
 - **Uso em produção:** Não recomendado antes das correções críticas e dos testes de cálculo.
 
 ## 2. Objetivo do projeto
@@ -209,12 +209,13 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 
 ### REC-0004
 
-- **Status:** Não executado
+- **Status:** Executado
 - **Recomendação:** Tornar o recálculo da folha transacional e idempotente.
 - **Motivo:** Evitar dados parcialmente atualizados em caso de erro.
 - **Prioridade:** Alta
 - **Origem:** Codex
 - **Data:** 2026-09-11
+- **Execução:** Concluída na `ACAO-0016` — `folha:calcular` roda inteiro (todos os funcionários + totais da folha + status) dentro de uma única `runInTransaction`, e `folha_lancamentos` ganhou `UNIQUE(folha_id, funcionario_id, rubrica_codigo, origem)` (migration `056`). Validado com rollback simulado (holerite e lançamentos revertem juntos), recálculo duplo (sem duplicar automáticos, manuais intactos) e a constraint rejeitando duplicata fora do fluxo normal. Item de controle de concorrência (lock) ficou fora do escopo — ver `REC-0015`.
 
 ### REC-0005
 
@@ -314,6 +315,16 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Data:** 2026-09-11
 - **Referência:** `ACAO-0012`. **Não executar sem decisão explícita do usuário.**
 
+### REC-0015
+
+- **Status:** Não executado
+- **Recomendação:** Implementar um lock de concorrência para `folha:calcular` (ex.: campo/estado `status = 'calculando'` checado no início do handler, rejeitando uma segunda chamada sobreposta para a mesma folha).
+- **Motivo:** Item 3 do diagnóstico da `REC-0004`, deixado de fora por instrução do usuário. Hoje não existe nenhum controle de concorrência — a proteção atual contra clicar "calcular" duas vezes rápido é só um efeito colateral do event loop síncrono de um único processo Node, não uma garantia deliberada. `folha_holerites` já tem `UNIQUE(folha_id, funcionario_id)` e `folha_lancamentos` ganhou `UNIQUE(folha_id, funcionario_id, rubrica_codigo, origem)` na `ACAO-0016`, o que já limita bastante o dano de uma corrida real, mas não impede duas transações concorrentes de colidir (uma delas falharia com erro de constraint em vez de simplesmente ser bloqueada de forma amigável).
+- **Prioridade:** Não definida — só é necessário se/quando o sistema deixar de ser single-user/single-instância (hoje documentado como tal). Não é uma correção urgente enquanto essa premissa se mantiver.
+- **Origem:** Claude
+- **Data:** 2026-09-12
+- **Referência:** `ACAO-0016`.
+
 ## 8. Ambiente padrão do projeto
 
 - **Estratégia de ambiente:** Documentada em `README_AMBIENTE.md`; instalação e desenvolvimento validados; versões fixadas provisoriamente na `ACAO-0005`.
@@ -352,7 +363,7 @@ Nenhum agente deve corrigir erro de execução antes de verificar se o ambiente 
 
 ## 10. Próximo passo recomendado
 
-`REC-0002` foi executada na `ACAO-0014`. `REC-0003` foi parcialmente executada na `ACAO-0015` (só o motor IRRF/INSS/FGTS). Não há uma única próxima ação definida entre as demais — várias recomendações continuam ativas e não executadas, aguardando priorização do usuário:
+`REC-0002` foi executada na `ACAO-0014`. `REC-0003` foi parcialmente executada na `ACAO-0015` (só o motor IRRF/INSS/FGTS). `REC-0004` foi executada na `ACAO-0016` (transação + constraint; lock de concorrência virou `REC-0015` separada). Não há uma única próxima ação definida entre as demais — várias recomendações continuam ativas e não executadas, aguardando priorização do usuário:
 
 1. `REC-0009` — finalizar os assets da distribuição Electron, remover fontes excedentes do ASAR e validar o instalador completo.
 2. `REC-0003` (restante) — estender os testes automatizados para Rescisão, Férias, Ponto e demais cálculos trabalhistas críticos.
@@ -362,6 +373,7 @@ Nenhum agente deve corrigir erro de execução antes de verificar se o ambiente 
 6. `REC-0012` — corrigir `scripts/test-holerite.ps1` em `main` (nome de API desatualizado; baixa prioridade, script de teste manual).
 7. `REC-0013` — confirmar se o domínio "Chamados" ainda é um recurso desejado.
 8. `REC-0014` — decidir o tratamento de VT/VR no motor de Relatórios Personalizados. **Não executar sem decisão explícita do usuário.**
+9. `REC-0015` — lock de concorrência para `folha:calcular`. Só necessário se/quando o sistema deixar de ser single-user/single-instância.
 
 ## 11. Referência do histórico
 

@@ -1,4 +1,5 @@
 export * from './db/sqlite/SqliteClient'
+export * from './db/sqlite/SqliteTx'
 export * from './bootstrap/openDatabase'
 export * from './auth/Argon2PasswordHasher'
 export * from './repositories/SqliteEmpresaRepository'

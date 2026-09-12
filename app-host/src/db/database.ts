@@ -487,6 +487,47 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       UPDATE usuarios SET must_change_password = 1 WHERE email = 'admin@sudosys.local';
     `,
   },
+  {
+    // SQLite não suporta ALTER TABLE ADD CONSTRAINT — recria a tabela com o
+    // UNIQUE e migra os dados (mesmo padrão da migration 054). Sem índices/triggers
+    // próprios de `folha_lancamentos` a recriar; nenhuma outra tabela tem FK apontando
+    // para `folha_lancamentos.id`, então não há cascata a ajustar.
+    name: '056_folha_lancamentos_unique',
+    sql: `
+      PRAGMA foreign_keys = OFF;
+
+      CREATE TABLE folha_lancamentos_new (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        folha_id          INTEGER NOT NULL REFERENCES folha_competencias(id),
+        funcionario_id    INTEGER NOT NULL REFERENCES funcionarios(id),
+        empresa_id        INTEGER NOT NULL REFERENCES empresas(id),
+        rubrica_id        INTEGER REFERENCES rubricas(id),
+        rubrica_codigo    TEXT NOT NULL,
+        rubrica_nome      TEXT NOT NULL,
+        rubrica_tipo      TEXT NOT NULL,
+        referencia        REAL DEFAULT 0,
+        valor             REAL NOT NULL DEFAULT 0,
+        origem            TEXT DEFAULT 'manual',
+        created_at        TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at        TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(folha_id, funcionario_id, rubrica_codigo, origem)
+      );
+
+      INSERT INTO folha_lancamentos_new (
+        id, folha_id, funcionario_id, empresa_id, rubrica_id, rubrica_codigo,
+        rubrica_nome, rubrica_tipo, referencia, valor, origem, created_at, updated_at
+      )
+      SELECT
+        id, folha_id, funcionario_id, empresa_id, rubrica_id, rubrica_codigo,
+        rubrica_nome, rubrica_tipo, referencia, valor, origem, created_at, updated_at
+      FROM folha_lancamentos;
+
+      DROP TABLE folha_lancamentos;
+      ALTER TABLE folha_lancamentos_new RENAME TO folha_lancamentos;
+
+      PRAGMA foreign_keys = ON;
+    `,
+  },
 ]
 
 function runMigrations(db: BetterSqlite3.Database): void {
