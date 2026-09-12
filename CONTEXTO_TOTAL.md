@@ -53,8 +53,8 @@ Antes de sugerir ou alterar qualquer coisa no projeto, todo agente deve:
 - **Stack principal:** Electron, React, TypeScript, Vite, SQLite e pnpm monorepo.
 - **Estado atual:** Protótipo funcional com baixa confiabilidade operacional e fiscal.
 - **Fase atual:** Estabilização do build e da distribuição Electron.
-- **Última ação registrada:** `ACAO-0014` — Claude executou a `REC-0002`: removeu a exposição da credencial padrão (`admin@sudosys.local`/`admin123`, inclusive o texto que a exibia na tela de login) e implementou troca de senha obrigatória no primeiro login desse usuário (flag `must_change_password`, canal `auth:trocarSenha`, tela nova `TrocarSenhaPage.tsx`), validado via UI real no Electron. Ver `HISTORICO_AGENTES.md` para o detalhamento completo (inclui também `ACAO-0009` a `ACAO-0013`, ações anteriores).
-- **Próxima ação recomendada:** aguardando decisão do usuário sobre qual recomendação executar em seguida — candidatas ativas: `REC-0009`, `REC-0003`, `REC-0008`, `REC-0010`, `REC-0011`, `REC-0012`, `REC-0013`, `REC-0014` (ver seção 7).
+- **Última ação registrada:** `ACAO-0015` — Claude introduziu o primeiro framework de testes automatizados do projeto (`vitest`, instalado só em `packages/infrastructure`) e criou uma suíte para o motor de cálculo IRRF/INSS/FGTS (`CalculoFolha.ts`), cobrindo 4 cenários de IRRF e 1 teste de guarda de competência do redutor da Lei 15.270/2025 — 7/7 testes passando. Escopo restrito a esse motor por instrução do usuário; Rescisão, Férias e Ponto continuam sem testes. Ver `HISTORICO_AGENTES.md` para o detalhamento completo (inclui também `ACAO-0009` a `ACAO-0014`, ações anteriores).
+- **Próxima ação recomendada:** aguardando decisão do usuário sobre qual recomendação executar em seguida — candidatas ativas: `REC-0009`, `REC-0008`, `REC-0010`, `REC-0011`, `REC-0012`, `REC-0013`, `REC-0014`, e o restante de `REC-0003` (Rescisão/Férias/Ponto) (ver seção 7).
 - **Uso em produção:** Não recomendado antes das correções críticas e dos testes de cálculo.
 
 ## 2. Objetivo do projeto
@@ -117,7 +117,7 @@ O processo principal executa operações síncronas de SQLite, hash de senha, fi
 
 ### Testes
 
-Não há testes automatizados funcionais. Os arquivos de teste identificados estão vazios, não há framework de testes configurado e não existe script `test` funcional na raiz.
+Desde a `ACAO-0015` existe um framework de testes (`vitest`) e uma suíte funcional (`pnpm test`), mas cobrindo só o motor de cálculo IRRF/INSS/FGTS (`packages/infrastructure/src/services/CalculoFolha.test.ts`, 7 testes). Rescisão, férias, ponto e os demais cálculos trabalhistas continuam sem nenhum teste automatizado (`REC-0003` parcialmente executada).
 
 ### Motor de cálculo (IRRF) e schema de funcionários
 
@@ -199,12 +199,13 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 
 ### REC-0003
 
-- **Status:** Não executado
+- **Status:** Parcialmente executado
 - **Recomendação:** Criar testes automatizados para cálculos trabalhistas críticos.
 - **Motivo:** Rescisão, férias, ponto, INSS e IRRF têm risco funcional e fiscal.
 - **Prioridade:** Crítica
 - **Origem:** Codex
 - **Data:** 2026-09-11
+- **Execução:** Parcialmente concluída na `ACAO-0015` — introduzido `vitest` (primeiro framework de testes do projeto, instalado em `packages/infrastructure`) e criada suíte para `calcularIRRF`/`calcularINSS`/`calcularFGTS` (`CalculoFolha.test.ts`), cobrindo os 4 cenários de IRRF e a guarda de competência do redutor da Lei 15.270/2025 validados manualmente nesta sessão. Rodável via `pnpm test` (raiz) ou `pnpm --filter @sudo-sys/infrastructure test`. **Escopo restante pendente:** Rescisão, Férias, Ponto e demais cálculos trabalhistas continuam sem nenhum teste automatizado — restrição de escopo foi instrução explícita do usuário, não limitação técnica.
 
 ### REC-0004
 
@@ -329,7 +330,7 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Comando de typecheck:** `pnpm typecheck`; passou na `ACAO-0006` e compila os pacotes internos antes da verificação.
 - **Comando de lint:** `pnpm lint`. Atualmente não executa lint real.
 - **Comando de build:** `pnpm build`; compila `shared`, `domain`, `application` e `infrastructure` antes da UI e do `app-host`.
-- **Comando de teste:** A confirmar, pois não há script de teste funcional identificado.
+- **Comando de teste:** `pnpm test` (raiz) ou `pnpm --filter @sudo-sys/infrastructure test` — roda a suíte `vitest` do motor de cálculo IRRF/INSS/FGTS (`ACAO-0015`). Cobertura ainda restrita a esse motor; outras áreas (Rescisão, Férias, Ponto) continuam sem teste automatizado.
 - **Desenvolvimento limpo:** Validado. `pnpm dev` gera preload e reconstrói `better-sqlite3` automaticamente antes de iniciar Electron.
 - **Isolamento do banco de desenvolvimento:** Confirmado em `<raiz>/.dev-user-data`, via `--user-data-dir` explícito; Linux e macOS continuam **A confirmar**.
 
@@ -351,10 +352,10 @@ Nenhum agente deve corrigir erro de execução antes de verificar se o ambiente 
 
 ## 10. Próximo passo recomendado
 
-`REC-0002` foi executada na `ACAO-0014`. Não há uma única próxima ação definida entre as demais — várias recomendações continuam ativas e não executadas, aguardando priorização do usuário:
+`REC-0002` foi executada na `ACAO-0014`. `REC-0003` foi parcialmente executada na `ACAO-0015` (só o motor IRRF/INSS/FGTS). Não há uma única próxima ação definida entre as demais — várias recomendações continuam ativas e não executadas, aguardando priorização do usuário:
 
 1. `REC-0009` — finalizar os assets da distribuição Electron, remover fontes excedentes do ASAR e validar o instalador completo.
-2. `REC-0003` — criar testes automatizados para cálculos trabalhistas críticos.
+2. `REC-0003` (restante) — estender os testes automatizados para Rescisão, Férias, Ponto e demais cálculos trabalhistas críticos.
 3. `REC-0008` — planejar (sem executar ainda) a migração controlada de Node 20 para uma linha LTS suportada.
 4. `REC-0010` — definir o escopo funcional de `custos`/`extras`/`quickcalc` antes de implementar qualquer backend para eles.
 5. `REC-0011` — decidir a granularidade de RBAC por rota/canal antes de aplicar qualquer guard novo.

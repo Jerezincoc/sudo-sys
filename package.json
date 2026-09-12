@@ -10,7 +10,8 @@
     "build": "pnpm run build:packages && pnpm --filter @sudo-sys/ui build && pnpm --filter @sudo-sys/app-host build",
     "dist": "pnpm build && pnpm --filter @sudo-sys/app-host dist",
     "typecheck": "pnpm run build:packages && pnpm -r typecheck",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "test": "pnpm --filter @sudo-sys/infrastructure test"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.4",

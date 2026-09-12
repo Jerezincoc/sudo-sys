@@ -229,11 +229,11 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 
 ### REC-0003 — 2026-09-11 — Codex
 
-- **Status:** Não executado
+- **Status:** Parcialmente executado
 - **Recomendação:** Criar testes automatizados para cálculos trabalhistas críticos.
 - **Motivo:** Rescisão, férias, ponto, INSS e IRRF têm risco funcional e fiscal.
 - **Prioridade:** Crítica
-- **Ação relacionada:** `ACAO-0001`
+- **Ações relacionadas:** recomendada na `ACAO-0001`; parcialmente executada na `ACAO-0015` (cobre só IRRF/INSS/FGTS de `CalculoFolha.ts`, por pedido explícito do usuário de não expandir escopo para Rescisão/Férias/Ponto nesta tarefa).
 
 ### REC-0004 — 2026-09-11 — Codex
 
@@ -916,3 +916,38 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - Nenhuma nova recomendação. `REC-0002` passa para `Executado` em `CONTEXTO_TOTAL.md` e nesta seção.
 - **Próxima ação sugerida:**
   - Retomar a priorização já listada em `CONTEXTO_TOTAL.md` (`REC-0009`, `REC-0003`, `REC-0008`, etc.), conforme decisão do usuário.
+
+### ACAO-0015 — 2026-09-12 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Testes automatizados / Framework de testes
+- **Status:** Concluído
+- **Resumo:**
+  - Executada parcialmente a `REC-0003`, por instrução explícita do usuário de não expandir escopo: criada suíte automatizada só para o motor de cálculo IRRF/INSS/FGTS (`packages/infrastructure/src/services/CalculoFolha.ts`), cobrindo os 4 cenários de IRRF (isenção total, faixa de transição do redutor, acima do teto, desconto simplificado) e 1 teste de guarda de competência (redutor da Lei 15.270/2025 não se aplica antes de 2026-01), além de checagem dos valores de INSS e FGTS usados nesses mesmos cenários. Rescisão, Férias, Ponto e demais áreas ficam fora desta ação.
+- **O que foi encontrado (Passo 1 pedido pelo usuário):**
+  - Nenhum framework de teste configurado em nenhum lugar do monorepo — sem `vitest`/`jest` em nenhum `package.json` da raiz ou dos workspaces, e nenhum dos dois presentes no store do pnpm (`node_modules/.pnpm`). Confirma o que já estava registrado em `CONTEXTO_TOTAL.md` ("não há framework de testes configurado").
+- **O que foi mudado:**
+  - `packages/infrastructure/package.json`: adicionado `vitest` como devDependency e script `"test": "vitest run"`. Instalada primeiro a versão mais recente (`5.0.0`), que gerou aviso de peer dependency (exige `vite@^6/7/8`, mas o monorepo usa `vite@5.4.21` fixado pela UI); removida e reinstalada como `vitest@^3.2.4` (resolveu `3.2.7`), compatível com `vite@5.x` — sem avisos de peer dependency.
+  - `packages/infrastructure/tsconfig.json`: adicionado `"exclude": ["src/**/*.test.ts"]`. Sem isso, `pnpm --filter @sudo-sys/infrastructure build` compilava o arquivo de teste para `dist/services/CalculoFolha.test.js` (+`.d.ts`, + `.map`), poluindo o pacote publicado (`files: ["dist"]` no `package.json` o incluiria). Descoberto rodando o build depois de criar o teste e inspecionando `dist/`; corrigido e revalidado (rebuild limpo confirma que não sobra mais nenhum arquivo de teste em `dist/`).
+  - `packages/infrastructure/src/services/CalculoFolha.test.ts` (novo arquivo): 7 testes — 4 cenários de `calcularIRRF` (A: bruto 2800/0 dep/tradicional → R$0,00; B: bruto 6000/0 dep/tradicional → R$385,10; C: bruto 8500/2 dep/tradicional → R$1.052,77; D: bruto 4500/0 dep/simplificado → R$0,00), 1 teste de guarda de competência (mesma base do cenário B, mas competência `2025-12` em vez de `2026-01` → R$564,85, valor da tabela cheia sem redutor), 1 teste com os 4 valores de `calcularINSS` usados nos cenários acima (R$227,69 / R$641,51 / R$988,09 / R$431,51) e 1 teste de `calcularFGTS` (8% sobre R$2.800 e R$6.000).
+  - `package.json` (raiz): adicionado script `"test": "pnpm --filter @sudo-sys/infrastructure test"`, para existir um comando único e óbvio (`pnpm test`) sem precisar saber o nome do workspace.
+- **Verificação dos valores esperados (antes de escrever as asserções):** os 5 valores de IRRF, os 4 de INSS e os 2 de FGTS pedidos pelo usuário foram recalculados manualmente a partir do código atual de `CalculoFolha.ts` (tabelas INSS 2026-01, tabela IRRF vigente desde 2025-05, redutor da Lei 15.270/2025) antes de escrever o teste — todos batem exatamente com os valores informados pelo usuário como já confirmados nesta sessão. O teste de guarda de competência reaproveita a mesma base de cálculo (bruto − INSS) do cenário B para isolar exclusivamente o efeito do gate de competência do redutor, em vez de recalcular o INSS de 2025-12 (que usa uma tabela diferente e daria um número final diferente do R$564,85 esperado) — essa escolha foi deliberada para testar o comportamento específico pedido, não uma coincidência.
+- **Validações executadas:**
+  - `pnpm --filter @sudo-sys/infrastructure test` (e o atalho `pnpm test` na raiz): **7/7 testes passaram** contra o código atual, sem nenhum ajuste de valor esperado necessário.
+  - `pnpm typecheck` (todos os 7 workspaces): passou limpo depois de adicionar o teste e o `exclude` no `tsconfig.json`.
+  - `pnpm --filter @sudo-sys/infrastructure build`: rebuild limpo (`dist` removido antes) confirmado sem nenhum arquivo `*.test.*` na saída.
+- **Por que foi feito:**
+  - `REC-0003` (Crítica): o motor de IRRF já teve um bug real corrigido nesta sessão (Lei 15.270/2025 usando a base errada para o redutor, corrigido na `ACAO-0008`) e não havia nenhuma proteção automatizada contra regressão — só validação manual pontual. Esta suíte fixa os 4 cenários e a guarda de competência já validados manualmente como comportamento esperado, para que qualquer mudança futura em `CalculoFolha.ts` que quebre esses casos seja pega antes de chegar a produção.
+- **Arquivos envolvidos:**
+  - `packages/infrastructure/package.json`
+  - `packages/infrastructure/tsconfig.json`
+  - `packages/infrastructure/src/services/CalculoFolha.test.ts` (novo)
+  - `package.json`
+- **Riscos ou observações:**
+  - Cobertura deliberadamente restrita ao motor IRRF/INSS/FGTS, por instrução explícita do usuário — Rescisão, Férias, Ponto e o restante dos cálculos trabalhistas mencionados na `REC-0003` original continuam sem nenhum teste automatizado. Por isso `REC-0003` foi marcada como `Parcialmente executado`, não `Executado`.
+  - A suíte testa `calcularIRRF`/`calcularINSS`/`calcularFGTS` isoladamente (unção pura, sem banco/IPC) — não cobre o ponto de integração em `folhaHandlers.ts` que monta `baseIrrf` a partir dos lançamentos da competência; um teste de integração desse trecho continua fora do escopo desta ação.
+  - `vitest` ficou instalado só como devDependency de `packages/infrastructure`, não na raiz nem em outros workspaces — qualquer suíte futura em outro pacote precisa da mesma decisão de instalação (e da mesma checagem de compatibilidade de peer dependency com a versão de `vite` já fixada pela UI).
+- **Recomendações deixadas para próximos agentes:**
+  - Nenhuma nova recomendação. `REC-0003` passa para `Parcialmente executado` em `CONTEXTO_TOTAL.md` e nesta seção; o escopo restante (Rescisão, Férias, Ponto e demais cálculos) continua pendente de decisão do usuário sobre prioridade.
+- **Próxima ação sugerida:**
+  - Retomar a priorização já listada em `CONTEXTO_TOTAL.md` (`REC-0009`, `REC-0008`, `REC-0010` a `REC-0014`, e o restante de `REC-0003`), conforme decisão do usuário.
