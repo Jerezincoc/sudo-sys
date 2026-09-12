@@ -1,9 +1,9 @@
 import { ipcMain, app } from 'electron'
 import path from 'path'
 import { getDb } from '../../db/database'
-import { SqlitePontoRepository } from '@sudo-sys/infrastructure/src/repositories/SqlitePontoRepository'
-import { SqliteFuncionarioRepository } from '@sudo-sys/infrastructure/src/repositories/SqliteFuncionarioRepository'
-import { SqliteEmpresaRepository } from '@sudo-sys/infrastructure/src/repositories/SqliteEmpresaRepository'
+import { SqlitePontoRepository } from '@sudo-sys/infrastructure'
+import { SqliteFuncionarioRepository } from '@sudo-sys/infrastructure'
+import { SqliteEmpresaRepository } from '@sudo-sys/infrastructure'
 import type { CreatePontoPayload, UpdatePontoPayload } from '@sudo-sys/shared'
 import { EspelhoPontoRenderer } from '../../pdf/EspelhoPontoRenderer'
 

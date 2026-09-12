@@ -404,73 +404,74 @@ const MIGRATIONS: { name: string; sql: string }[] = [
     sql: `ALTER TABLE funcionarios ADD COLUMN regime_irrf TEXT NOT NULL DEFAULT 'dependentes'`,
   },
   {
-    // SQLite não permite ALTER TABLE ... ADD CONSTRAINT em coluna existente, então
-    // recria a tabela inteira com o CHECK e migra os dados (padrão "12 passos" do SQLite
-    // para mudança de schema). 'dependentes'/'simplificado' são os únicos valores que
-    // CalculoFolha.ts distingue — qualquer outro cai silenciosamente no ramo 'dependentes'.
+    // SQLite não suporta ALTER TABLE ADD CONSTRAINT — recria a tabela com o
+    // CHECK e migra os dados. Sem índices/triggers próprios de `funcionarios`
+    // a recriar; FKs de outras tabelas apontam pelo nome e continuam válidas.
     name: '054_funcionario_regime_irrf_check',
     sql: `
       PRAGMA foreign_keys = OFF;
 
       CREATE TABLE funcionarios_new (
-        id                INTEGER PRIMARY KEY AUTOINCREMENT,
-        empresa_id        INTEGER NOT NULL REFERENCES empresas(id),
-        codigo            TEXT NOT NULL,
-        nome              TEXT NOT NULL,
-        cpf               TEXT NOT NULL,
-        rg                TEXT,
-        data_nascimento   TEXT,
-        sexo              TEXT,
-        estado_civil      TEXT,
-        escolaridade      TEXT,
-        cargo             TEXT,
-        departamento      TEXT,
-        data_admissao     TEXT NOT NULL,
-        data_demissao     TEXT,
-        tipo_contrato     TEXT DEFAULT 'clt',
-        salario_base      REAL NOT NULL DEFAULT 0,
-        carga_horaria     REAL DEFAULT 220,
-        periculosidade    INTEGER DEFAULT 0,
-        insalubridade     TEXT,
-        vale_transporte   INTEGER DEFAULT 0,
-        vale_refeicao     REAL DEFAULT 0,
-        plano_saude       REAL DEFAULT 0,
-        cep               TEXT,
-        logradouro        TEXT,
-        numero            TEXT,
-        complemento       TEXT,
-        bairro            TEXT,
-        cidade            TEXT,
-        uf                TEXT,
-        telefone          TEXT,
-        email             TEXT,
-        banco             TEXT,
-        agencia           TEXT,
-        conta             TEXT,
-        pis_pasep         TEXT,
-        ctps              TEXT,
-        status            TEXT DEFAULT 'ativo',
-        created_at        TEXT DEFAULT CURRENT_TIMESTAMP,
-        updated_at        TEXT DEFAULT CURRENT_TIMESTAMP,
-        cbo_codigo        TEXT,
-        numero_dependentes_irrf INTEGER NOT NULL DEFAULT 0,
-        regime_irrf       TEXT NOT NULL DEFAULT 'dependentes'
+        id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+        empresa_id               INTEGER NOT NULL REFERENCES empresas(id),
+        codigo                   TEXT NOT NULL,
+        nome                     TEXT NOT NULL,
+        cpf                      TEXT NOT NULL,
+        rg                       TEXT,
+        data_nascimento          TEXT,
+        sexo                     TEXT,
+        estado_civil              TEXT,
+        escolaridade             TEXT,
+        cargo                    TEXT,
+        departamento             TEXT,
+        data_admissao            TEXT NOT NULL,
+        data_demissao            TEXT,
+        tipo_contrato            TEXT DEFAULT 'clt',
+        salario_base             REAL NOT NULL DEFAULT 0,
+        carga_horaria            REAL DEFAULT 220,
+        periculosidade           INTEGER DEFAULT 0,
+        insalubridade            TEXT,
+        vale_transporte          INTEGER DEFAULT 0,
+        vale_refeicao            REAL DEFAULT 0,
+        plano_saude              REAL DEFAULT 0,
+        cep                      TEXT,
+        logradouro               TEXT,
+        numero                   TEXT,
+        complemento              TEXT,
+        bairro                   TEXT,
+        cidade                   TEXT,
+        uf                       TEXT,
+        telefone                 TEXT,
+        email                    TEXT,
+        banco                    TEXT,
+        agencia                  TEXT,
+        conta                    TEXT,
+        pis_pasep                TEXT,
+        ctps                     TEXT,
+        status                   TEXT DEFAULT 'ativo',
+        created_at               TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at               TEXT DEFAULT CURRENT_TIMESTAMP,
+        cbo_codigo               TEXT,
+        numero_dependentes_irrf  INTEGER NOT NULL DEFAULT 0,
+        regime_irrf              TEXT NOT NULL DEFAULT 'dependentes'
           CHECK (regime_irrf IN ('dependentes', 'simplificado'))
       );
 
       INSERT INTO funcionarios_new (
-        id, empresa_id, codigo, nome, cpf, rg, data_nascimento, sexo, estado_civil, escolaridade,
-        cargo, departamento, data_admissao, data_demissao, tipo_contrato, salario_base, carga_horaria,
-        periculosidade, insalubridade, vale_transporte, vale_refeicao, plano_saude, cep, logradouro,
-        numero, complemento, bairro, cidade, uf, telefone, email, banco, agencia, conta, pis_pasep,
-        ctps, status, created_at, updated_at, cbo_codigo, numero_dependentes_irrf, regime_irrf
+        id, empresa_id, codigo, nome, cpf, rg, data_nascimento, sexo, estado_civil,
+        escolaridade, cargo, departamento, data_admissao, data_demissao, tipo_contrato,
+        salario_base, carga_horaria, periculosidade, insalubridade, vale_transporte,
+        vale_refeicao, plano_saude, cep, logradouro, numero, complemento, bairro,
+        cidade, uf, telefone, email, banco, agencia, conta, pis_pasep, ctps, status,
+        created_at, updated_at, cbo_codigo, numero_dependentes_irrf, regime_irrf
       )
       SELECT
-        id, empresa_id, codigo, nome, cpf, rg, data_nascimento, sexo, estado_civil, escolaridade,
-        cargo, departamento, data_admissao, data_demissao, tipo_contrato, salario_base, carga_horaria,
-        periculosidade, insalubridade, vale_transporte, vale_refeicao, plano_saude, cep, logradouro,
-        numero, complemento, bairro, cidade, uf, telefone, email, banco, agencia, conta, pis_pasep,
-        ctps, status, created_at, updated_at, cbo_codigo, numero_dependentes_irrf, regime_irrf
+        id, empresa_id, codigo, nome, cpf, rg, data_nascimento, sexo, estado_civil,
+        escolaridade, cargo, departamento, data_admissao, data_demissao, tipo_contrato,
+        salario_base, carga_horaria, periculosidade, insalubridade, vale_transporte,
+        vale_refeicao, plano_saude, cep, logradouro, numero, complemento, bairro,
+        cidade, uf, telefone, email, banco, agencia, conta, pis_pasep, ctps, status,
+        created_at, updated_at, cbo_codigo, numero_dependentes_irrf, regime_irrf
       FROM funcionarios;
 
       DROP TABLE funcionarios;

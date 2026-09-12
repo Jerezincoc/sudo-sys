@@ -2,14 +2,15 @@
   "name": "sudo-sys",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@9.15.9",
   "description": "Sistema de Gestão de Folha de Pagamento",
   "scripts": {
     "dev": "concurrently --kill-others \"pnpm --filter @sudo-sys/ui dev\" \"wait-on http://localhost:5173 && pnpm --filter @sudo-sys/app-host electron:dev\"",
-    "build": "pnpm --filter @sudo-sys/ui build && pnpm --filter @sudo-sys/app-host build",
+    "build:packages": "pnpm --filter @sudo-sys/shared build && pnpm --filter @sudo-sys/domain build && pnpm --filter @sudo-sys/application build && pnpm --filter @sudo-sys/infrastructure build",
+    "build": "pnpm run build:packages && pnpm --filter @sudo-sys/ui build && pnpm --filter @sudo-sys/app-host build",
     "dist": "pnpm build && pnpm --filter @sudo-sys/app-host dist",
-    "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint",
-    "postinstall": "electron-rebuild -f -w better-sqlite3 -m app-host"
+    "typecheck": "pnpm run build:packages && pnpm -r typecheck",
+    "lint": "pnpm -r lint"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.4",
@@ -18,8 +19,8 @@
     "wait-on": "^8.0.1"
   },
   "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
+    "node": "20.20.2",
+    "pnpm": "9.15.9"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

@@ -1,7 +1,7 @@
 import { ipcMain, app, dialog } from 'electron'
 import path from 'path'
 import { getDb } from '../../db/database'
-import { SqliteRelatorioRepository } from '@sudo-sys/infrastructure/src/repositories/SqliteRelatorioRepository'
+import { SqliteRelatorioRepository } from '@sudo-sys/infrastructure'
 import { RelatorioRenderer } from '../../pdf/RelatorioRenderer'
 import type {
   CreateRelatorioPayload,

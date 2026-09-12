@@ -12,7 +12,7 @@ import { getDb } from '../../db/database'
 // e substitua esta linha por: import PDFDocument from 'pdfkit'
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
 const PDFDocument: any = require('pdfkit')
-import { SqliteEmpresaRepository } from '@sudo-sys/infrastructure/src/repositories/SqliteEmpresaRepository'
+import { SqliteEmpresaRepository } from '@sudo-sys/infrastructure'
 import type { Empresa, CreateEmpresaPayload, UpdateEmpresaPayload } from '@sudo-sys/shared'
 
 function repo() {

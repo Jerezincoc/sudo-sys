@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { getDb } from '../../db/database'
-import { SqliteRubricaRepository } from '@sudo-sys/infrastructure/src/repositories/SqliteRubricaRepository'
+import { SqliteRubricaRepository } from '@sudo-sys/infrastructure'
 import type { CreateRubricaPayload, UpdateRubricaPayload } from '@sudo-sys/shared'
 
 const TIPOS_VALIDOS = ['provento', 'desconto', 'informativo'] as const

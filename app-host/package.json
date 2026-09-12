@@ -5,7 +5,8 @@
   "type": "commonjs",
   "main": "dist/main/main.js",
   "scripts": {
-    "electron:dev": "cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron --remote-debugging-port=9222 electron-dev.cjs",
+    "electron:dev": "pnpm run electron:dev:prepare && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron --remote-debugging-port=9222 --user-data-dir=../.dev-user-data electron-dev.cjs",
+    "electron:dev:prepare": "pnpm -w run build:packages && pnpm run electron:dev:preload && pnpm exec electron-rebuild -f -w better-sqlite3",
     "electron:dev:preload": "tsc -p tsconfig.json --noEmitOnError false",
     "build": "tsc -p tsconfig.json",
     "dist": "electron-builder",

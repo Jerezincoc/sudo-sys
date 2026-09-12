@@ -120,10 +120,8 @@ export function calcularIRRF(
     }
   }
 
-  // O redutor da Lei 15.270/2025 usa o SALÁRIO BRUTO do funcionário, não a base já
-  // líquida de INSS/dependentes/simplificado — conforme os exemplos oficiais da RFB
-  // ("Exemplos de Aplicação da Lei 15.270/2025"). A base pós-deduções segue sendo usada
-  // normalmente para a tabela progressiva acima; só o teto/fórmula do redutor olha o bruto.
+  // Receita Federal, "Exemplos de Aplicação da Lei 15.270/2025": o redutor usa o
+  // salário do funcionário, não a base de cálculo (já líquida de INSS/dependentes).
   const rendimentoTributavel = salarioBruto ?? base
   let valor = irrfTabela
   const redutorVigente = (competencia ?? REDUTOR_VIGENTE_DESDE) >= REDUTOR_VIGENTE_DESDE
