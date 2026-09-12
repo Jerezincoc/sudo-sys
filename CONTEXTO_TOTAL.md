@@ -53,8 +53,8 @@ Antes de sugerir ou alterar qualquer coisa no projeto, todo agente deve:
 - **Stack principal:** Electron, React, TypeScript, Vite, SQLite e pnpm monorepo.
 - **Estado atual:** Protótipo funcional com baixa confiabilidade operacional e fiscal.
 - **Fase atual:** Estabilização do build e da distribuição Electron.
-- **Última ação registrada:** `ACAO-0012` — Claude investigou o TODO em `relatorioHandlers.ts:115` (campos `competencia.vt`/`competencia.vr` do motor de Relatórios Personalizados, hoje hardcoded em `0`). Foi **só diagnóstico**: nenhuma correção de código foi feita nessa ação. Ver `HISTORICO_AGENTES.md` para o detalhamento completo (inclui também `ACAO-0009` a `ACAO-0011`, diagnósticos anteriores ainda não refletidos individualmente neste resumo).
-- **Próxima ação recomendada:** aguardando decisão do usuário sobre qual recomendação executar primeiro — candidatas ativas: `REC-0009`, `REC-0002`, `REC-0003`, `REC-0011`, `REC-0012`, `REC-0013`, `REC-0014` (ver seção 7).
+- **Última ação registrada:** `ACAO-0014` — Claude executou a `REC-0002`: removeu a exposição da credencial padrão (`admin@sudosys.local`/`admin123`, inclusive o texto que a exibia na tela de login) e implementou troca de senha obrigatória no primeiro login desse usuário (flag `must_change_password`, canal `auth:trocarSenha`, tela nova `TrocarSenhaPage.tsx`), validado via UI real no Electron. Ver `HISTORICO_AGENTES.md` para o detalhamento completo (inclui também `ACAO-0009` a `ACAO-0013`, ações anteriores).
+- **Próxima ação recomendada:** aguardando decisão do usuário sobre qual recomendação executar em seguida — candidatas ativas: `REC-0009`, `REC-0003`, `REC-0008`, `REC-0010`, `REC-0011`, `REC-0012`, `REC-0013`, `REC-0014` (ver seção 7).
 - **Uso em produção:** Não recomendado antes das correções críticas e dos testes de cálculo.
 
 ## 2. Objetivo do projeto
@@ -109,7 +109,7 @@ Existem duas arquiteturas concorrentes: uma Clean Architecture quase vazia e uma
 
 ### Segurança
 
-Não foram encontrados secrets, tokens ou chaves privadas versionados. Foram encontrados riscos relevantes: administrador com credencial padrão conhecida, configuração de conexão potencialmente sensível salva em texto puro, canais de setup públicos após a inicialização, autorização limitada a uma distinção parcial de administrador e ausência de auditoria funcional.
+Não foram encontrados secrets, tokens ou chaves privadas versionados. Foram encontrados riscos relevantes: configuração de conexão potencialmente sensível salva em texto puro, canais de setup públicos após a inicialização, autorização limitada a uma distinção parcial de administrador e ausência de auditoria funcional. O risco de credencial padrão conhecida (`admin@sudosys.local`/`admin123`) foi mitigado na `ACAO-0014` (`REC-0002`): o seed do admin agora nasce marcado para troca obrigatória de senha no primeiro login, e a UI não expõe mais a credencial.
 
 ### Performance
 
@@ -189,12 +189,13 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 
 ### REC-0002
 
-- **Status:** Não executado
+- **Status:** Executado
 - **Recomendação:** Remover credencial padrão fixa e exigir criação ou troca de senha no primeiro uso.
 - **Motivo:** Existe risco de segurança por credenciais conhecidas.
 - **Prioridade:** Crítica
 - **Origem:** Codex
 - **Data:** 2026-09-11
+- **Execução:** Concluída na `ACAO-0014` — migration `055_usuario_must_change_password`, canal IPC `auth:trocarSenha`, tela `TrocarSenhaPage.tsx` e ajuste no state machine de `App.tsx` para bloquear o acesso ao Dashboard até a troca; removido também o texto que expunha a credencial no rodapé do `LoginPage.tsx`. Validado via UI real (login → troca forçada → Dashboard liberado → logout/login com senha nova sem nova cobrança).
 
 ### REC-0003
 
@@ -350,19 +351,16 @@ Nenhum agente deve corrigir erro de execução antes de verificar se o ambiente 
 
 ## 10. Próximo passo recomendado
 
-Não há uma única próxima ação definida — várias recomendações estão ativas e não executadas, aguardando priorização do usuário:
+`REC-0002` foi executada na `ACAO-0014`. Não há uma única próxima ação definida entre as demais — várias recomendações continuam ativas e não executadas, aguardando priorização do usuário:
 
 1. `REC-0009` — finalizar os assets da distribuição Electron, remover fontes excedentes do ASAR e validar o instalador completo.
-2. `REC-0002` — eliminar a credencial padrão conhecida (risco de segurança crítico).
-3. `REC-0003` — criar testes automatizados para cálculos trabalhistas críticos.
-4. `REC-0008` — planejar (sem executar ainda) a migração controlada de Node 20 para uma linha LTS suportada.
-5. `REC-0010` — definir o escopo funcional de `custos`/`extras`/`quickcalc` antes de implementar qualquer backend para eles.
-6. `REC-0011` — decidir a granularidade de RBAC por rota/canal antes de aplicar qualquer guard novo.
-7. `REC-0012` — corrigir `scripts/test-holerite.ps1` em `main` (nome de API desatualizado; baixa prioridade, script de teste manual).
-8. `REC-0013` — confirmar se o domínio "Chamados" ainda é um recurso desejado.
-9. `REC-0014` — decidir o tratamento de VT/VR no motor de Relatórios Personalizados. **Não executar sem decisão explícita do usuário.**
-
-Nenhuma dessas foi executada nesta sincronização de documentação (`ACAO-0013`).
+2. `REC-0003` — criar testes automatizados para cálculos trabalhistas críticos.
+3. `REC-0008` — planejar (sem executar ainda) a migração controlada de Node 20 para uma linha LTS suportada.
+4. `REC-0010` — definir o escopo funcional de `custos`/`extras`/`quickcalc` antes de implementar qualquer backend para eles.
+5. `REC-0011` — decidir a granularidade de RBAC por rota/canal antes de aplicar qualquer guard novo.
+6. `REC-0012` — corrigir `scripts/test-holerite.ps1` em `main` (nome de API desatualizado; baixa prioridade, script de teste manual).
+7. `REC-0013` — confirmar se o domínio "Chamados" ainda é um recurso desejado.
+8. `REC-0014` — decidir o tratamento de VT/VR no motor de Relatórios Personalizados. **Não executar sem decisão explícita do usuário.**
 
 ## 11. Referência do histórico
 

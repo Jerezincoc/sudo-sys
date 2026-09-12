@@ -12,6 +12,8 @@ import type {
   UpdateFuncionarioPayload,
   LoginPayload,
   LoginResult,
+  TrocarSenhaPayload,
+  TrocarSenhaResult,
   Usuario,
   Rescisao,
   CreateRescisaoPayload,
@@ -96,6 +98,7 @@ export interface ElectronAPI {
   // Auth
   login: (payload: LoginPayload) => Promise<LoginResult>
   logout: (token: string) => Promise<{ success: boolean }>
+  trocarSenha: (payload: TrocarSenhaPayload) => Promise<TrocarSenhaResult>
   register: (payload: { nome: string; email: string; senha: string; papel: string; requestingToken: string }) => Promise<LoginResult>
   me: (token: string) => Promise<Usuario | null>
   listUsuarios: () => Promise<IpcResult<Usuario[]>>

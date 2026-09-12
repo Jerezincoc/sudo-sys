@@ -480,6 +480,13 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       PRAGMA foreign_keys = ON;
     `,
   },
+  {
+    name: '055_usuario_must_change_password',
+    sql: `
+      ALTER TABLE usuarios ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0;
+      UPDATE usuarios SET must_change_password = 1 WHERE email = 'admin@sudosys.local';
+    `,
+  },
 ]
 
 function runMigrations(db: BetterSqlite3.Database): void {

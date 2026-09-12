@@ -221,11 +221,11 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 
 ### REC-0002 — 2026-09-11 — Codex
 
-- **Status:** Não executado
+- **Status:** Executado
 - **Recomendação:** Remover credencial padrão fixa e exigir criação ou troca de senha no primeiro uso.
 - **Motivo:** Existe risco de segurança por credenciais conhecidas.
 - **Prioridade:** Crítica
-- **Ação relacionada:** `ACAO-0001`
+- **Ações relacionadas:** recomendada na `ACAO-0001`; executada na `ACAO-0014`.
 
 ### REC-0003 — 2026-09-11 — Codex
 
@@ -867,3 +867,52 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - Nenhuma nova recomendação — esta ação só sincronizou documentação existente.
 - **Próxima ação sugerida:**
   - Decidir se a próxima execução será `REC-0009`, `REC-0002`, `REC-0003` ou `REC-0014` (ou outra das recomendações pendentes listadas em `CONTEXTO_TOTAL.md`).
+
+### ACAO-0014 — 2026-09-11 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Correção de segurança / Schema / Backend / UI
+- **Status:** Concluído
+- **Resumo:**
+  - Executada a `REC-0002`: eliminada a exposição da credencial padrão (`admin@sudosys.local` / `admin123`) e implementado fluxo de troca obrigatória de senha no primeiro login desse usuário, via flag `must_change_password` checado no login e uma tela nova que bloqueia o acesso ao restante do sistema até a troca.
+- **O que foi encontrado (diagnóstico, Passo 1 pedido pelo usuário):**
+  - O seed do admin (`035b_usuario_admin_seed`, `app-host/src/db/database.ts:321-325`) roda dentro de `runMigrations()`, chamada incondicionalmente por `initDatabase()` (`app-host/src/main.ts:96`) — **sem nenhum gate de ambiente**. Confirmado que roda em todo ambiente, inclusive no instalador final para clientes, não só em dev.
+  - `authHandlers.ts:25-34` trocava o hash placeholder do seed pelo hash real de `admin123` na primeira inicialização — outro ponto onde a senha padrão era fixada em código.
+  - `LoginPage.tsx:166` (antes da correção) exibia literalmente `Primeiro acesso? Use admin@sudosys.local / admin123` na tela de login, em texto visível a qualquer pessoa com acesso ao instalador — agravava o risco descrito em `REC-0002`, então foi removido junto (não estava listado explicitamente na recomendação original, mas é parte do mesmo risco e é uma remoção trivial de uma linha).
+  - Não existia nenhuma tela ou canal IPC de "trocar senha" no sistema (Passo 3 pedido pelo usuário) — precisou ser criado do zero. Reportado ao usuário antes de implementar (Passo 5): escopo cabia numa única tarefa (1 migration + 1 canal IPC + 1 tela nova), sem abrir escopo maior.
+- **O que foi mudado:**
+  - `app-host/src/db/database.ts`: nova migration `055_usuario_must_change_password` — `ALTER TABLE usuarios ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0` e `UPDATE usuarios SET must_change_password = 1 WHERE email = 'admin@sudosys.local'` (marca só o admin seed; usuários criados depois via `usuario:create`/`auth:register` nascem com `0`, decisão consistente com o escopo da REC — o risco é especificamente a credencial padrão conhecida, não senhas escolhidas por um admin ao criar outro usuário).
+  - `packages/shared/src/types/usuario.ts`: `Usuario.must_change_password: number`; novos tipos `TrocarSenhaPayload` e `TrocarSenhaResult`.
+  - `packages/infrastructure/src/repositories/SqliteUsuarioRepository.ts`: novo método `updateSenhaEClearMustChange(id, senha_hash)` — grava o novo hash e zera o flag numa única instrução.
+  - `app-host/src/ipc/handlers/authHandlers.ts`: novo canal `auth:trocarSenha` — valida a senha atual (`hasher.verify`) contra o hash existente, grava o novo hash com `updateSenhaEClearMustChange` e atualiza o `tokenMap` em memória. Não foi adicionado a `CANAIS_PUBLICOS` em `authGuard.ts` — fica protegido pelo gate padrão (exige sessão via `WebContents`, já amarrada no login), consistente com o modelo de segurança existente.
+  - `app-host/src/preload.ts` e `packages/ui/src/electron.d.ts`: expõem `trocarSenha(payload)` no `electronAPI`.
+  - `packages/ui/src/api/ipcClient.ts`: método `trocarSenha` no cliente IPC do renderer, com fallback de modo browser (sem Electron) igual aos demais métodos de auth.
+  - `packages/ui/src/pages/login/LoginPage.tsx`: `onLogin` passou a receber `mustChangePassword: boolean` (lido de `res.usuario.must_change_password === 1`) em vez de não receber argumento; removido o texto que expunha a credencial padrão no rodapé da tela.
+  - `packages/ui/src/pages/login/TrocarSenhaPage.tsx` (novo arquivo): tela no mesmo padrão visual do `LoginPage.tsx` — campos "Senha atual", "Nova senha" (mínimo 8 caracteres, validado no cliente) e "Confirmar nova senha"; chama `ipcClient.trocarSenha` usando o token já presente em `useSessionStore`.
+  - `packages/ui/src/app/App.tsx`: novo estado `'change-password'` no state machine (`loading | setup | login | change-password | main`). Login com `must_change_password = 1` vai para `'change-password'` em vez de `'main'`; só ao concluir a troca (`onDone`) o estado avança para `'main'`. Não há como pular essa tela e acessar rotas do `AppRouter` sem passar por ela.
+- **Reaproveitamento (Passo 3):** confirmado que não havia tela de troca de senha existente para reaproveitar — a única coisa parecida (`AdminPage.tsx`) é o formulário de criação de usuário, que já usa `usuario:create`/`hasher.hash` sem relação com troca de senha do próprio usuário logado. Nada foi duplicado; a lógica de hash (`SimplePasswordHasher`) e o padrão de resposta (`{success, error}`) foram reaproveitados dos handlers de auth já existentes.
+- **Validação:**
+  - `pnpm typecheck` (todos os 7 workspaces) passou limpo após as mudanças.
+  - **Achado de ambiente, não relacionado ao código desta ação:** neste ambiente novo (casa), `packages/application/node_modules/@types/node` não estava linkado apesar de declarado em `package.json` e presente no lockfile — `pnpm typecheck`/`pnpm dev` falhavam com `Cannot find name 'Buffer'` mesmo em arquivos não tocados por esta ação (`FileStore.ts`, `PdfRenderer.ts`). Reproduzido também fazendo `git stash` das mudanças desta ação, confirmando que não é causado por elas. Corrigido rodando `pnpm install --frozen-lockfile` novamente (aceitando a recriação completa de `node_modules` que o pnpm propôs) — depois disso o link apareceu e todo o typecheck passou. Não há indicação de que isso afete outros ambientes; registrado aqui para o caso de reaparecer.
+  - Teste via UI real (Passo 4), com `pnpm dev` rodando o Electron real (`--remote-debugging-port=9222`) e interação via Chrome DevTools Protocol (script Node ad-hoc, mesmo princípio de `scripts/cdp-test.mjs`, não commitado — descartado ao final): banco de dev resetado (`.dev-user-data` removido); completado o setup wizard via `window.electronAPI.saveConfig(...)`; login com `admin@sudosys.local` / `admin123` **forçou** a tela "Troca de Senha Obrigatória" antes de qualquer outra coisa; preenchida a troca (senha atual `admin123`, nova `teste12345`) e confirmado que o Dashboard (`AppShell`, ribbon, menu, botão "Sair") foi liberado normalmente após a troca; logout e novo login com `teste12345` foram direto ao Dashboard, **sem** pedir troca de senha novamente. Os quatro passos do fluxo bateram com o esperado.
+- **Por que foi feito:**
+  - `REC-0002` (Crítica): a credencial padrão documentada e hardcoded no seed, replicada em todo ambiente incluindo produção, era um risco de acesso não autorizado conhecido e trivial de explorar — qualquer instalação nova do produto nasce com esse usuário/senha até alguém trocar manualmente, o que hoje não era nem possível de fazer pela UI.
+- **Arquivos envolvidos:**
+  - `app-host/src/db/database.ts`
+  - `app-host/src/ipc/handlers/authHandlers.ts`
+  - `app-host/src/preload.ts`
+  - `packages/infrastructure/src/repositories/SqliteUsuarioRepository.ts`
+  - `packages/shared/src/types/usuario.ts`
+  - `packages/ui/src/api/ipcClient.ts`
+  - `packages/ui/src/app/App.tsx`
+  - `packages/ui/src/electron.d.ts`
+  - `packages/ui/src/pages/login/LoginPage.tsx`
+  - `packages/ui/src/pages/login/TrocarSenhaPage.tsx` (novo)
+- **Riscos ou observações:**
+  - O flag `must_change_password` só é setado automaticamente para o usuário seed (`admin@sudosys.local`). Se algum admin resetar a senha de outro usuário manualmente direto no banco (fora da UI) para um valor "padrão" combinado fora do sistema, esse flag não é ativado — o mecanismo cobre especificamente o seed automático, que era o escopo pedido.
+  - `auth:register` continua fora do gate central de `authGuard.ts` (decisão de outro agente, documentada em `authGuard.ts:38-41`) — não alterado nesta ação, fora de escopo da `REC-0002`.
+  - O achado de ambiente (`@types/node` não linkado nesta máquina) não tem relação com a REC-0002, mas foi corrigido no processo de validação porque bloqueava totalmente `pnpm dev`/`pnpm typecheck`; não foi feita nenhuma mudança de versão ou configuração, só reinstalação de dependências.
+- **Recomendações deixadas para próximos agentes:**
+  - Nenhuma nova recomendação. `REC-0002` passa para `Executado` em `CONTEXTO_TOTAL.md` e nesta seção.
+- **Próxima ação sugerida:**
+  - Retomar a priorização já listada em `CONTEXTO_TOTAL.md` (`REC-0009`, `REC-0003`, `REC-0008`, etc.), conforme decisão do usuário.

@@ -68,6 +68,12 @@ export class SqliteUsuarioRepository {
     this.db.prepare(`UPDATE usuarios SET senha_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(senha_hash, id)
   }
 
+  updateSenhaEClearMustChange(id: number, senha_hash: string): void {
+    this.db.prepare(
+      `UPDATE usuarios SET senha_hash = ?, must_change_password = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+    ).run(senha_hash, id)
+  }
+
   softDelete(id: number): void {
     this.db.prepare(`UPDATE usuarios SET ativo = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(id)
   }
