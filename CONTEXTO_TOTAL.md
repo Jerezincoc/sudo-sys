@@ -298,13 +298,14 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 
 ### REC-0012
 
-- **Status:** Não executado
+- **Status:** Executado
 - **Recomendação:** Corrigir `scripts/test-holerite.ps1` em `main` para usar `window.electronAPI.gerarHolerite` em vez de `folhaGerarPdf` (que não existe mais em `app-host/src/preload.ts`).
 - **Motivo:** O script de teste manual de geração de holerite está quebrado em `main`; a branch remota não mergeada `canhoto-wip` já tem a correção do nome, independente do destino dessa branch.
 - **Prioridade:** Baixa (script de teste manual, não afeta runtime da aplicação)
 - **Origem:** Claude
 - **Data:** 2026-09-11
 - **Referência:** `ACAO-0011`.
+- **Execução:** Concluída na `ACAO-0026` — script atualizado para `gerarHolerite({folhaId, funcionarioId})` (canal `folha:gerar-holerite`), com descoberta dinâmica de empresa/folha/funcionário via IPC (a API real não aceita mais rubricas/totais brutos no payload). Validado gerando um PDF de verdade contra o banco de dev real (`pnpm dev` real, login real, dados mínimos de teste criados via IPC com autorização explícita do usuário). `scripts/seed-test.ps1`, citado como possível mesmo problema, não existe no repositório.
 
 ### REC-0013
 
@@ -381,10 +382,11 @@ Nenhum agente deve corrigir erro de execução antes de verificar se o ambiente 
 3. `REC-0008` — planejar (sem executar ainda) a migração controlada de Node 20 para uma linha LTS suportada.
 4. `REC-0010` — definir o escopo funcional de `custos`/`extras`/`quickcalc` antes de implementar qualquer backend para eles.
 5. `REC-0011` — decidir a granularidade de RBAC por rota/canal antes de aplicar qualquer guard novo.
-6. `REC-0012` — corrigir `scripts/test-holerite.ps1` em `main` (nome de API desatualizado; baixa prioridade, script de teste manual).
-7. `REC-0013` — confirmar se o domínio "Chamados" ainda é um recurso desejado.
-8. `REC-0014` — decidir o tratamento de VT/VR no motor de Relatórios Personalizados. **Não executar sem decisão explícita do usuário.**
-9. `REC-0015` — lock de concorrência para `folha:calcular`. Só necessário se/quando o sistema deixar de ser single-user/single-instância.
+6. `REC-0013` — confirmar se o domínio "Chamados" ainda é um recurso desejado.
+7. `REC-0014` — decidir o tratamento de VT/VR no motor de Relatórios Personalizados. **Não executar sem decisão explícita do usuário.**
+8. `REC-0015` — lock de concorrência para `folha:calcular`. Só necessário se/quando o sistema deixar de ser single-user/single-instância.
+
+`REC-0012` foi executada na `ACAO-0026` — `scripts/test-holerite.ps1` corrigido e validado com PDF real gerado contra o banco de dev.
 
 `[7a]` (motor de fórmulas) foi concluído na `ACAO-0019` — motor implementado (`ACAO-0018`) e conectado à UI (botão "ƒ" em `LancamentosEditor.tsx`), validado via UI real. Não é mais um item pendente.
 

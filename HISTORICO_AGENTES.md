@@ -1331,3 +1331,43 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - Os comandos reais registrados por cada página foram preservados. Menus, Anexos, Processos e Filtro continuam sem implementação funcional, mas agora isso está explícito e não induz o usuário a esperar resposta ao clique.
 - **Próxima ação sugerida:**
   - Nenhuma nova tarefa ou REC foi iniciada nesta ação; a priorização futura continua dependente de decisão do usuário.
+
+### ACAO-0026 — 2026-09-14 — Claude (Sonnet 5)
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Correção de script de teste manual (REC-0012)
+- **Status:** Concluído
+- **Resumo:**
+  - `scripts/test-holerite.ps1` chamava `window.electronAPI.folhaGerarPdf`, API que não existe mais no `preload.ts` atual. Corrigido para usar a API real (`gerarHolerite`) e validado gerando um PDF de verdade contra o banco de dev real.
+- **O que foi encontrado:**
+  - `folhaGerarPdf` não existe em `app-host/src/preload.ts`. A API real equivalente é `gerarHolerite(payload: { folhaId: number; funcionarioId?: number })` → canal `folha:gerar-holerite` (`preload.ts:271-272`).
+  - O handler real (`folhaHandlers.ts:219-306`) não aceita mais rubricas/totais/bases no payload — ele lê o holerite já calculado no banco (`SqliteFolhaRepository.getHolerite`) a partir de `folhaId`/`funcionarioId`. O payload hardcoded do script antigo (rubricas, totais, bases) não tem mais correspondência na API atual.
+  - `folha:calcular` (`folhaHandlers.ts:87-123`) só gera holerite para funcionários que já têm ao menos 1 lançamento não-automático na folha (`if (lancamentos.length === 0) continue`) — um funcionário sem nenhum lançamento manual é ignorado silenciosamente, sem erro.
+  - Todo canal fora de `CANAIS_PUBLICOS` (`authGuard.ts`) exige sessão real vinculada ao `WebContents` — o script precisa logar antes de chamar `gerarHolerite`, o que a versão antiga não fazia (provavelmente dependia de um login manual prévio feito por um humano na mesma janela).
+  - O perfil de dev real (`.dev-user-data`) nunca tinha passado pelo Setup Wizard (`config.json` inexistente), embora o banco (`sudosys.db`) já tivesse dado real de sessões anteriores (empresa id=1). Achado à parte, não é regressão desta REC.
+  - `authHandlers.ts:25-34` reseta a senha do admin seed para `admin123` a cada início do processo principal (condição `currentHash.startsWith('$argon2id$')` é sempre verdadeira para qualquer hash argon2 válido, incluindo um já trocado) — comportamento pré-existente, fora do escopo da REC-0012, não alterado nesta ação, só documentado porque foi o que permitiu login real nesta validação.
+  - `scripts/seed-test.ps1`, citado como possível mesmo tipo de problema (Passo 5 pedido pelo usuário): **não existe em nenhum lugar do repositório** (busca completa, fora de `node_modules`). Não há nada para corrigir ou reportar sob esse nome.
+- **O que foi mudado:**
+  - `scripts/test-holerite.ps1`: reescrito mantendo a mesma estrutura (CDP sobre WebSocket, `Cdp-Eval`, `Report`) e o mesmo propósito (gerar 1 holerite de teste via automação, fora da UI). Etapa 1 verifica `typeof electronAPI.gerarHolerite`; Etapa 2 descobre empresa/folha/funcionário reais via `listEmpresas`/`listFolhas`/`listFuncionarios` (sem payload hardcoded); Etapa 3 chama `calcularFolha` (idempotente, `REC-0004`); Etapa 4 chama `gerarHolerite({folhaId, funcionarioId})` e valida que `data.filePath` termina em `.pdf`.
+- **Por que foi feito:**
+  - `REC-0012` (Baixa prioridade, script de teste manual não afeta runtime) — corrigir o nome de API desatualizado, mantendo o script utilizável para validação manual futura de geração de holerite.
+- **Validações executadas:**
+  - Leitura direta de `preload.ts` e `folhaHandlers.ts` para confirmar a API real (não presumido por nome).
+  - `pnpm dev` real (Vite + Electron, `--user-data-dir=../.dev-user-data`, `--remote-debugging-port=9222`) iniciado para teste ponta a ponta contra o banco de dev real.
+  - Sessão real via `electronAPI.login({email:'admin@sudosys.local', senha:'admin123'})` — sucesso confirmado (a senha citada acima é resetada a cada start do processo, não foi adivinhada).
+  - Ambiente de dev real não tinha nenhum funcionário com lançamento apto a gerar holerite; criei dados mínimos de teste via IPC real, com autorização explícita do usuário: empresa "Empresa Teste REC-0012" (id=2), funcionário "Funcionario Teste REC-0012" (id=2), folha competência 2026-09 (id=2), 1 lançamento manual de Salário Base (rubrica `0001`, R$3500,00). Esses registros permanecem no banco de dev real (`​.dev-user-data/banco/sudosys.db`) — não foram removidos.
+  - `scripts/test-holerite.ps1` corrigido executado de verdade (via PowerShell, não simulado): as 4 etapas retornaram `[OK]`, incluindo a geração do PDF.
+  - PDF gerado confirmado em disco: `C:\Users\holdi\Downloads\holerite_2026-09_Funcionario_Teste_REC_0012_1789406720370.pdf`, 4198 bytes, `file` confirma `PDF document, version 1.3, 1 page(s)`. Arquivo permanece em Downloads.
+  - `pnpm --filter @sudo-sys/infrastructure test` e `pnpm --filter @sudo-sys/domain test`: 36/36 passaram (verificado antes e depois desta ação; a suíte de infraestrutura só passa com `better-sqlite3` no ABI do Node — precisou ser restaurado do ABI do Electron usado pelo `pnpm dev`, mesma rotina já documentada na `ACAO-0016`/`ACAO-0023`/`ACAO-0025`).
+  - Processos `pnpm dev`/Vite/Electron abertos para o teste foram encerrados ao final (verificado via `Get-CimInstance Win32_Process`, nenhum processo relacionado a `sudo-sys` permaneceu ativo).
+- **Arquivos envolvidos:**
+  - `scripts/test-holerite.ps1` (alterado).
+  - `HISTORICO_AGENTES.md`, `CONTEXTO_TOTAL.md` (registro desta ação e status da `REC-0012`).
+  - Nenhum arquivo de código de produção/runtime foi alterado.
+- **Riscos ou observações:**
+  - Dados de teste (empresa/funcionário/folha/lançamento/holerite id=2) permanecem no banco de dev real por decisão explícita do usuário durante a execução — não são dados fictícios inventados sem aviso, mas também não foram removidos ao final; se o próximo agente ou o usuário quiser um banco de dev "limpo", isso precisa de limpeza manual.
+  - O achado sobre `authHandlers.ts:25-34` (reset de senha do admin a cada start) e sobre `.dev-user-data` nunca ter passado pelo Setup Wizard não foram corrigidos — são observações de ambiente fora do escopo da `REC-0012`, registradas aqui só para não se perderem.
+  - Risco de código é nulo: a única alteração de arquivo é um script de teste manual, não referenciado por `pnpm dev`, `pnpm build`, `pnpm test` ou pelo runtime da aplicação.
+- **Próxima ação sugerida:**
+  - `REC-0012` está concluída. Nenhuma nova REC foi criada.
+  - Se desejado, limpar manualmente a empresa/funcionário/folha de teste (id=2) do banco de dev real e o PDF de teste em Downloads.
