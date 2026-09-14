@@ -5,7 +5,7 @@ import {
   Settings, Database, Shield, Users, Lock, Zap, Calculator, LayoutDashboard,
   Search, AlertCircle, CheckCircle, Link2,
 } from 'lucide-react'
-import { pageActionRefs } from '@/state/pageActionsSlice'
+import { usePageActionsStore } from '@/state/pageActionsSlice'
 
 const TABS = [
   'Cadastros', 'Folha Mensal', 'Operações',
@@ -16,6 +16,7 @@ interface RibbonItem {
   icon: React.ElementType
   label: string
   onClick?: () => void
+  disabledLabel?: string
 }
 interface RibbonGroup {
   label: string
@@ -111,15 +112,16 @@ const RIBBON_CONTENT: Record<string, RibbonGroup[]> = {
 
 export default function RibbonBar() {
   const [activeTab, setActiveTab] = useState('Cadastros')
+  const actions = usePageActionsStore((state) => state.actions)
 
   const cadastrosGroups: RibbonGroup[] = [
     { label: 'ARQUIVO', items: [
-      { icon: Plus,      label: 'Novo',      onClick: () => pageActionRefs.onNew()     },
-      { icon: Pencil,    label: 'Editar',    onClick: () => pageActionRefs.onEdit()    },
-      { icon: Trash2,    label: 'Excluir',   onClick: () => pageActionRefs.onDelete()  },
+      { icon: Plus,      label: 'Novo',      onClick: actions.onNew,     disabledLabel: 'Nesta tela' },
+      { icon: Pencil,    label: 'Editar',    onClick: actions.onEdit,    disabledLabel: 'Nesta tela' },
+      { icon: Trash2,    label: 'Excluir',   onClick: actions.onDelete,  disabledLabel: 'Nesta tela' },
     ]},
     { label: 'DADOS', items: [
-      { icon: RefreshCw, label: 'Atualizar', onClick: () => pageActionRefs.onRefresh() },
+      { icon: RefreshCw, label: 'Atualizar', onClick: actions.onRefresh, disabledLabel: 'Nesta tela' },
       { icon: Download,  label: 'Exportar'  },
       { icon: Upload,    label: 'Importar'  },
     ]},
@@ -194,7 +196,13 @@ export default function RibbonBar() {
               {/* Button row */}
               <div style={{ display: 'flex', gap: 1, flex: 1, alignItems: 'flex-start', paddingTop: 3 }}>
                 {group.items.map((item) => (
-                  <RibbonButton key={item.label} icon={item.icon} label={item.label} onClick={item.onClick} />
+                  <RibbonButton
+                    key={item.label}
+                    icon={item.icon}
+                    label={item.label}
+                    onClick={item.onClick}
+                    disabledLabel={item.disabledLabel}
+                  />
                 ))}
               </div>
               {/* Group label */}
@@ -220,13 +228,27 @@ export default function RibbonBar() {
   )
 }
 
-function RibbonButton({ icon: Icon, label, onClick }: { icon: React.ElementType; label: string; onClick?: () => void }) {
+function RibbonButton({
+  icon: Icon,
+  label,
+  onClick,
+  disabledLabel = 'Em breve',
+}: {
+  icon: React.ElementType
+  label: string
+  onClick?: () => void
+  disabledLabel?: string
+}) {
   const [hover, setHover] = useState(false)
   const disabled = !onClick
+  const disabledTitle = disabledLabel === 'Nesta tela'
+    ? `${label}: indisponível nesta tela`
+    : `${label}: ${disabledLabel.toLowerCase()}`
   return (
     <button
       onClick={onClick}
       disabled={disabled}
+      title={disabled ? disabledTitle : label}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
@@ -238,7 +260,7 @@ function RibbonButton({ icon: Icon, label, onClick }: { icon: React.ElementType;
         border: `1px solid ${hover && !disabled ? 'var(--color-border-main)' : 'transparent'}`,
         background: hover && !disabled ? '#e8f0f8' : 'transparent',
         cursor: disabled ? 'default' : 'pointer',
-        opacity: disabled ? 0.4 : 1,
+        opacity: disabled ? 0.58 : 1,
         gap: 2,
         minWidth: 34,
       }}
@@ -253,6 +275,16 @@ function RibbonButton({ icon: Icon, label, onClick }: { icon: React.ElementType;
       }}>
         {label}
       </span>
+      {disabled && (
+        <span style={{
+          fontSize: 8,
+          lineHeight: 1,
+          color: 'var(--color-text-muted)',
+          whiteSpace: 'nowrap',
+        }}>
+          {disabledLabel}
+        </span>
+      )}
     </button>
   )
 }

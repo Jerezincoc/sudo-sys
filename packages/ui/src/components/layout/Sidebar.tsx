@@ -7,9 +7,15 @@ import {
 } from 'lucide-react'
 import { useUiStore } from '@/state/uiSlice'
 import { usePermission } from '@/permissions/usePermission'
+import { useSelectedEmpresaStore } from '@/state/selectedEmpresaSlice'
 import { ROUTES } from '@/app/routes'
 
-interface NavItem { label: string; icon: React.ElementType; to: string }
+interface NavItem {
+  label: string
+  icon: React.ElementType
+  to: string
+  requiresEmpresa?: boolean
+}
 interface NavGroup { group: string; items: NavItem[] }
 
 const NAV: NavGroup[] = [
@@ -18,22 +24,22 @@ const NAV: NavGroup[] = [
   ]},
   { group: 'CADASTROS', items: [
     { label: 'Empresas',           icon: Building2,       to: ROUTES.EMPRESAS      },
-    { label: 'Funcionários',       icon: Users,           to: ROUTES.FUNCIONARIOS  },
+    { label: 'Funcionários',       icon: Users,           to: ROUTES.FUNCIONARIOS, requiresEmpresa: true },
   ]},
   { group: 'FOLHA', items: [
-    { label: 'Folha de Pagamento', icon: FileText,        to: ROUTES.FOLHA      },
+    { label: 'Folha de Pagamento', icon: FileText,        to: ROUTES.FOLHA,     requiresEmpresa: true },
     { label: 'Rubricas',           icon: Tag,             to: ROUTES.RUBRICAS   },
   ]},
   { group: 'OPERAÇÕES', items: [
-    { label: 'Férias',             icon: Umbrella,        to: ROUTES.FERIAS     },
-    { label: 'Rescisão',           icon: LogOut,          to: ROUTES.RESCISAO   },
-    { label: 'Ponto',              icon: Clock,           to: ROUTES.PONTO      },
+    { label: 'Férias',             icon: Umbrella,        to: ROUTES.FERIAS,    requiresEmpresa: true },
+    { label: 'Rescisão',           icon: LogOut,          to: ROUTES.RESCISAO,  requiresEmpresa: true },
+    { label: 'Ponto',              icon: Clock,           to: ROUTES.PONTO,     requiresEmpresa: true },
     { label: 'Custo / Simulador',  icon: Calculator,      to: ROUTES.CUSTOS     },
-    { label: 'QuickCalc',          icon: Zap,             to: ROUTES.QUICKCALC  },
+    { label: 'QuickCalc',          icon: Zap,             to: ROUTES.QUICKCALC, requiresEmpresa: true },
   ]},
   { group: 'TABELAS', items: [
     { label: 'CBO',                icon: BookOpen,        to: ROUTES.CBO        },
-    { label: 'Documentos',         icon: FolderOpen,      to: ROUTES.DOCUMENTOS },
+    { label: 'Documentos',         icon: FolderOpen,      to: ROUTES.DOCUMENTOS, requiresEmpresa: true },
   ]},
   { group: 'RELATÓRIOS', items: [
     { label: 'Relatórios',         icon: BarChart2,       to: ROUTES.RELATORIOS },
@@ -49,6 +55,8 @@ const COL_W = 48
 export default function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useUiStore()
   const { isAdmin } = usePermission()
+  const empresaId = useSelectedEmpresaStore((state) => state.empresaId)
+  const hasEmpresa = empresaId != null
   const w = sidebarCollapsed ? COL_W : EXP_W
   const nav = isAdmin ? NAV : NAV.filter((g) => g.group !== 'ADMIN')
 
@@ -66,6 +74,20 @@ export default function Sidebar() {
     }}>
       {/* ── Nav ─────────────────────────────────────────────────── */}
       <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+        {!sidebarCollapsed && !hasEmpresa && (
+          <div style={{
+            margin: 7,
+            padding: '7px 8px',
+            border: '1px solid var(--color-border-main)',
+            borderLeft: '3px solid #b7791f',
+            background: 'var(--color-bg-ribbon)',
+            color: 'var(--color-text-secondary)',
+            fontSize: 10,
+            lineHeight: 1.35,
+          }}>
+            Selecione uma empresa para usar os itens marcados.
+          </div>
+        )}
         {nav.map(({ group, items }) => (
           <div key={group}>
             {/* Group header */}
@@ -95,11 +117,20 @@ export default function Sidebar() {
             )}
 
             {/* Items */}
-            {items.map(({ label, icon: Icon, to }) => (
+            {items.map(({ label, icon: Icon, to, requiresEmpresa }) => {
+              const waitingForEmpresa = Boolean(requiresEmpresa && !hasEmpresa)
+              const itemTitle = waitingForEmpresa
+                ? `${label} — selecione uma empresa para continuar`
+                : label
+
+              return (
               <NavLink
                 key={to}
                 to={to}
-                title={sidebarCollapsed ? label : undefined}
+                title={sidebarCollapsed || waitingForEmpresa ? itemTitle : undefined}
+                aria-label={sidebarCollapsed || waitingForEmpresa ? itemTitle : undefined}
+                data-requires-empresa={requiresEmpresa ? 'true' : undefined}
+                data-waiting-for-empresa={waitingForEmpresa ? 'true' : undefined}
                 style={({ isActive }) => ({
                   display: 'flex',
                   alignItems: 'center',
@@ -114,6 +145,7 @@ export default function Sidebar() {
                   borderLeft: isActive ? '2px solid var(--color-brand)' : '2px solid transparent',
                   overflow: 'hidden',
                   whiteSpace: 'nowrap',
+                  opacity: waitingForEmpresa && !isActive ? 0.58 : 1,
                 })}
                 onMouseEnter={(e) => {
                   const el = e.currentTarget
@@ -135,14 +167,30 @@ export default function Sidebar() {
                       style={{ flexShrink: 0, color: isActive ? '#fff' : 'var(--color-text-secondary)' }}
                     />
                     {!sidebarCollapsed && (
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {label}
-                      </span>
+                      <>
+                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {label}
+                        </span>
+                        {waitingForEmpresa && (
+                          <span
+                            aria-hidden="true"
+                            title="Selecione uma empresa"
+                            style={{
+                              width: 6,
+                              height: 6,
+                              flexShrink: 0,
+                              borderRadius: '50%',
+                              background: isActive ? '#fff' : '#b7791f',
+                            }}
+                          />
+                        )}
+                      </>
                     )}
                   </>
                 )}
               </NavLink>
-            ))}
+              )
+            })}
           </div>
         ))}
       </nav>

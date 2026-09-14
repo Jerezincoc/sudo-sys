@@ -1234,3 +1234,40 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 - **Próxima recomendação:**
   - Em uma próxima rodada pequena de UI/UX, revisar o shell de navegação para diferenciar melhor comandos disponíveis de comandos ainda sem ação e reduzir a sensação de controles inativos, sem alterar RBAC ou regras dos módulos.
   - Nenhuma nova REC foi criada nesta ação.
+
+### ACAO-0023 — 2026-09-14 — Codex
+
+- **Autor da ação:** Codex
+- **Tipo de ação:** Melhoria UI/UX
+- **Status:** Concluído
+- **Área melhorada:**
+  - Shell principal de navegação, especificamente o menu lateral e a faixa superior de comandos.
+- **Arquivos alterados:**
+  - `packages/ui/src/components/layout/Sidebar.tsx`
+  - `packages/ui/src/components/layout/RibbonBar.tsx`
+  - `HISTORICO_AGENTES.md`
+- **O que mudou visualmente:**
+  - O menu lateral passou a identificar sete áreas que dependem de empresa: Funcionários, Folha de Pagamento, Férias, Rescisão, Ponto, QuickCalc e Documentos.
+  - Sem empresa ativa, esses itens ficam atenuados, recebem marcador e tooltip explicativo, e o topo do menu mostra a orientação “Selecione uma empresa para usar os itens marcados”. As rotas continuam clicáveis e preservam seus estados vazios existentes.
+  - Com empresa ativa, a orientação e o estado de espera desaparecem, sem mudar o destino ou o comportamento das rotas.
+  - A faixa “Cadastros” passou a refletir as ações realmente registradas pela página atual. Novo, Editar, Excluir e Atualizar deixam de parecer ativos quando não se aplicam à tela.
+  - Comandos ainda sem implementação são desabilitados e identificados como “Em breve”; ações conhecidas, mas não disponíveis na tela atual, aparecem como “Nesta tela” e têm tooltip “indisponível nesta tela”.
+- **Por que foi feito:**
+  - O shell apresentava comandos sem ação com aparência interativa e não diferenciava módulos que precisam de contexto de empresa. A mudança reduz cliques sem resultado e explica pré-requisitos sem criar bloqueios ou prometer funções inexistentes.
+- **Riscos ou observações:**
+  - Risco baixo: a alteração é restrita a apresentação, acessibilidade e ligação da faixa ao store de ações já existente.
+  - Nenhuma rota foi removida ou bloqueada; nenhum guard, papel, permissão, autenticação, autorização ou RBAC foi alterado.
+  - Relatórios não foi marcado como dependente porque a configuração de modelos continua acessível sem empresa; apenas a execução já exige empresa na própria página.
+  - `CONTEXTO_TOTAL.md` não foi alterado porque a fase e o estado técnico geral do projeto não mudaram.
+- **Validações executadas:**
+  - `pnpm install --frozen-lockfile`: passou; lockfile já atualizado e nenhuma dependência alterada.
+  - `pnpm typecheck`: passou em todos os workspaces.
+  - `pnpm test`: 36/36 testes passaram (25 em `domain` e 11 em `infrastructure`).
+  - `pnpm build`: passou; Vite processou 1.673 módulos e o `app-host` compilou normalmente.
+  - `pnpm dev`: Vite, preload, rebuild de `better-sqlite3`, Electron e SQLite isolado iniciaram sem erro funcional; permaneceram apenas os avisos conhecidos de Autofill do DevTools.
+  - Validação visual isolada do shell no renderer, em viewport de 1267 × 740: sete itens ficaram em espera sem empresa e zero após simular uma empresa somente no store; a orientação acompanhou o estado e não houve overflow horizontal ou vertical.
+  - O binário local de `better-sqlite3` foi restaurado para o ABI do Node após a validação Electron, sem alterar arquivo versionado, e a suíte final passou.
+  - `git diff --check`, busca por marcadores de conflito e `git status -sb` foram executados antes do commit.
+- **Próxima melhoria recomendada:**
+  - Em uma rodada pequena separada, revisar a barra de menus e a toolbar secundária do `AppShell` para deixar explícitos ou remover visualmente controles sem ação, preservando os comandos reais registrados por cada página.
+  - Nenhuma nova REC foi criada nesta ação.
