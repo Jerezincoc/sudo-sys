@@ -1271,3 +1271,31 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 - **Próxima melhoria recomendada:**
   - Em uma rodada pequena separada, revisar a barra de menus e a toolbar secundária do `AppShell` para deixar explícitos ou remover visualmente controles sem ação, preservando os comandos reais registrados por cada página.
   - Nenhuma nova REC foi criada nesta ação.
+
+### ACAO-0024 — 2026-09-14 — Claude (Sonnet 5)
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Diagnóstico e validação de build (REC-0009)
+- **Status:** Parcialmente executado
+- **Resumo:**
+  - Diagnóstico dos 3 achados de `REC-0009` (CSV de CBO, ícone do instalador, fontes `.ts` no ASAR), seguido de build real do instalador Windows (NSIS) e inspeção do `app.asar` gerado para confirmar cada item na prática, não só na configuração.
+- **Achados:**
+  - CSV de CBO: já corrigido em ação anterior (`ACAO-0020`) — `app-host/package.json` (`build.files`) já empacota `src/data/cbo_lista.csv` em `dist/main/data`, path que `023_cbo_completo.ts` espera em runtime. Confirmado presente no `app.asar` real (`asar list`).
+  - Fontes `.ts` no ASAR: já corrigido em ação anterior (`ACAO-0020`) — `build.files` já exclui `packages/*/src` e `**/*.{ts,tsx}`. Confirmado 0 arquivos `.ts`/`.tsx` no `app.asar` real (2047 entradas inspecionadas).
+  - Ícone do instalador: **ainda pendente**. `build.win.icon` aponta para `build/icon.ico`, mas esse arquivo não existe no repositório. O build confirmou via log do electron-builder: `default Electron icon is used — reason=application icon is not set`. Não é erro de configuração, é asset ausente.
+- **O que foi feito:**
+  - `pnpm run build` (tsc) em `app-host` e `pnpm --filter @sudo-sys/app-host dist` (electron-builder, NSIS, win-x64) — build real executado do zero.
+  - `asar list` no `app.asar` gerado (`dist/electron/win-unpacked/resources/app.asar`) para confirmar CSV presente e ausência de `.ts`.
+  - Nenhum código, config ou asset foi alterado — os dois achados de CSV/ASAR já estavam corretos, só faltava confirmação prática.
+- **Por que foi feito:**
+  - `REC-0009` (Alta) pedia diagnóstico antes de correção, e correção mecânica só do que fosse puramente mecânico. Dois dos três itens já estavam corrigidos por ação anterior; o terceiro exige um asset visual que não existe no repo — decisão de produto explicitamente fora do meu escopo (instrução de não inventar/gerar ícone placeholder).
+- **Arquivos envolvidos:**
+  - Nenhum arquivo de código ou configuração foi alterado.
+  - `dist/electron/` (novo, não versionado, saída de build local): `win-unpacked/`, `SudoSys Setup 1.0.0.exe`, blockmap.
+  - `HISTORICO_AGENTES.md`, `CONTEXTO_TOTAL.md`.
+- **Riscos ou observações:**
+  - O instalador gerado nesta validação não é assinado (`NotSigned`) e não foi executado/instalado, para evitar alterar atalhos, registro ou instalação existente.
+  - O instalador continua saindo com o ícone genérico do Electron até que um `.ico` oficial seja fornecido em `app-host/build/icon.ico`.
+  - Diretórios de builds anteriores (`dist/electron-rec0009*`) não foram tocados nem removidos.
+- **Próxima ação sugerida:**
+  - `REC-0009` permanece parcial: fornecer um `.ico` oficial em `app-host/build/icon.ico` (decisão visual do Jeremias) e, só depois, validar instalação/desinstalação do NSIS numa VM ou ambiente Windows descartável.

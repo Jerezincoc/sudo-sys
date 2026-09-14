@@ -274,7 +274,7 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Prioridade:** Alta
 - **Origem:** Codex
 - **Data:** 2026-09-11
-- **Execução:** `ACAO-0020` incluiu e validou o CSV, eliminou fontes TypeScript, gerou o NSIS e passou no smoke test. Ícone oficial, assinatura e instalação efetiva permanecem **A confirmar**. Esta ação era a `ACAO-0014` local e foi renumerada durante a reconciliação documentada na `ACAO-0021` para evitar colisão com a `ACAO-0014` remota.
+- **Execução:** `ACAO-0020` incluiu e validou o CSV, eliminou fontes TypeScript, gerou o NSIS e passou no smoke test. Ícone oficial, assinatura e instalação efetiva permanecem **A confirmar**. Esta ação era a `ACAO-0014` local e foi renumerada durante a reconciliação documentada na `ACAO-0021` para evitar colisão com a `ACAO-0014` remota. `ACAO-0024` rodou um build real do NSIS e inspecionou o `app.asar` gerado, confirmando na prática: CSV de CBO presente e 0 arquivos `.ts` empacotados. Ícone oficial continua ausente (`app-host/build/icon.ico` não existe no repo) — build confirmou `default Electron icon is used`. Assinatura e instalação/desinstalação efetiva continuam **A confirmar**.
 
 ### REC-0010
 
