@@ -1629,3 +1629,55 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 * **Próxima ação sugerida:**
 
   * Corrigir `REC-0017` em uma tarefa separada, dedicada e pequena (guardrail desta ação foi só diagnóstico); antes de começar, confirmar com o Codex se `EmpresasPage.tsx` já foi commitado, para não colidir com esse trabalho em paralelo.
+
+### ACAO-0031 — 2026-09-14 — Codex
+
+* **Autor da ação:** Codex
+* **Tipo de ação:** Melhoria pequena de UI/UX
+* **Status:** Implementação concluída; publicação pendente por restrição do ambiente
+* **Área melhorada:**
+
+  * Tela e listagem de Empresas, sem alteração de lógica funcional.
+
+* **O que foi mudado:**
+
+  * Adicionado cabeçalho local compacto com título, resumo e ação primária "Nova empresa".
+  * Busca ampliada e identificada por label acessível; o texto de apoio agora explicita código, razão social, nome fantasia e CNPJ.
+  * Filtro de status passou a funcionar visualmente como controle segmentado, com grupo e estado selecionado expostos por atributos ARIA.
+  * Adicionada faixa de contexto com quantidade exibida, total cadastrado, ativas, inativas e selecionadas.
+  * Adicionada ação "Limpar filtros" quando existe busca ou filtro de status ativo.
+  * O seletor geral ganhou rótulo acessível, tooltip, estado parcial e cálculo correto sobre as linhas visíveis; os seletores individuais também receberam rótulos contextuais.
+  * O estado sem cadastro agora orienta a criação da primeira empresa e oferece a ação "Nova empresa".
+  * O estado sem resultado de busca/filtro passou a ser distinto e oferece a ação "Limpar filtros".
+  * O botão de importação manteve o fluxo existente e ganhou ícone e semântica de menu expandido.
+
+* **Lógica preservada:**
+
+  * Foram mantidos os callbacks, APIs e fluxos atuais de carregamento, seleção, navegação por teclado, importação, exportação, impressão, criação, edição, inativação, reativação e exclusão.
+  * Nenhum backend, regra de negócio, cálculo, autenticação, autorização, RBAC, banco, migration, contrato IPC ou dependência foi alterado.
+
+* **Arquivos alterados:**
+
+  * `packages/ui/src/pages/empresas/EmpresasPage.tsx`
+  * `HISTORICO_AGENTES.md`
+
+* **Validações executadas:**
+
+  * Typecheck dos seis workspaces executáveis: passou; a UI também foi verificada isoladamente após o ajuste final. A invocação literal de `pnpm typecheck` foi bloqueada pela política de acesso do sandbox ao caminho pai do workspace, e o mesmo conjunto de builds/typechecks foi executado por workspace através de um drive virtual local.
+  * `pnpm test`: 36/36 testes passaram (25 em `domain` e 11 em `infrastructure`). O binário de `better-sqlite3` estava no ABI 128 do Electron; foi restaurado para o ABI 115 do Node pelo procedimento já documentado e a suíte passou na repetição.
+  * Build: os quatro pacotes internos compilaram, a UI passou pelo TypeScript, o Vite processou 1.673 módulos e gerou o bundle, e o `app-host` compilou. A etapa do Vite foi chamada diretamente pela API do mesmo pacote porque o sandbox não permite ao Node resolver os links do pnpm acima do workspace.
+  * Desenvolvimento: servidor Vite iniciado em `http://127.0.0.1:5173`; documento, entrada e módulo de Empresas responderam HTTP 200, e os marcadores dos novos estados foram confirmados no módulo transformado. O controlador visual integrado não inicializou por erro interno de metadados do sandbox, e o sandbox também impediu manter o Electron gráfico aberto; por isso não houve inspeção visual interativa ou screenshot nesta sessão.
+  * `git diff --check`: passou sem erros de whitespace.
+  * `git status -sb`: conferido antes da edição e antes do commit.
+
+* **Riscos ou observações:**
+
+  * Risco baixo: a alteração está restrita à composição visual e à acessibilidade da listagem.
+  * A pasta `.git` está disponível apenas para leitura nesta sessão, impedindo atualizar o índice do checkout principal; o commit foi preparado em clone temporário. O acesso HTTPS a `github.com:443` também foi bloqueado em duas tentativas, portanto o push permaneceu pendente.
+  * `scripts/cdp-authguard-scan.ps1` apareceu como arquivo não rastreado durante a execução, não foi criado por esta tarefa e foi preservado fora do commit.
+  * `CONTEXTO_TOTAL.md` não foi alterado porque a fase, as recomendações e o estado técnico geral do projeto não mudaram.
+
+* **Próxima recomendação:**
+
+  * Em uma rodada separada, aplicar o mesmo padrão de cabeçalho, contexto de listagem e estados vazios às telas de Funcionários e Rubricas, preservando seus fluxos atuais.
+  * Nenhuma nova REC foi criada nesta ação.

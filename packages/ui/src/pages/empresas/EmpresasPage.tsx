@@ -5,6 +5,7 @@
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import type { Empresa } from '@sudo-sys/shared'
+import { Building2, Plus, Search, Upload, X } from 'lucide-react'
 import { usePageActionsStore } from '@/state/pageActionsSlice'
 import EmpresaForm from './EmpresaForm'
 import ConfirmDialog from '@/components/feedback/ConfirmDialog'
@@ -83,6 +84,7 @@ export default function EmpresasPage() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [importMenuOpen, setImportMenuOpen] = useState(false)
   const rowRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+  const selectAllRef = useRef<HTMLInputElement>(null)
 
   // ── Dialog de confirmação de ação de exclusão ─────────────────────
   // Tipagem genérica: o diálogo é pré-configurado pelo handleDelete
@@ -164,6 +166,20 @@ export default function EmpresasPage() {
   })
 
   const selectedIdx = filtered.findIndex((e) => e.id === selectedId)
+  const visibleCheckedCount = filtered.filter((e) => checkedIds.has(e.id)).length
+  const allVisibleChecked = filtered.length > 0 && visibleCheckedCount === filtered.length
+  const hasActiveFilters = search.trim().length > 0 || filterStatus !== 'all'
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = visibleCheckedCount > 0 && !allVisibleChecked
+    }
+  }, [visibleCheckedCount, allVisibleChecked])
+
+  const clearFilters = useCallback(() => {
+    setSearch('')
+    setFilterStatus('all')
+  }, [])
 
   // ── Ações da toolbar ───────────────────────────────────────────
 
@@ -448,70 +464,153 @@ export default function EmpresasPage() {
       background: 'var(--color-bg-app)',
     }}>
 
-      {/* ── Search/Filter bar ─────────────────────────────────── */}
+      {/* ── Cabeçalho local ───────────────────────────────────── */}
       <div style={{
-        height: 28,
         flexShrink: 0,
+        minHeight: 62,
         background: 'var(--color-bg-panel)',
         borderBottom: '1px solid var(--color-border-main)',
         display: 'flex',
         alignItems: 'center',
-        padding: '0 6px',
-        gap: 6,
+        justifyContent: 'space-between',
+        padding: '10px 14px',
+        gap: 16,
       }}>
-        <span style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginRight: 2 }}>
-          Localizar:
-        </span>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Código, Razão Social, CNPJ..."
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Building2 size={20} color="var(--color-brand)" aria-hidden="true" />
+            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 650, color: 'var(--color-text-primary)', letterSpacing: 0 }}>
+              Empresas
+            </h1>
+          </div>
+          <p style={{ margin: '3px 0 0 28px', fontSize: 11, color: 'var(--color-text-muted)' }}>
+            Consulte, selecione e mantenha os cadastros empresariais.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setFormMode('new')}
           style={{
-            width: 220,
-            height: 20,
-            fontSize: 11,
-            padding: '0 4px',
-            border: '1px solid var(--color-border-main)',
-            background: 'var(--color-bg-white)',
-            color: 'var(--color-text-primary)',
-            outline: 'none',
+            height: 30,
+            padding: '0 12px',
+            border: '1px solid var(--color-brand)',
+            background: 'var(--color-brand)',
+            color: '#fff',
+            cursor: 'pointer',
             borderRadius: 0,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            flexShrink: 0,
+            fontSize: 12,
+            fontWeight: 600,
           }}
-        />
-        <div style={{ width: 1, height: 16, background: 'var(--color-border-main)' }} />
-        <span style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
-          Status:
-        </span>
-        {(['all', 'ativa', 'inativa'] as const).map((s) => (
-          <button
-            key={s}
-            onClick={() => setFilterStatus(s)}
+        >
+          <Plus size={15} aria-hidden="true" />
+          Nova empresa
+        </button>
+      </div>
+
+      {/* ── Busca e filtros ────────────────────────────────────── */}
+      <div style={{
+        minHeight: 50,
+        flexShrink: 0,
+        background: 'var(--color-bg-white)',
+        borderBottom: '1px solid var(--color-border-main)',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '8px 14px',
+        gap: 12,
+        flexWrap: 'wrap',
+      }}>
+        <label htmlFor="empresas-search" style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 280, flex: '1 1 340px', maxWidth: 480 }}>
+          <Search size={15} color="var(--color-text-muted)" aria-hidden="true" />
+          <span style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>
+            Buscar empresas
+          </span>
+          <input
+            id="empresas-search"
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por código, razão social, nome fantasia ou CNPJ"
             style={{
-              height: 20,
-              padding: '0 8px',
-              fontSize: 11,
+              width: '100%',
+              height: 30,
+              fontSize: 12,
+              padding: '0 9px',
               border: '1px solid var(--color-border-main)',
-              background: filterStatus === s ? 'var(--color-brand)' : 'var(--color-bg-white)',
-              color: filterStatus === s ? '#fff' : 'var(--color-text-secondary)',
-              cursor: 'pointer',
+              background: 'var(--color-bg-app)',
+              color: 'var(--color-text-primary)',
+              outline: 'none',
               borderRadius: 0,
             }}
+          />
+        </label>
+
+        <div role="group" aria-label="Filtrar empresas por status" style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+          <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginRight: 7 }}>
+            Status
+          </span>
+          {(['all', 'ativa', 'inativa'] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setFilterStatus(s)}
+              aria-pressed={filterStatus === s}
+              style={{
+                height: 30,
+                padding: '0 10px',
+                fontSize: 11,
+                border: '1px solid var(--color-border-main)',
+                borderLeft: s === 'all' ? '1px solid var(--color-border-main)' : 'none',
+                background: filterStatus === s ? 'var(--color-brand)' : 'var(--color-bg-white)',
+                color: filterStatus === s ? '#fff' : 'var(--color-text-secondary)',
+                cursor: 'pointer',
+                borderRadius: 0,
+              }}
+            >
+              {s === 'all' ? 'Todas' : s === 'ativa' ? 'Ativas' : 'Inativas'}
+            </button>
+          ))}
+        </div>
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            title="Remover busca e filtro de status"
+            style={{
+              height: 30,
+              padding: '0 8px',
+              fontSize: 11,
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--color-brand)',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
           >
-            {s === 'all' ? 'Todos' : s === 'ativa' ? 'Ativas' : 'Inativas'}
+            <X size={14} aria-hidden="true" />
+            Limpar filtros
           </button>
-        ))}
-        <div style={{ flex: 1 }} />
+        )}
+
+        <div style={{ flex: '1 1 12px' }} />
 
         {/* ── Botão Importar com dropdown CSV / JSON ── */}
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => setImportMenuOpen((o) => !o)}
             title="Importar empresas (CSV ou JSON)"
+            aria-haspopup="menu"
+            aria-expanded={importMenuOpen}
             style={{
-              height: 20,
-              padding: '0 8px',
-              fontSize: 11,
+              height: 30,
+              padding: '0 10px',
+              fontSize: 12,
               border: '1px solid var(--color-border-main)',
               background: importMenuOpen ? 'var(--color-brand)' : 'var(--color-bg-white)',
               color: importMenuOpen ? '#fff' : 'var(--color-text-secondary)',
@@ -522,7 +621,8 @@ export default function EmpresasPage() {
               gap: 4,
             }}
           >
-            ↑ Importar ▾
+            <Upload size={14} aria-hidden="true" />
+            Importar ▾
           </button>
 
           {importMenuOpen && (
@@ -569,8 +669,30 @@ export default function EmpresasPage() {
         </div>
 
         {loading && (
-          <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>Carregando...</span>
+          <span role="status" style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Carregando...</span>
         )}
+      </div>
+
+      <div style={{
+        minHeight: 28,
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '5px 14px',
+        borderBottom: '1px solid var(--color-border-light)',
+        background: 'var(--color-bg-app)',
+        color: 'var(--color-text-muted)',
+        fontSize: 11,
+        flexWrap: 'wrap',
+      }} aria-live="polite">
+        <span>
+          <strong style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{filtered.length}</strong>
+          {' '}de {empresas.length} empresa(s) exibida(s)
+        </span>
+        <span>{empresas.filter((e) => e.status === 'ativa').length} ativa(s)</span>
+        <span>{empresas.filter((e) => e.status === 'inativa').length} inativa(s)</span>
+        {checkedIds.size > 0 && <span>{checkedIds.size} selecionada(s)</span>}
       </div>
 
       {/* ── Table ─────────────────────────────────────────────── */}
@@ -591,9 +713,12 @@ export default function EmpresasPage() {
           {/* checkbox all */}
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <input
+              ref={selectAllRef}
               type="checkbox"
-              checked={filtered.length > 0 && checkedIds.size === filtered.length}
+              checked={allVisibleChecked}
               onChange={toggleAll}
+              aria-label={allVisibleChecked ? 'Desmarcar todas as empresas exibidas' : 'Selecionar todas as empresas exibidas'}
+              title={allVisibleChecked ? 'Desmarcar todas as empresas exibidas' : 'Selecionar todas as empresas exibidas'}
               style={{ width: 12, height: 12, cursor: 'pointer' }}
             />
           </div>
@@ -618,16 +743,53 @@ export default function EmpresasPage() {
 
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
-          {filtered.length === 0 && !loading && (
+          {empresas.length === 0 && !loading && (
             <div style={{
-              padding: '32px 16px',
+              minHeight: 210,
+              padding: '36px 16px',
               textAlign: 'center',
-              fontSize: 12,
               color: 'var(--color-text-muted)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}>
-              {search
-                ? 'Nenhuma empresa encontrada para a pesquisa.'
-                : 'Nenhuma empresa cadastrada. Clique em + para incluir.'}
+              <Building2 size={28} color="var(--color-brand)" aria-hidden="true" />
+              <strong style={{ marginTop: 10, fontSize: 13, color: 'var(--color-text-primary)' }}>Nenhuma empresa cadastrada</strong>
+              <span style={{ marginTop: 4, fontSize: 11 }}>Cadastre a primeira empresa para iniciar a operação do sistema.</span>
+              <button
+                type="button"
+                onClick={() => setFormMode('new')}
+                style={{ marginTop: 14, height: 30, padding: '0 12px', border: '1px solid var(--color-brand)', background: 'var(--color-brand)', color: '#fff', cursor: 'pointer', borderRadius: 0, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600 }}
+              >
+                <Plus size={15} aria-hidden="true" />
+                Nova empresa
+              </button>
+            </div>
+          )}
+
+          {empresas.length > 0 && filtered.length === 0 && !loading && (
+            <div style={{
+              minHeight: 210,
+              padding: '36px 16px',
+              textAlign: 'center',
+              color: 'var(--color-text-muted)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Search size={28} color="var(--color-text-muted)" aria-hidden="true" />
+              <strong style={{ marginTop: 10, fontSize: 13, color: 'var(--color-text-primary)' }}>Nenhuma empresa encontrada</strong>
+              <span style={{ marginTop: 4, fontSize: 11 }}>Revise a busca ou o status selecionado para ver outros resultados.</span>
+              <button
+                type="button"
+                onClick={clearFilters}
+                style={{ marginTop: 14, height: 30, padding: '0 10px', border: '1px solid var(--color-border-main)', background: 'var(--color-bg-white)', color: 'var(--color-brand)', cursor: 'pointer', borderRadius: 0, display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600 }}
+              >
+                <X size={14} aria-hidden="true" />
+                Limpar filtros
+              </button>
             </div>
           )}
 
@@ -685,6 +847,7 @@ export default function EmpresasPage() {
                     checked={isChecked}
                     onChange={(e) => toggleCheck(emp.id, e)}
                     onClick={(e) => e.stopPropagation()}
+                    aria-label={`Selecionar empresa ${emp.razao_social}`}
                     style={{ width: 12, height: 12, cursor: 'pointer' }}
                   />
                 </div>
@@ -725,7 +888,7 @@ export default function EmpresasPage() {
         color: 'var(--color-text-muted)',
         gap: 12,
       }}>
-        <span>{filtered.length} registro(s)</span>
+        <span>{filtered.length} registro(s) exibido(s)</span>
         {checkedIds.size > 0 && (
           <span>{checkedIds.size} selecionado(s)</span>
         )}
