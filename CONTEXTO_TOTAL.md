@@ -52,8 +52,8 @@ Depois da leitura, o agente deve identificar a fase atual, verificar recomendaç
 - **Stack principal:** Electron, React, TypeScript, Vite, SQLite e pnpm monorepo.
 - **Estado atual:** Protótipo funcional com baixa confiabilidade operacional e fiscal.
 - **Fase atual:** Estabilização do build e da distribuição Electron.
-- **Última ação registrada:** `ACAO-0030` — varredura sistemática de todos os 81 canais IPC quanto a autenticação/autorização, cruzando com o gate central (`authGuard.ts`) e o RBAC do frontend. Achado e confirmado na prática (via IPC direto/CDP) um gap crítico não documentado antes: `setup:save-config`/`setup:get-config` são públicos e nunca checam `isInitialized()`, permitindo reescrever a configuração/conexão de banco sem qualquer sessão, a qualquer momento. Só diagnóstico — nenhuma correção foi aplicada, por guardrail explícito da tarefa. `REC-0017` (crítica) e `REC-0018` (baixa) registradas.
-- **Próxima ação recomendada:** corrigir `REC-0017` (canais de setup públicos sem checagem de `isInitialized()`) em tarefa separada e pequena — é o risco de segurança mais urgente identificado até agora, com exploração confirmada na prática. Antes disso, confirmar com o Codex se `packages/ui/src/pages/empresas/EmpresasPage.tsx` (visto modificado, não commitado, durante a `ACAO-0030`) já foi finalizado, para não colidir com esse trabalho em paralelo. Também confirmar se `REC-0016` (migração de path para fora do OneDrive) se aplica a alguma outra máquina/sessão do projeto.
+- **Última ação registrada:** `ACAO-0032` — corrigida a `REC-0017` (crítica): `authGuard.ts` agora checa `isInitialized()` para `setup:save-config`/`setup:get-config` — públicos só antes da primeira configuração; depois disso, exigem sessão + papel admin. Validado via IPC direto (CDP) em 3 cenários (pré-init sem sessão continua funcionando, pós-init sem sessão passou a ser rejeitado, pós-init com sessão admin continua funcionando) e `pnpm test` 36/36 sem regressão.
+- **Próxima ação recomendada:** confirmar com o Codex se `packages/ui/src/pages/empresas/EmpresasPage.tsx` (visto modificado, não commitado, desde a `ACAO-0030`) já pode ser finalizado/enviado, para não colidir com esse trabalho em paralelo. Depois, avaliar `REC-0018` (mecanismo próprio de `auth:register`, baixa prioridade) e `REC-0011` (matriz de RBAC) como próximas tarefas de segurança, se priorizadas pelo usuário. Também confirmar se `REC-0016` (migração de path para fora do OneDrive) se aplica a alguma outra máquina/sessão do projeto.
 - **Uso em produção:** Não recomendado antes das correções críticas e dos testes de cálculo.
 
 ## 2. Objetivo do projeto
@@ -108,7 +108,7 @@ Existem duas arquiteturas concorrentes: uma Clean Architecture quase vazia e uma
 
 ### Segurança
 
-Não foram encontrados secrets, tokens ou chaves privadas versionados. Foram encontrados riscos relevantes: configuração de conexão potencialmente sensível salva em texto puro, canais de setup públicos após a inicialização, autorização limitada a uma distinção parcial de administrador e ausência de auditoria funcional. O risco de credencial padrão conhecida (`admin@sudosys.local`/`admin123`) foi mitigado na `ACAO-0014` (`REC-0002`): o seed do admin agora nasce marcado para troca obrigatória de senha no primeiro login, e a UI não expõe mais a credencial. A `ACAO-0027` estendeu esse enforcement para o backend: antes, `must_change_password` só era respeitado pelo roteamento do frontend, e uma chamada de IPC direta contornava a troca obrigatória; agora o gate central (`authGuard.ts`) bloqueia todo canal autenticado até a troca, exceto `auth:trocarSenha`. O risco de "canais de setup públicos após a inicialização", mencionado genericamente desde a `ACAO-0001`, foi confirmado na prática na `ACAO-0030`: `setup:save-config`/`setup:get-config` nunca checam `isInitialized()` e aceitam reescrever/ler a configuração inteira (inclusive a seção `database`) sem sessão, a qualquer momento — ver `REC-0017` (crítica, não corrigida ainda).
+Não foram encontrados secrets, tokens ou chaves privadas versionados. Foram encontrados riscos relevantes: configuração de conexão potencialmente sensível salva em texto puro, canais de setup públicos após a inicialização, autorização limitada a uma distinção parcial de administrador e ausência de auditoria funcional. O risco de credencial padrão conhecida (`admin@sudosys.local`/`admin123`) foi mitigado na `ACAO-0014` (`REC-0002`): o seed do admin agora nasce marcado para troca obrigatória de senha no primeiro login, e a UI não expõe mais a credencial. A `ACAO-0027` estendeu esse enforcement para o backend: antes, `must_change_password` só era respeitado pelo roteamento do frontend, e uma chamada de IPC direta contornava a troca obrigatória; agora o gate central (`authGuard.ts`) bloqueia todo canal autenticado até a troca, exceto `auth:trocarSenha`. O risco de "canais de setup públicos após a inicialização", mencionado genericamente desde a `ACAO-0001`, foi confirmado na prática na `ACAO-0030` (`setup:save-config`/`setup:get-config` aceitando reescrever/ler a configuração inteira, inclusive a seção `database`, sem sessão, a qualquer momento) e corrigido na `ACAO-0032` (`REC-0017`): os dois canais agora só ficam públicos enquanto `isInitialized() === false`; depois disso, exigem sessão + papel admin.
 
 ### Performance
 
@@ -349,13 +349,14 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 
 ### REC-0017
 
-- **Status:** Não executado
+- **Status:** Executado
 - **Recomendação:** Corrigir `setup:save-config` (e considerar `setup:get-config`) em `app-host/src/ipc/handlers/setupHandlers.ts` para checar `isInitialized()` e recusar chamadas fora do fluxo legítimo do wizard depois da primeira inicialização — ou trazer esses canais para dentro do gate central de sessão assim que `initialized=true`.
 - **Motivo:** Ambos os canais estão em `CANAIS_PUBLICOS` no `authGuard.ts` e o handler nunca verifica `isInitialized()`. Confirmado na prática via IPC direto (CDP), sem nenhum login: `setup:save-config` aceitou sobrescrever `config.json` inteiro (incluindo a seção `database`) tanto antes quanto depois do sistema já estar `initialized:true`, com um payload adversarial simulando `database.host`/`database.user` arbitrários. `setup:get-config` expõe a mesma configuração (que pode conter connection string PostgreSQL em texto puro, per `README_AMBIENTE.md` §10) sem exigir sessão. É a mesma classe de gap da `REC-0002` original: canal que deveria ter deixado de ser acessível após um certo estado do sistema, mas ficou público indefinidamente.
 - **Prioridade:** Crítica — exploração confirmada na prática, sem necessidade de credenciais.
 - **Origem:** Claude
 - **Data:** 2026-09-14
 - **Referência:** `ACAO-0030`.
+- **Execução:** Concluída na `ACAO-0032` — `authGuard.ts` passou a checar `isInitialized()` para `setup:save-config`/`setup:get-config`: públicos só enquanto `false` (wizard de primeira configuração); a partir de `true`, exigem sessão + papel admin (mesmo padrão de `CANAIS_ADMIN`). Validado via IPC direto (CDP) nos 3 cenários pedidos: (a) pré-init sem sessão continua funcionando; (b) pós-init sem sessão passou a ser rejeitado (ataque original da `ACAO-0030` bloqueado); (c) pós-init com sessão admin (e senha já trocada) continua funcionando normalmente. `pnpm test` 36/36 sem regressão.
 
 ### REC-0018
 
@@ -405,19 +406,18 @@ Nenhum agente deve corrigir erro de execução antes de verificar se o ambiente 
 
 ## 10. Próximo passo recomendado
 
-`REC-0002` foi executada na `ACAO-0014`. `REC-0003` foi parcialmente executada na `ACAO-0015` (só o motor IRRF/INSS/FGTS). `REC-0004` foi executada na `ACAO-0016` (transação + constraint; lock de concorrência virou `REC-0015` separada). Não há uma única próxima ação definida entre as demais — várias recomendações continuam ativas e não executadas, aguardando priorização do usuário:
+`REC-0002` foi executada na `ACAO-0014`. `REC-0003` foi parcialmente executada na `ACAO-0015` (só o motor IRRF/INSS/FGTS). `REC-0004` foi executada na `ACAO-0016` (transação + constraint; lock de concorrência virou `REC-0015` separada). `REC-0017` foi executada na `ACAO-0032`. Não há uma única próxima ação definida entre as demais — várias recomendações continuam ativas e não executadas, aguardando priorização do usuário:
 
-1. `REC-0017` — corrigir `setup:save-config`/`setup:get-config` para checar `isInitialized()`; canais públicos permitem reescrever a configuração/conexão de banco sem sessão, exploração confirmada na prática na `ACAO-0030`. **Prioridade crítica, é o risco de segurança mais urgente conhecido hoje.**
-2. `REC-0009` — fornecer um ícone oficial, tratar assinatura e validar instalação/desinstalação do NSIS em ambiente autorizado; a inclusão do CSV, a remoção das fontes excedentes e o smoke test foram concluídos parcialmente na `ACAO-0020`.
-3. `REC-0003` (restante) — estender os testes automatizados para Rescisão, Férias, Ponto e demais cálculos trabalhistas críticos.
-4. `REC-0008` — planejar (sem executar ainda) a migração controlada de Node 20 para uma linha LTS suportada.
-5. `REC-0010` — definir o escopo funcional de `custos`/`extras`/`quickcalc` antes de implementar qualquer backend para eles.
-6. `REC-0011` — decidir a granularidade de RBAC por rota/canal antes de aplicar qualquer guard novo.
-7. `REC-0013` — confirmar se o domínio "Chamados" ainda é um recurso desejado.
-8. `REC-0014` — decidir o tratamento de VT/VR no motor de Relatórios Personalizados. **Não executar sem decisão explícita do usuário.**
-9. `REC-0015` — lock de concorrência para `folha:calcular`. Só necessário se/quando o sistema deixar de ser single-user/single-instância.
-10. `REC-0016` — confirmar em qual máquina/sessão (`holdi`, OneDrive) a migração de path do projeto ainda é necessária.
-11. `REC-0018` — avaliar remoção ou migração de `auth:register` para o gate central; prioridade baixa, sem consumidor de UI hoje.
+1. `REC-0009` — fornecer um ícone oficial, tratar assinatura e validar instalação/desinstalação do NSIS em ambiente autorizado; a inclusão do CSV, a remoção das fontes excedentes e o smoke test foram concluídos parcialmente na `ACAO-0020`.
+2. `REC-0003` (restante) — estender os testes automatizados para Rescisão, Férias, Ponto e demais cálculos trabalhistas críticos.
+3. `REC-0008` — planejar (sem executar ainda) a migração controlada de Node 20 para uma linha LTS suportada.
+4. `REC-0010` — definir o escopo funcional de `custos`/`extras`/`quickcalc` antes de implementar qualquer backend para eles.
+5. `REC-0011` — decidir a granularidade de RBAC por rota/canal antes de aplicar qualquer guard novo.
+6. `REC-0013` — confirmar se o domínio "Chamados" ainda é um recurso desejado.
+7. `REC-0014` — decidir o tratamento de VT/VR no motor de Relatórios Personalizados. **Não executar sem decisão explícita do usuário.**
+8. `REC-0015` — lock de concorrência para `folha:calcular`. Só necessário se/quando o sistema deixar de ser single-user/single-instância.
+9. `REC-0016` — confirmar em qual máquina/sessão (`holdi`, OneDrive) a migração de path do projeto ainda é necessária.
+10. `REC-0018` — avaliar remoção ou migração de `auth:register` para o gate central; prioridade baixa, sem consumidor de UI hoje.
 
 `REC-0012` foi executada na `ACAO-0026` — `scripts/test-holerite.ps1` corrigido e validado com PDF real gerado contra o banco de dev.
 

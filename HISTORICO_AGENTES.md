@@ -1681,3 +1681,71 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 
   * Em uma rodada separada, aplicar o mesmo padrão de cabeçalho, contexto de listagem e estados vazios às telas de Funcionários e Rubricas, preservando seus fluxos atuais.
   * Nenhuma nova REC foi criada nesta ação.
+
+### ACAO-0032 — 2026-09-14 — Claude (Sonnet 5)
+
+* **Autor da ação:** Claude (Sonnet 5)
+* **Tipo de ação:** Correção de segurança / Gate central de IPC
+* **Status:** Concluído
+* **Resumo:**
+
+  * Corrigida a `REC-0017` (crítica): `setup:save-config` e `setup:get-config` estavam em `CANAIS_PUBLICOS` no `authGuard.ts` e nunca checavam `isInitialized()`, permitindo reescrever ou ler a configuração inteira do app (inclusive a seção `database`) sem sessão nenhuma, mesmo com o sistema já inicializado — achado e confirmado na prática na `ACAO-0030`.
+  * Regra implementada: os dois canais continuam públicos (sem sessão) **somente enquanto `isInitialized() === false`** — propósito legítimo do wizard de primeira configuração. Uma vez `isInitialized() === true`, passam a exigir sessão autenticada **e** papel admin, no mesmo padrão de `CANAIS_ADMIN` já existente.
+  * Escopo estritamente limitado à `REC-0017`, por guardrail explícito do usuário — `REC-0018` (mecanismo próprio de `auth:register`) e `REC-0011` (matriz de RBAC além de admin/não-admin) não foram tocadas.
+* **PASSO 1 — Código anterior e causa raiz:**
+
+  * `app-host/src/ipc/authGuard.ts`, `CANAIS_PUBLICOS` incluía `'setup:save-config'` e `'setup:get-config'` lado a lado com `setup:check-initialized`/`setup:test-database` (que são legitimamente sempre públicos). `installIpcAuthGuard()` só tinha dois ramos: canal em `CANAIS_PUBLICOS` → delega direto ao handler original, sem nenhuma checagem; canal fora dessa lista → exige sessão (e, se em `CANAIS_ADMIN`, também papel admin). Não existia nenhum ramo intermediário que considerasse o estado `isInitialized()` — por isso os dois canais de escrita/leitura de config ficavam permanentemente abertos, tratados exatamente como `auth:login`/`auth:me`.
+* **PASSO 2 — Regra implementada (`app-host/src/ipc/authGuard.ts`):**
+
+  * Removidos `'setup:save-config'` e `'setup:get-config'` de `CANAIS_PUBLICOS`.
+  * Criado o novo conjunto `CANAIS_SETUP_SO_ANTES_DE_INICIALIZAR = new Set(['setup:save-config', 'setup:get-config'])`.
+  * Extraída a lógica de sessão/senha-pendente/role para uma função compartilhada `exigirSessaoEAutorizacao(channel, event, exigeAdmin)`, reaproveitada tanto pelo fluxo normal de canal protegido quanto pelo novo ramo.
+  * `installIpcAuthGuard()` ganhou um terceiro ramo: se o canal está em `CANAIS_SETUP_SO_ANTES_DE_INICIALIZAR`, chama `isInitialized()` (importado de `../setup/configManager`) a cada invocação; se `false`, delega direto ao handler original (sem checagem, igual ao wizard sempre funcionou); se `true`, chama `exigirSessaoEAutorizacao(channel, event, true)` — mesma exigência de `CANAIS_ADMIN`.
+  * `isInitialized()` é síncrona e lê o `config.json` do disco a cada chamada — sem cache, sem risco de decisão desatualizada entre inicializar e a checagem seguinte.
+* **PASSO 3 — Testes reais via IPC direto (CDP), sem login, nos 3 cenários pedidos:**
+
+  * Ambiente: `pnpm dev` real, banco/config de desenvolvimento isolados em `.dev-user-data` (não o banco real do usuário), `--remote-debugging-port=9222`; `.dev-user-data/config.json` removido antes do teste para garantir `isInitialized() === false` no início. Script criado: `scripts/cdp-rec0017-verify.ps1`.
+  * **(a) `isInitialized() === false`, sem sessão:** `checkInitialized()` retornou `false`; `saveConfig({database:{type:'sqlite'}, empresa:{razaoSocial:'REC0017_CENARIO_A_PREINIT'}})` **funcionou** (`{"success":true}`) — wizard de primeiro uso não quebrou.
+  * **(b) `isInitialized() === true` (após o probe do cenário a), sem sessão:** `checkInitialized()` confirmou `true`; `saveConfig(...)` com um payload adversarial (`database.type:'postgresql'`, `host:'attacker-controlled.example'`, `user:'pwn'`) foi **rejeitado**: `Error: Sessão inválida. Faça login novamente.`; `getConfig()` também foi **rejeitado** com a mesma mensagem — o ataque original confirmado na `ACAO-0030` não funciona mais.
+  * **(c) `isInitialized() === true`, com sessão admin válida:** login como `admin@sudosys.local` retornou `must_change_password: 1` (seed fresco do banco de dev) — `saveConfig`/`getConfig` foram corretamente bloqueados pela checagem de troca de senha pendente (comportamento herdado da extensão da `REC-0002`, não um bug desta correção). Repetido o cenário após `auth:trocarSenha` (saindo do estado `must_change_password`): login novo como admin, `saveConfig({database:{type:'sqlite'}, empresa:{razaoSocial:'REC0017_CENARIO_C_ADMIN_OK'}})` **funcionou** (`{"success":true}`) e `getConfig()` subsequente **refletiu o probe** — caminho legítimo de admin ajustando config depois do setup continua funcionando. Sessão encerrada com `logout` ao final.
+  * Os três cenários batem exatamente com o pedido: wizard legítimo intacto, ataque sem sessão bloqueado, caminho de admin autenticado preservado.
+* **PASSO 4 — Regressão:**
+
+  * `pnpm typecheck` (raiz, compila os 4 pacotes internos antes dos workspaces): passou em todos os workspaces, incluindo `app-host` (onde `authGuard.ts` foi alterado) e `packages/ui` (que tem `EmpresasPage.tsx` com trabalho não commitado do Codex — não tocado por esta ação, só confirmado que o typecheck geral continua passando).
+  * `pnpm test` (raiz — `domain` + `infrastructure`): na primeira tentativa, 4 testes falharam em `SqliteFolhaRepository.test.ts` por `NODE_MODULE_VERSION` incompatível (`better-sqlite3` ainda compilado para ABI 128 do Electron, deixado assim pelo `pnpm dev` usado no Passo 3) — problema de ambiente conhecido e documentado em `README_AMBIENTE.md`, não relacionado à mudança de código. Corrigido com `npx prebuild-install` dentro do pacote `better-sqlite3` (reconstruiu para o ABI 115 do Node local). Repetido: **36/36 testes passaram** (25 em `domain`, 11 em `infrastructure`).
+* **O que foi mudado:**
+
+  * `app-host/src/ipc/authGuard.ts`: lógica descrita no Passo 2.
+  * Criado `scripts/cdp-rec0017-verify.ps1` (script de verificação reutilizável, mesmo padrão de `scripts/cdp-test.ps1` e `scripts/cdp-authguard-scan.ps1` já existentes).
+  * `.dev-user-data/config.json`, poluído pelos probes dos cenários (a)/(b)/(c), foi removido ao final para deixar o ambiente de desenvolvimento limpo para o próximo `pnpm dev` (o wizard volta a rodar do zero); `.dev-user-data/banco/sudosys.db` (dado de dev, não o banco real) não foi tocado.
+  * `HISTORICO_AGENTES.md` (esta entrada) e `CONTEXTO_TOTAL.md` (`REC-0017` marcada como Executado) atualizados.
+  * Nenhum outro arquivo de código foi tocado. Em particular, `packages/ui/src/pages/empresas/EmpresasPage.tsx` (trabalho não commitado do Codex, visto pela primeira vez na `ACAO-0030`) e qualquer diretório `.codex-pnpm-*-copy/` continuam fora do escopo desta ação — não foram lidos em detalhe, alterados nem incluídos no `git add`.
+* **Por que foi feito:**
+
+  * Fechar, na prática e com teste real, o gap crítico de autenticação encontrado e confirmado na varredura sistemática da `ACAO-0030` — mesma classe de risco da `REC-0002` original (canal público que deveria ter deixado de ser acessível depois de um certo estado do sistema).
+* **Arquivos envolvidos:**
+
+  * `app-host/src/ipc/authGuard.ts`
+  * `app-host/src/setup/configManager.ts` — lido (import de `isInitialized`), não alterado.
+  * `app-host/src/main.ts` — lido para confirmar a ordem de instalação do gate, não alterado.
+  * Criado: `scripts/cdp-rec0017-verify.ps1`.
+  * Atualizados: `HISTORICO_AGENTES.md`, `CONTEXTO_TOTAL.md`.
+* **Validações executadas:**
+
+  * `git status -sb` conferido antes de iniciar e antes do commit, para garantir que `EmpresasPage.tsx` e quaisquer `.codex-pnpm-*-copy/` não entrassem no `git add`.
+  * `pnpm --filter @sudo-sys/app-host typecheck` e `pnpm typecheck` (raiz, todos os workspaces): passou.
+  * `pnpm test` (raiz): 36/36 após corrigir o ABI de `better-sqlite3` para Node local.
+  * Testes reais via IPC direto (CDP), três cenários descritos no Passo 3.
+  * Processos `electron.exe`/`node.exe` iniciados por esta ação foram encerrados por PID específico ao final de cada rodada (não foi usado `taskkill` genérico por nome de imagem).
+* **Riscos ou observações:**
+
+  * `isInitialized()` agora é chamada em toda invocação de `setup:save-config`/`setup:get-config` (leitura de arquivo síncrona) — custo desprezível dado que são canais de baixa frequência (wizard inicial e ajustes administrativos pontuais), não um caminho quente do sistema.
+  * O comportamento de `must_change_password` bloqueando `setup:save-config`/`setup:get-config` mesmo para admin recém-logado é intencional e consistente com a extensão da `REC-0002` (`ACAO-0027`) — não foi criada uma exceção nova para esses canais entrarem em `CANAIS_PERMITIDOS_COM_TROCA_PENDENTE`, porque não há necessidade funcional conhecida de mexer em config antes de trocar a senha obrigatória.
+  * `REC-0018` (mecanismo próprio de `auth:register`) e `REC-0011` (matriz de RBAC) permanecem como estavam — fora do escopo desta tarefa.
+  * `packages/ui/src/pages/empresas/EmpresasPage.tsx` continua com trabalho não commitado do Codex (`ACAO-0031`, registrado nesta mesma sessão do arquivo); esta ação não interferiu nele.
+* **Recomendações deixadas para próximos agentes:**
+
+  * Nenhuma REC nova. `REC-0017` marcada como Executado em `CONTEXTO_TOTAL.md`.
+* **Próxima ação sugerida:**
+
+  * Confirmar com o Codex se `EmpresasPage.tsx` já pode ser commitado/enviado, já que o push dele ficou pendente por restrição de ambiente (relatado na `ACAO-0031`). Depois, avaliar `REC-0018` e `REC-0011` como próximas tarefas de segurança, se priorizadas pelo usuário.

@@ -23,9 +23,19 @@
  * CANAIS_PERMITIDOS_COM_TROCA_PENDENTE — antes desta checagem, o flag só era
  * respeitado pelo roteamento de tela no frontend (App.tsx); qualquer chamada
  * de IPC direta contornava a troca de senha obrigatória.
+ *
+ * Extensão da REC-0017: `setup:save-config`/`setup:get-config` estavam em
+ * CANAIS_PUBLICOS sem nenhuma checagem de `isInitialized()` — qualquer chamada
+ * de IPC direta conseguia reescrever ou ler a configuração inteira (inclusive
+ * a seção `database`) sem sessão, mesmo com o sistema já configurado. Agora
+ * esses dois canais só ficam públicos enquanto `isInitialized() === false`
+ * (propósito legítimo do wizard de primeira configuração); uma vez
+ * inicializado, exigem sessão + papel admin, como os demais canais de
+ * CANAIS_ADMIN.
  */
 import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import type { Usuario } from '@sudo-sys/shared'
+import { isInitialized } from '../setup/configManager'
 
 const sessionsByWebContentsId = new Map<number, Usuario>()
 
@@ -49,8 +59,6 @@ export function getSessionUser(event: IpcMainInvokeEvent): Usuario | undefined {
 const CANAIS_PUBLICOS = new Set([
   'setup:check-initialized',
   'setup:test-database',
-  'setup:save-config',
-  'setup:get-config',
   'auth:login',
   'auth:logout',
   'auth:me',
@@ -65,6 +73,15 @@ const CANAIS_ADMIN = new Set([
   'admin:backup',
 ])
 
+// Canais do wizard de setup que só ficam públicos (sem sessão) enquanto o
+// sistema ainda não foi inicializado — depois de `isInitialized() === true`,
+// deixam de ser operação anônima e passam a exigir sessão + papel admin,
+// igual a CANAIS_ADMIN (ver REC-0017).
+const CANAIS_SETUP_SO_ANTES_DE_INICIALIZAR = new Set([
+  'setup:save-config',
+  'setup:get-config',
+])
+
 // Com must_change_password = 1, todo canal autenticado é bloqueado exceto os
 // listados aqui. Hoje só `auth:trocarSenha` é necessário: é o único canal que
 // `TrocarSenhaPage.tsx` chama (nenhum outro handler é indispensável para essa
@@ -77,6 +94,22 @@ const CANAIS_PERMITIDOS_COM_TROCA_PENDENTE = new Set([
 
 type Listener = (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown
 
+/** Sessão válida, senha em dia (ou canal isento) e, se o canal exigir, papel
+ *  admin. Lança se qualquer condição falhar. Compartilhada entre o fluxo
+ *  normal de canal protegido e o fluxo pós-inicialização de setup:*. */
+function exigirSessaoEAutorizacao(channel: string, event: IpcMainInvokeEvent, exigeAdmin: boolean): void {
+  const user = getSessionUser(event)
+  if (!user) {
+    throw new Error('Sessão inválida. Faça login novamente.')
+  }
+  if (user.must_change_password === 1 && !CANAIS_PERMITIDOS_COM_TROCA_PENDENTE.has(channel)) {
+    throw new Error('Troca de senha obrigatória pendente. Use a tela de troca de senha antes de continuar.')
+  }
+  if (exigeAdmin && user.papel !== 'admin') {
+    throw new Error('Apenas administradores podem executar esta ação.')
+  }
+}
+
 /** Instala o gate. Precisa ser chamado antes do primeiro `ipcMain.handle(...)`
  *  da aplicação (setup incluso), em `main.ts`. */
 export function installIpcAuthGuard(): void {
@@ -86,17 +119,17 @@ export function installIpcAuthGuard(): void {
     if (CANAIS_PUBLICOS.has(channel)) {
       return originalHandle(channel, listener)
     }
+    if (CANAIS_SETUP_SO_ANTES_DE_INICIALIZAR.has(channel)) {
+      return originalHandle(channel, (event, ...args) => {
+        if (!isInitialized()) {
+          return listener(event, ...args)
+        }
+        exigirSessaoEAutorizacao(channel, event, true)
+        return listener(event, ...args)
+      })
+    }
     return originalHandle(channel, (event, ...args) => {
-      const user = getSessionUser(event)
-      if (!user) {
-        throw new Error('Sessão inválida. Faça login novamente.')
-      }
-      if (user.must_change_password === 1 && !CANAIS_PERMITIDOS_COM_TROCA_PENDENTE.has(channel)) {
-        throw new Error('Troca de senha obrigatória pendente. Use a tela de troca de senha antes de continuar.')
-      }
-      if (CANAIS_ADMIN.has(channel) && user.papel !== 'admin') {
-        throw new Error('Apenas administradores podem executar esta ação.')
-      }
+      exigirSessaoEAutorizacao(channel, event, CANAIS_ADMIN.has(channel))
       return listener(event, ...args)
     })
   }) as typeof ipcMain.handle
