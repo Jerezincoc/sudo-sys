@@ -1299,3 +1299,35 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - Diretórios de builds anteriores (`dist/electron-rec0009*`) não foram tocados nem removidos.
 - **Próxima ação sugerida:**
   - `REC-0009` permanece parcial: fornecer um `.ico` oficial em `app-host/build/icon.ico` (decisão visual do Jeremias) e, só depois, validar instalação/desinstalação do NSIS numa VM ou ambiente Windows descartável.
+
+### ACAO-0025 — 2026-09-14 — Codex
+
+- **Autor da ação:** Codex
+- **Tipo de ação:** Melhoria UI/UX / Recuperação de sessão interrompida
+- **Status:** Concluído
+- **Resumo:**
+  - Recuperada e revisada a melhoria iniciada antes do fechamento inesperado do terminal, sem descartar ou refazer o trabalho existente.
+  - A barra de menus e a toolbar secundária do `AppShell` agora distinguem controles reais de elementos ainda sem implementação, concluindo a melhoria recomendada ao final da `ACAO-0023` sem iniciar nova REC.
+- **O que foi encontrado na retomada:**
+  - `packages/ui/src/app/AppShell.tsx` já continha uma alteração coerente e completa para o escopo: menus e dropdowns sem ação estavam desabilitados e identificados como “Em breve”; Novo, Excluir, Editar e Atualizar continuavam ligados ao store de ações da página e eram desabilitados somente na ausência do callback correspondente.
+  - `HISTORICO_AGENTES.md` não tinha uma entrada para a melhoria atual e continha apenas duas remoções acidentais de indentação dentro da `ACAO-0014`; essas alterações não descreviam o trabalho e quebravam a hierarquia Markdown daquela entrada antiga.
+  - O próximo ID disponível era `ACAO-0025`; nenhuma nova recomendação foi criada ou iniciada.
+- **O que foi mudado:**
+  - `packages/ui/src/app/AppShell.tsx`: removido o hover que fazia a barra de menus parecer funcional; os seis menus foram desabilitados, atenuados e receberam identificação “Em breve”.
+  - `packages/ui/src/app/AppShell.tsx`: Anexos, Processos e Filtro deixaram de parecer dropdowns ativos e passaram a indicar explicitamente que ainda não estão disponíveis.
+  - `packages/ui/src/app/AppShell.tsx`: botões reais da toolbar secundária passaram a usar o estado nativo `disabled` quando a página não registra a ação, mantendo clique e destaque visual somente quando existe callback.
+  - `HISTORICO_AGENTES.md`: restaurada a indentação original das duas linhas da `ACAO-0014` e adicionada esta entrada de recuperação e conclusão.
+  - `CONTEXTO_TOTAL.md` e `README_AMBIENTE.md` não foram alterados porque a fase, as recomendações e o ambiente do projeto não mudaram.
+- **Validações executadas:**
+  - `pnpm install --frozen-lockfile`: passou com lockfile já atualizado e sem alteração de dependências.
+  - `pnpm typecheck`: passou em todos os workspaces.
+  - `pnpm test`: 36/36 testes passaram (25 em `domain` e 11 em `infrastructure`). A primeira execução encontrou `better-sqlite3` preparado para o ABI 128 do Electron; o binário foi restaurado para o ABI 115 do Node pelo procedimento já documentado na `ACAO-0016`, e a suíte completa passou na repetição.
+  - `pnpm build`: passou; Vite processou 1.673 módulos e o `app-host` compilou normalmente.
+  - `pnpm dev`: Vite, preload, rebuild de `better-sqlite3`, Electron e SQLite isolado iniciaram sem erro funcional; permaneceram apenas os avisos conhecidos de Autofill do DevTools. O perfil isolado estava em `#/setup`, e nenhum dado foi gravado apenas para forçar a abertura do `AppShell`.
+  - Após encerrar o Electron, o binário local de `better-sqlite3` foi restaurado para o ABI do Node, sem alterar arquivo versionado.
+  - `git diff --check`: executado após o registro final, sem erros de whitespace.
+- **Riscos ou observações:**
+  - Risco baixo: a mudança é exclusivamente visual e de estado dos controles; não altera rotas, regras de negócio, cálculos, autenticação, autorização, RBAC, banco, dependências ou contratos IPC.
+  - Os comandos reais registrados por cada página foram preservados. Menus, Anexos, Processos e Filtro continuam sem implementação funcional, mas agora isso está explícito e não induz o usuário a esperar resposta ao clique.
+- **Próxima ação sugerida:**
+  - Nenhuma nova tarefa ou REC foi iniciada nesta ação; a priorização futura continua dependente de decisão do usuário.

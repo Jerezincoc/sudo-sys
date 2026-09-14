@@ -36,7 +36,6 @@ export default function AppShell() {
   const { theme, toggle } = useTheme()
   const { empresaNome, competencia } = useSelectedEmpresaStore()
   const { user, token, clearUser } = useSessionStore()
-  const [menuHover, setMenuHover] = useState<string | null>(null)
 
   async function handleLogout() {
     await ipcClient.logout(token ?? '')
@@ -107,21 +106,33 @@ export default function AppShell() {
         {MENU_ITEMS.map((item) => (
           <button
             key={item}
-            onMouseEnter={() => setMenuHover(item)}
-            onMouseLeave={() => setMenuHover(null)}
+            disabled
+            title={`${item}: em breve`}
             style={{
               height: '100%',
               padding: '0 10px',
               border: 'none',
-              background: menuHover === item ? 'var(--color-brand)' : 'transparent',
-              color: menuHover === item ? '#fff' : 'var(--color-text-primary)',
+              background: 'transparent',
+              color: 'var(--color-text-muted)',
               fontSize: 12,
-              cursor: 'pointer',
+              cursor: 'default',
+              opacity: 0.72,
             }}
           >
             {item}
           </button>
         ))}
+        <span style={{
+          padding: '1px 5px',
+          border: '1px solid var(--color-border-main)',
+          borderRadius: 8,
+          color: 'var(--color-text-muted)',
+          fontSize: 9,
+          lineHeight: 1,
+          whiteSpace: 'nowrap',
+        }}>
+          Em breve
+        </span>
         <div style={{ flex: 1 }} />
         <div style={{
           display: 'flex',
@@ -280,10 +291,10 @@ function ActionToolbar() {
       <TBtn color="var(--color-text-secondary)" title="Editar (F2)" onClick={actions.onEdit}>✎</TBtn>
       <TBtn color="var(--color-text-secondary)" title="Atualizar (F5)" onClick={actions.onRefresh}>⟳</TBtn>
       <TDivider />
-      <TDrop>Anexos ▾</TDrop>
-      <TDrop>Processos ▾</TDrop>
+      <TDrop label="Anexos" />
+      <TDrop label="Processos" />
       <TDivider />
-      <TDrop>Filtro: Todos ▾</TDrop>
+      <TDrop label="Filtro" />
       <div style={{ flex: 1 }} />
       {total !== undefined && (
         <span style={{ fontSize: 11, color: 'var(--color-text-muted)', padding: '0 6px' }}>
@@ -296,11 +307,13 @@ function ActionToolbar() {
 
 function TBtn({ children, color, title, onClick }: { children: React.ReactNode; color: string; title?: string; onClick?: () => void }) {
   const [h, setH] = useState(false)
+  const disabled = !onClick
   return (
     <button
-      title={title}
+      title={disabled ? `${title ?? 'Ação'}: indisponível nesta tela` : title}
       onClick={onClick}
-      onMouseEnter={() => setH(true)}
+      disabled={disabled}
+      onMouseEnter={() => { if (!disabled) setH(true) }}
       onMouseLeave={() => setH(false)}
       style={{
         width: 20,
@@ -310,11 +323,11 @@ function TBtn({ children, color, title, onClick }: { children: React.ReactNode; 
         justifyContent: 'center',
         border: `1px solid ${h ? 'var(--color-border-main)' : 'transparent'}`,
         background: h ? 'var(--color-bg-row-hover)' : 'transparent',
-        color: onClick ? color : 'var(--color-text-muted)',
+        color: disabled ? 'var(--color-text-muted)' : color,
         fontSize: 13,
-        cursor: onClick ? 'pointer' : 'default',
+        cursor: disabled ? 'default' : 'pointer',
         lineHeight: 1,
-        opacity: onClick ? 1 : 0.5,
+        opacity: disabled ? 0.58 : 1,
       }}
     >
       {children}
@@ -322,25 +335,27 @@ function TBtn({ children, color, title, onClick }: { children: React.ReactNode; 
   )
 }
 
-function TDrop({ children }: { children: React.ReactNode }) {
-  const [h, setH] = useState(false)
+function TDrop({ label }: { label: string }) {
   return (
     <button
-      onMouseEnter={() => setH(true)}
-      onMouseLeave={() => setH(false)}
+      disabled
+      title={`${label}: em breve`}
       style={{
         height: 20,
         padding: '0 7px',
         display: 'flex',
         alignItems: 'center',
-        border: `1px solid ${h ? 'var(--color-border-main)' : 'transparent'}`,
-        background: h ? 'var(--color-bg-row-hover)' : 'transparent',
-        color: 'var(--color-text-primary)',
+        gap: 4,
+        border: '1px solid transparent',
+        background: 'transparent',
+        color: 'var(--color-text-muted)',
         fontSize: 11,
-        cursor: 'pointer',
+        cursor: 'default',
+        opacity: 0.68,
       }}
     >
-      {children}
+      <span>{label}</span>
+      <span style={{ fontSize: 8, lineHeight: 1 }}>Em breve</span>
     </button>
   )
 }
