@@ -1199,3 +1199,38 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - A reconciliação não alterou prioridades nem escolheu qual REC pendente deve ser executada em seguida.
 - **Próxima ação sugerida:**
   - Revisar o merge commit reconciliado e, somente após aprovação, decidir separadamente qual recomendação pendente priorizar.
+
+### ACAO-0022 — 2026-09-14 — Codex
+
+- **Autor da ação:** Codex
+- **Tipo de ação:** Melhoria UI/UX
+- **Status:** Concluído
+- **Resumo:**
+  - Melhorado o primeiro contato com o Dashboard para orientar o usuário a selecionar uma empresa e acessar as áreas mais usadas com menos ambiguidade.
+  - Removidos os quatro indicadores sem dados reais e a tabela de atividade recente com registros fictícios; o Dashboard agora comunica explicitamente quando uma informação ainda não possui integração.
+- **O que foi melhorado:**
+  - Cabeçalho com hierarquia mais clara, saudação, descrição objetiva e destaque separado para a competência atual.
+  - Bloco de contexto mostra a empresa ativa ou orienta o primeiro passo, com ação clara para selecionar ou trocar empresa.
+  - Criados atalhos para Empresas, Funcionários, Folha mensal e Documentos usando somente rotas já existentes.
+  - Atalhos que dependem de empresa ficam desabilitados quando não há empresa ativa e explicam o que o usuário precisa fazer primeiro.
+  - A seção de atividade recente passou a usar um estado vazio honesto, em vez de apresentar datas, usuários e operações de demonstração como se fossem dados reais.
+- **Arquivos alterados:**
+  - `packages/ui/src/pages/dashboard/DashboardPage.tsx`
+  - `HISTORICO_AGENTES.md`
+- **Por que foi feito:**
+  - O Dashboard é a primeira tela após o login e tinha alto impacto visual, mas não oferecia uma ação principal clara e misturava placeholders com conteúdo fictício. A mudança melhora orientação, legibilidade e confiança sem tocar em regras funcionais.
+- **Riscos ou observações:**
+  - Risco baixo: a alteração é restrita à apresentação e à navegação para rotas existentes; não adiciona consulta, persistência, regra de negócio, cálculo, autenticação, autorização ou dependência.
+  - O Dashboard continua sem indicadores ou histórico integrados a dados reais. Isso agora está explícito para o usuário, sem inventar informação.
+  - `CONTEXTO_TOTAL.md` não foi alterado porque a fase e o estado técnico geral do projeto não mudaram.
+- **Validações executadas:**
+  - `pnpm install --frozen-lockfile`: passou; o lockfile já estava atualizado e nenhuma dependência foi alterada. A primeira invocação foi bloqueada pelo ambiente (`EPERM` ao consultar o diretório pai); a repetição em sessão Windows interativa passou normalmente.
+  - `pnpm typecheck`: passou em todos os workspaces.
+  - `pnpm test`: 36/36 testes passaram (25 em `domain` e 11 em `infrastructure`).
+  - `pnpm build`: passou; Vite processou 1.673 módulos e o `app-host` compilou normalmente.
+  - `pnpm dev`: Vite, preload, rebuild de `better-sqlite3`, Electron e SQLite isolado iniciaram sem erro funcional; permaneceram apenas os avisos conhecidos de Autofill do DevTools.
+  - Validação visual isolada do Dashboard via CDP em viewport de aproximadamente 1267 × 740: conteúdo renderizado sem overflow, ações disponíveis e desabilitadas coerentes com a ausência de empresa e estado vazio legível.
+  - `git diff --check`: passou após o registro final, sem erros de whitespace.
+- **Próxima recomendação:**
+  - Em uma próxima rodada pequena de UI/UX, revisar o shell de navegação para diferenciar melhor comandos disponíveis de comandos ainda sem ação e reduzir a sensação de controles inativos, sem alterar RBAC ou regras dos módulos.
+  - Nenhuma nova REC foi criada nesta ação.

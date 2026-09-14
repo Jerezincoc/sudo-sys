@@ -1,160 +1,271 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  ArrowRight,
+  Building2,
+  CalendarDays,
+  Clock3,
+  FileText,
+  Users,
+} from 'lucide-react'
+import { ROUTES } from '@/app/routes'
 import { useSelectedEmpresaStore } from '@/state/selectedEmpresaSlice'
 
 const MONTHS_LONG = [
-  'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro',
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ]
 
-interface SummaryPanel {
+interface QuickAction {
   label: string
-  value: string
-  sub: string
-  accent: string
+  description: string
+  route: string
+  icon: React.ElementType
+  requiresEmpresa?: boolean
 }
 
-const PANELS: SummaryPanel[] = [
-  { label: 'FUNCIONÁRIOS ATIVOS',  value: '—',     sub: 'Nenhuma empresa selecionada', accent: 'var(--color-brand)'    },
-  { label: 'FOLHAS ABERTAS',       value: '—',     sub: 'Competência atual',            accent: '#1e7e34'               },
-  { label: 'TOTAL BRUTO DA FOLHA', value: 'R$ —',  sub: 'Valores calculados',           accent: '#8b5e00'               },
-  { label: 'PENDÊNCIAS',           value: '—',     sub: 'Documentos e lançamentos',     accent: 'var(--color-btn-del)'  },
-]
-
-const ACTIVITY_ROWS = [
-  { data: '24/05/2026', usuario: 'admin',     acao: 'Cálculo de folha', competencia: 'Mai/2026', status: 'OK'       },
-  { data: '23/05/2026', usuario: 'operador1', acao: 'Importação AFD',   competencia: 'Mai/2026', status: 'OK'       },
-  { data: '22/05/2026', usuario: 'admin',     acao: 'Geração PDF',      competencia: 'Abr/2026', status: 'OK'       },
-  { data: '20/05/2026', usuario: 'operador1', acao: 'Transmissão eSoc', competencia: 'Abr/2026', status: 'PENDENTE' },
+const QUICK_ACTIONS: QuickAction[] = [
+  {
+    label: 'Empresas',
+    description: 'Selecione ou cadastre a empresa de trabalho.',
+    route: ROUTES.EMPRESAS,
+    icon: Building2,
+  },
+  {
+    label: 'Funcionários',
+    description: 'Consulte os colaboradores da empresa selecionada.',
+    route: ROUTES.FUNCIONARIOS,
+    icon: Users,
+    requiresEmpresa: true,
+  },
+  {
+    label: 'Folha mensal',
+    description: 'Acesse as competências e lançamentos existentes.',
+    route: ROUTES.FOLHA,
+    icon: CalendarDays,
+    requiresEmpresa: true,
+  },
+  {
+    label: 'Documentos',
+    description: 'Encontre documentos e modelos disponíveis.',
+    route: ROUTES.DOCUMENTOS,
+    icon: FileText,
+    requiresEmpresa: true,
+  },
 ]
 
 export default function DashboardPage() {
+  const navigate = useNavigate()
   const { empresaNome, competencia } = useSelectedEmpresaStore()
-  const [cYear, cMonth] = competencia.split('-')
-  const monthName = MONTHS_LONG[parseInt(cMonth, 10) - 1] ?? cMonth
+  const [year, month] = competencia.split('-')
+  const monthName = MONTHS_LONG[parseInt(month, 10) - 1] ?? month
+  const hasEmpresa = Boolean(empresaNome)
 
   return (
-    <div style={{ padding: 8 }}>
-
-      {/* ── Page header ──────────────────────────────────────────── */}
-      <div style={{
-        marginBottom: 8,
-        paddingBottom: 4,
+    <main style={{ padding: 20, maxWidth: 1180, margin: '0 auto', width: '100%' }}>
+      <header style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 20,
+        marginBottom: 18,
+        paddingBottom: 14,
         borderBottom: '1px solid var(--color-border-main)',
       }}>
-        <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em' }}>
-          Módulo / Geral
+        <div>
+          <div style={eyebrowStyle}>Visão geral</div>
+          <h1 style={{
+            margin: '3px 0 4px',
+            fontSize: 20,
+            lineHeight: 1.25,
+            color: 'var(--color-text-primary)',
+          }}>
+            Olá! O que você precisa fazer hoje?
+          </h1>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)' }}>
+            Acesse rapidamente as áreas mais usadas do SudoSys.
+          </p>
         </div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)' }}>
-          Dashboard — {empresaNome ?? 'Nenhuma empresa selecionada'}
-          <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--color-text-muted)', marginLeft: 8 }}>
-            {monthName} {cYear}
+
+        <div style={{
+          minWidth: 190,
+          padding: '8px 10px',
+          background: 'var(--color-bg-white)',
+          border: '1px solid var(--color-border-main)',
+          textAlign: 'right',
+        }}>
+          <div style={eyebrowStyle}>Competência atual</div>
+          <div style={{ marginTop: 2, fontSize: 14, fontWeight: 700, color: 'var(--color-brand)' }}>
+            {monthName} de {year}
+          </div>
+        </div>
+      </header>
+
+      <section
+        aria-label="Contexto de trabalho"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          padding: '14px 16px',
+          marginBottom: 18,
+          background: 'var(--color-bg-white)',
+          border: `1px solid ${hasEmpresa ? 'var(--color-border-main)' : 'var(--color-brand)'}`,
+          borderLeft: '4px solid var(--color-brand)',
+        }}
+      >
+        <div style={iconBoxStyle}>
+          <Building2 size={22} aria-hidden="true" />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+            {hasEmpresa ? empresaNome : 'Comece selecionando uma empresa'}
+          </div>
+          <div style={{ marginTop: 2, fontSize: 12, color: 'var(--color-text-secondary)' }}>
+            {hasEmpresa
+              ? 'Esta é a empresa ativa. Os atalhos abaixo usarão esse contexto.'
+              : 'A empresa ativa organiza funcionários, competências e demais rotinas do sistema.'}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate(ROUTES.EMPRESAS)}
+          style={primaryButtonStyle}
+        >
+          {hasEmpresa ? 'Trocar empresa' : 'Selecionar empresa'}
+          <ArrowRight size={14} aria-hidden="true" />
+        </button>
+      </section>
+
+      <section aria-labelledby="quick-actions-title" style={{ marginBottom: 18 }}>
+        <div style={{ marginBottom: 8 }}>
+          <h2 id="quick-actions-title" style={sectionTitleStyle}>Acesso rápido</h2>
+          <p style={sectionDescriptionStyle}>Escolha uma área para continuar.</p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
+          {QUICK_ACTIONS.map((action) => {
+            const disabled = Boolean(action.requiresEmpresa && !hasEmpresa)
+            const Icon = action.icon
+
+            return (
+              <button
+                key={action.label}
+                type="button"
+                disabled={disabled}
+                onClick={() => navigate(action.route)}
+                title={disabled ? 'Selecione uma empresa para acessar esta área.' : undefined}
+                style={{
+                  minHeight: 112,
+                  padding: 14,
+                  border: '1px solid var(--color-border-main)',
+                  borderTop: `3px solid ${disabled ? 'var(--color-border-main)' : 'var(--color-brand)'}`,
+                  background: 'var(--color-bg-white)',
+                  color: 'var(--color-text-primary)',
+                  textAlign: 'left',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  opacity: disabled ? 0.55 : 1,
+                  cursor: disabled ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <Icon size={20} color="var(--color-brand)" aria-hidden="true" />
+                <span style={{ marginTop: 10, fontSize: 13, fontWeight: 700 }}>{action.label}</span>
+                <span style={{ marginTop: 3, fontSize: 11, lineHeight: 1.4, color: 'var(--color-text-secondary)' }}>
+                  {disabled ? 'Selecione uma empresa primeiro.' : action.description}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="recent-activity-title"
+        style={{ background: 'var(--color-bg-white)', border: '1px solid var(--color-border-main)' }}
+      >
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          padding: '10px 12px',
+          borderBottom: '1px solid var(--color-border-main)',
+          background: 'var(--color-bg-ribbon)',
+        }}>
+          <h2 id="recent-activity-title" style={{ ...sectionTitleStyle, margin: 0 }}>Atividade recente</h2>
+          <span style={{ fontSize: 10, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Sem dados integrados
           </span>
         </div>
-      </div>
 
-      {/* ── Summary panels (4 colunas) ───────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 8 }}>
-        {PANELS.map((p) => (
-          <div
-            key={p.label}
-            style={{
-              background: 'var(--color-bg-white)',
-              border: '1px solid var(--color-border-main)',
-              padding: '6px 10px',
-            }}
-          >
-            <div style={{
-              fontSize: 10,
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              color: 'var(--color-text-muted)',
-              marginBottom: 4,
-            }}>
-              {p.label}
-            </div>
-            <div style={{
-              fontSize: 18,
-              fontWeight: 700,
-              color: p.accent,
-              fontVariantNumeric: 'tabular-nums',
-              lineHeight: 1.1,
-              marginBottom: 2,
-            }}>
-              {p.value}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-              {p.sub}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Atividade recente (DataTable style) ──────────────────── */}
-      <div style={{
-        background: 'var(--color-bg-white)',
-        border: '1px solid var(--color-border-main)',
-      }}>
-        {/* Panel title */}
         <div style={{
-          padding: '3px 8px',
-          background: 'var(--color-bg-ribbon)',
-          borderBottom: '1px solid var(--color-border-main)',
-          fontSize: 11,
-          fontWeight: 600,
-          color: 'var(--color-text-primary)',
+          minHeight: 132,
+          padding: 24,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
         }}>
-          Atividade Recente
-        </div>
-
-        {/* Table header */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '20px 90px 100px 1fr 100px 80px',
-          background: 'var(--color-bg-ribbon)',
-          borderBottom: '2px solid var(--color-brand)',
-          fontSize: 11,
-          fontWeight: 700,
-          color: 'var(--color-text-primary)',
-        }}>
-          {['', 'Data', 'Usuário', 'Ação', 'Competência', 'Status'].map((h) => (
-            <div key={h} style={{ padding: '3px 4px', borderRight: '1px solid var(--color-border-light)' }}>
-              {h}
-            </div>
-          ))}
-        </div>
-
-        {/* Table rows */}
-        {ACTIVITY_ROWS.map((row, i) => (
-          <div
-            key={i}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '20px 90px 100px 1fr 100px 80px',
-              background: i % 2 === 0 ? 'var(--color-bg-white)' : 'var(--color-bg-row-even)',
-              fontSize: 11,
-              color: 'var(--color-text-primary)',
-              borderBottom: '1px solid var(--color-border-light)',
-              cursor: 'default',
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--color-bg-row-hover)' }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = i % 2 === 0 ? 'var(--color-bg-white)' : 'var(--color-bg-row-even)' }}
-          >
-            {/* Row indicator */}
-            <div style={{ padding: '3px 4px', borderRight: '1px solid var(--color-border-light)', color: 'var(--color-brand)', fontWeight: 700 }}>▶</div>
-            <div style={{ padding: '3px 4px', borderRight: '1px solid var(--color-border-light)', fontFamily: 'monospace' }}>{row.data}</div>
-            <div style={{ padding: '3px 4px', borderRight: '1px solid var(--color-border-light)' }}>{row.usuario}</div>
-            <div style={{ padding: '3px 4px', borderRight: '1px solid var(--color-border-light)' }}>{row.acao}</div>
-            <div style={{ padding: '3px 4px', borderRight: '1px solid var(--color-border-light)' }}>{row.competencia}</div>
-            <div style={{
-              padding: '3px 4px',
-              color: row.status === 'OK' ? 'var(--color-btn-add)' : 'var(--color-btn-del)',
-              fontWeight: 600,
-            }}>
-              {row.status}
-            </div>
+          <Clock3 size={26} color="var(--color-text-muted)" aria-hidden="true" />
+          <div style={{ marginTop: 9, fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+            Nenhuma atividade disponível
           </div>
-        ))}
-      </div>
-    </div>
+          <p style={{ maxWidth: 480, margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-secondary)' }}>
+            O Dashboard ainda não recebe um histórico automático. Use os atalhos acima para acessar os dados reais de cada área.
+          </p>
+        </div>
+      </section>
+    </main>
   )
+}
+
+const eyebrowStyle: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.07em',
+  color: 'var(--color-text-muted)',
+}
+
+const sectionTitleStyle: React.CSSProperties = {
+  margin: 0,
+  fontSize: 13,
+  fontWeight: 700,
+  color: 'var(--color-text-primary)',
+}
+
+const sectionDescriptionStyle: React.CSSProperties = {
+  margin: '2px 0 0',
+  fontSize: 11,
+  color: 'var(--color-text-muted)',
+}
+
+const iconBoxStyle: React.CSSProperties = {
+  width: 40,
+  height: 40,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexShrink: 0,
+  background: 'var(--color-bg-ribbon)',
+  color: 'var(--color-brand)',
+  border: '1px solid var(--color-border-main)',
+}
+
+const primaryButtonStyle: React.CSSProperties = {
+  minHeight: 32,
+  padding: '0 12px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 7,
+  flexShrink: 0,
+  border: '1px solid var(--color-brand)',
+  background: 'var(--color-brand)',
+  color: '#fff',
+  fontSize: 11,
+  fontWeight: 700,
 }
