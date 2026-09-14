@@ -1469,3 +1469,46 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 * **Próxima ação sugerida:**
 
   * Antes de nova tarefa funcional, verificar se existe alteração não commitada e consultar bloqueios, mensagens e decisões; se surgir trabalho residual, diagnosticar e decidir seu destino separadamente.
+
+### ACAO-0029 — 2026-09-14 — Claude (Sonnet 5)
+
+* **Autor da ação:** Claude (Sonnet 5)
+* **Tipo de ação:** Diagnóstico / Registro de pendência (nenhuma alteração funcional)
+* **Status:** Concluído (só diagnóstico; a tarefa original não foi executada nesta sessão)
+* **Resumo:**
+
+  * Foi solicitado mover o projeto para fora de uma pasta sincronizada pelo OneDrive (`C:\Users\holdi\OneDrive\Documentos\sudo-sys`), sob a alegação de que essa sincronização já teria causado três vezes o bug de ABI mismatch do `better-sqlite3` numa sessão de trabalho anterior.
+  * Antes de mover qualquer coisa, foi verificado `git status -sb` (árvore limpa, sem trabalho não commitado de outro agente) e o ambiente real desta sessão.
+  * A verificação encontrou uma divergência: esta sessão já roda em `C:\Users\JEREeGABI\Documents\sistema\sudo-sys`, que **não** está em pasta sincronizada por OneDrive, e não existe usuário `holdi` nem o path `C:\Users\holdi\...` citado na tarefa nesta máquina. A documentação existente (`CONTEXTO_TOTAL.md`, `README_AMBIENTE.md`) também referencia o usuário `holdi` e o caminho `C:\Users\holdi\AppData\Roaming\Electron\banco\sudosys.db`, evidenciando que essas instruções e boa parte do histórico documentado se referem a uma máquina/sessão diferente desta.
+  * Diante da divergência, o usuário foi consultado e orientou registrar isso apenas como pendência (nova REC), sem mover pastas, reinstalar dependências nem executar os demais passos da tarefa original nesta sessão.
+* **O que foi encontrado:**
+
+  * `git status -sb` → árvore limpa (`## main...origin/main`), nenhuma mudança pendente de outro agente.
+  * `git remote -v` → `origin` aponta para `https://github.com/Jerezincoc/sudo-sys`, consistente com o repositório esperado.
+  * Não existe `C:\Users\holdi` nesta máquina; os usuários locais existentes incluem `JEREeGABI`, entre outros.
+  * O path de trabalho atual (`C:\Users\JEREeGABI\Documents\sistema\sudo-sys`) já está fora de qualquer pasta de sincronização de nuvem conhecida (não é subpasta de `OneDrive`).
+* **O que foi mudado:**
+
+  * Nenhum arquivo de código-fonte, dependência, `node_modules` ou configuração de build foi alterado.
+  * Nenhuma pasta foi criada, copiada ou movida.
+  * Apenas documentação: esta entrada em `HISTORICO_AGENTES.md`, a `REC-0016` e a atualização de `CONTEXTO_TOTAL.md`.
+* **Por que foi feito:**
+
+  * Para não executar uma migração de pasta baseada numa premissa de ambiente (path/usuário `holdi`, OneDrive) que não corresponde ao ambiente real desta sessão, evitando ação destrutiva ou confusa sobre o path errado.
+* **Arquivos envolvidos:**
+
+  * `HISTORICO_AGENTES.md`
+  * `CONTEXTO_TOTAL.md`
+* **Validações executadas:**
+
+  * `git status -sb`, `git remote -v`, listagem de `C:\Users\` e tentativa de acesso a `C:\Users\holdi\OneDrive\Documentos\sudo-sys` (inexistente).
+* **Riscos ou observações:**
+
+  * Se a máquina/sessão do usuário `holdi` (com OneDrive) ainda existir separadamente, a tarefa original de migração de path continua válida **lá**, não nesta sessão/máquina. Esta ação não descarta nem invalida essa necessidade — apenas confirma que não se aplica a este ambiente.
+  * Documentação existente (`CONTEXTO_TOTAL.md` §8, `README_AMBIENTE.md` §9) cita o path `C:\Users\holdi\AppData\Roaming\Electron\banco\sudosys.db` como observação de ambiente; deve ser lida como referente à máquina original de diagnóstico, não necessariamente a esta.
+* **Recomendações deixadas para próximos agentes:**
+
+  * `REC-0016`: confirmar em qual máquina/sessão (usuário `holdi`, OneDrive) o bug de ABI mismatch do `better-sqlite3` por sincronização de `node_modules` ocorreu, e se essa migração de path ainda é necessária lá. Nesta sessão (`JEREeGABI`, fora de OneDrive), não há indício do mesmo risco.
+* **Próxima ação sugerida:**
+
+  * Aguardar confirmação do usuário sobre qual máquina/sessão precisa da migração de path antes de repetir esta tarefa; não presumir que o path atual desta sessão precisa de qualquer mudança.

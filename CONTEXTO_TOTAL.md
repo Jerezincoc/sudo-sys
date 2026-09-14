@@ -52,8 +52,8 @@ Depois da leitura, o agente deve identificar a fase atual, verificar recomendaç
 - **Stack principal:** Electron, React, TypeScript, Vite, SQLite e pnpm monorepo.
 - **Estado atual:** Protótipo funcional com baixa confiabilidade operacional e fiscal.
 - **Fase atual:** Estabilização do build e da distribuição Electron.
-- **Última ação registrada:** `ACAO-0028` — criação da camada documental de coordenação entre agentes, separando bloqueios, comunicação e decisões técnicas vigentes. Nenhuma nova REC foi iniciada.
-- **Próxima ação recomendada:** antes de iniciar nova tarefa funcional, verificar o Git e os arquivos de coordenação; no momento desta ação não havia alteração não commitada restante. A priorização das recomendações pendentes continua dependente de decisão do usuário.
+- **Última ação registrada:** `ACAO-0029` — diagnóstico de uma tarefa pedida para mover o projeto para fora de uma pasta sincronizada por OneDrive (`C:\Users\holdi\OneDrive\Documentos\sudo-sys`); constatado que esta sessão já roda em `C:\Users\JEREeGABI\Documents\sistema\sudo-sys`, fora de OneDrive, sem o usuário/path `holdi` citado na tarefa. Nenhuma pasta foi movida; registrada apenas a `REC-0016`.
+- **Próxima ação recomendada:** antes de iniciar nova tarefa funcional, verificar o Git e os arquivos de coordenação; no momento desta ação não havia alteração não commitada restante. A priorização das recomendações pendentes continua dependente de decisão do usuário, incluindo confirmar se `REC-0016` (migração de path para fora do OneDrive) se aplica a alguma outra máquina/sessão do projeto.
 - **Uso em produção:** Não recomendado antes das correções críticas e dos testes de cálculo.
 
 ## 2. Objetivo do projeto
@@ -336,6 +336,16 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Origem:** Claude
 - **Data:** 2026-09-12
 - **Referência:** `ACAO-0016`.
+
+### REC-0016
+
+- **Status:** Não executado — pendente de confirmação do usuário
+- **Recomendação:** Confirmar em qual máquina/sessão (usuário `holdi`, path `C:\Users\holdi\OneDrive\Documentos\sudo-sys`) ocorreu o bug de ABI mismatch do `better-sqlite3` por sincronização OneDrive de `node_modules`, e se a migração para uma pasta fora de sincronização de nuvem (ex.: `C:\Dev\sudo-sys`) ainda é necessária lá.
+- **Motivo:** Foi solicitada essa migração nesta sessão (`ACAO-0029`), mas o ambiente real observado aqui é `C:\Users\JEREeGABI\Documents\sistema\sudo-sys`, que já está fora do OneDrive; não existe usuário `holdi` nesta máquina. A tarefa não foi executada por não se aplicar a este ambiente.
+- **Prioridade:** Não definida — **A confirmar** com o usuário.
+- **Origem:** Claude
+- **Data:** 2026-09-14
+- **Referência:** `ACAO-0029`.
 
 ## 8. Ambiente padrão do projeto
 
