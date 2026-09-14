@@ -63,7 +63,7 @@ export async function registerAuthHandlers(): Promise<void> {
   })
 
   // ── auth:trocarSenha ─────────────────────────────────────────────
-  ipcMain.handle('auth:trocarSenha', async (_e, payload: TrocarSenhaPayload) => {
+  ipcMain.handle('auth:trocarSenha', async (e, payload: TrocarSenhaPayload) => {
     try {
       const requester = tokenMap.get(payload.token)
       if (!requester) return { success: false, error: 'Sessão inválida.' }
@@ -80,6 +80,11 @@ export async function registerAuthHandlers(): Promise<void> {
 
       const updated = r2.getById(requester.id)!
       tokenMap.set(payload.token, updated)
+      // authGuard mantém sua própria sessão (amarrada ao WebContents, não ao
+      // token) — precisa ser atualizada aqui também, senão o gate central
+      // continuaria vendo must_change_password=1 e bloqueando tudo mesmo após
+      // a troca ter funcionado de verdade.
+      setSessionUser(e, updated)
 
       return { success: true }
     } catch (err: unknown) {

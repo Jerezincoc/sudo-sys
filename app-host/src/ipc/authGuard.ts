@@ -17,6 +17,12 @@
  * sessão autenticada; canais em CANAIS_ADMIN exigem, além disso, papel admin. Um
  * canal novo, se ninguém o adicionar a uma das listas, fica protegido por padrão
  * (fail-safe) — só fica público se alguém explicitamente decidir isso.
+ *
+ * Extensão da REC-0002: com sessão válida mas `must_change_password = 1`, todo
+ * canal autenticado é bloqueado exceto os listados em
+ * CANAIS_PERMITIDOS_COM_TROCA_PENDENTE — antes desta checagem, o flag só era
+ * respeitado pelo roteamento de tela no frontend (App.tsx); qualquer chamada
+ * de IPC direta contornava a troca de senha obrigatória.
  */
 import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import type { Usuario } from '@sudo-sys/shared'
@@ -59,6 +65,16 @@ const CANAIS_ADMIN = new Set([
   'admin:backup',
 ])
 
+// Com must_change_password = 1, todo canal autenticado é bloqueado exceto os
+// listados aqui. Hoje só `auth:trocarSenha` é necessário: é o único canal que
+// `TrocarSenhaPage.tsx` chama (nenhum outro handler é indispensável para essa
+// tela funcionar). `auth:logout`/`auth:me`/`auth:login` não precisam entrar
+// nesta lista porque já estão em CANAIS_PUBLICOS e nunca passam por esta
+// checagem (retornam antes, no topo de installIpcAuthGuard).
+const CANAIS_PERMITIDOS_COM_TROCA_PENDENTE = new Set([
+  'auth:trocarSenha',
+])
+
 type Listener = (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown
 
 /** Instala o gate. Precisa ser chamado antes do primeiro `ipcMain.handle(...)`
@@ -74,6 +90,9 @@ export function installIpcAuthGuard(): void {
       const user = getSessionUser(event)
       if (!user) {
         throw new Error('Sessão inválida. Faça login novamente.')
+      }
+      if (user.must_change_password === 1 && !CANAIS_PERMITIDOS_COM_TROCA_PENDENTE.has(channel)) {
+        throw new Error('Troca de senha obrigatória pendente. Use a tela de troca de senha antes de continuar.')
       }
       if (CANAIS_ADMIN.has(channel) && user.papel !== 'admin') {
         throw new Error('Apenas administradores podem executar esta ação.')

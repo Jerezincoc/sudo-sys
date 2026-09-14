@@ -109,7 +109,7 @@ Existem duas arquiteturas concorrentes: uma Clean Architecture quase vazia e uma
 
 ### Segurança
 
-Não foram encontrados secrets, tokens ou chaves privadas versionados. Foram encontrados riscos relevantes: configuração de conexão potencialmente sensível salva em texto puro, canais de setup públicos após a inicialização, autorização limitada a uma distinção parcial de administrador e ausência de auditoria funcional. O risco de credencial padrão conhecida (`admin@sudosys.local`/`admin123`) foi mitigado na `ACAO-0014` (`REC-0002`): o seed do admin agora nasce marcado para troca obrigatória de senha no primeiro login, e a UI não expõe mais a credencial.
+Não foram encontrados secrets, tokens ou chaves privadas versionados. Foram encontrados riscos relevantes: configuração de conexão potencialmente sensível salva em texto puro, canais de setup públicos após a inicialização, autorização limitada a uma distinção parcial de administrador e ausência de auditoria funcional. O risco de credencial padrão conhecida (`admin@sudosys.local`/`admin123`) foi mitigado na `ACAO-0014` (`REC-0002`): o seed do admin agora nasce marcado para troca obrigatória de senha no primeiro login, e a UI não expõe mais a credencial. A `ACAO-0027` estendeu esse enforcement para o backend: antes, `must_change_password` só era respeitado pelo roteamento do frontend, e uma chamada de IPC direta contornava a troca obrigatória; agora o gate central (`authGuard.ts`) bloqueia todo canal autenticado até a troca, exceto `auth:trocarSenha`.
 
 ### Performance
 
@@ -206,6 +206,7 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Origem:** Codex
 - **Data:** 2026-09-11
 - **Execução:** Concluída na `ACAO-0014` — migration `055_usuario_must_change_password`, canal IPC `auth:trocarSenha`, tela `TrocarSenhaPage.tsx` e ajuste no state machine de `App.tsx` para bloquear o acesso ao Dashboard até a troca; removido também o texto que expunha a credencial no rodapé do `LoginPage.tsx`. Validado via UI real (login → troca forçada → Dashboard liberado → logout/login com senha nova sem nova cobrança).
+- **Extensão (`ACAO-0027`):** o enforcement de `must_change_password = 1` original só existia no roteamento do frontend (`App.tsx`) — nenhum handler de IPC verificava o flag, então uma chamada de IPC direta (fora da UI) contornava a troca obrigatória por completo. Corrigido no gate central `app-host/src/ipc/authGuard.ts`: com sessão válida e `must_change_password = 1`, todo canal autenticado é bloqueado exceto `auth:trocarSenha`. `authHandlers.ts` também passou a sincronizar a sessão do `authGuard` (`setSessionUser`) após uma troca de senha real, para não deixar o gate bloqueando o resto do sistema mesmo depois da troca ter funcionado. Validado via IPC direto (CDP) e via UI real (login → Dashboard, sem regressão no caminho feliz). A `REC-0002` continua "Executado"; esta é uma extensão de enforcement, não uma REC nova.
 
 ### REC-0003
 
