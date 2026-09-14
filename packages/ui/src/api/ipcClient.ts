@@ -16,6 +16,8 @@ import type {
   UpdateFuncionarioPayload,
   LoginPayload,
   LoginResult,
+  TrocarSenhaPayload,
+  TrocarSenhaResult,
   Usuario,
   Rescisao,
   CreateRescisaoPayload,
@@ -130,6 +132,11 @@ export const ipcClient = {
   async logout(token: string): Promise<{ success: boolean }> {
     if (hasElectron()) return window.electronAPI.logout(token)
     return { success: true }
+  },
+
+  async trocarSenha(payload: TrocarSenhaPayload): Promise<TrocarSenhaResult> {
+    if (hasElectron()) return window.electronAPI.trocarSenha(payload)
+    return { success: false, error: 'Sem Electron (modo dev browser).' }
   },
 
   async register(payload: { nome: string; email: string; senha: string; papel: string; requestingToken: string }): Promise<LoginResult> {

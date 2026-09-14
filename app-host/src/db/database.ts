@@ -480,6 +480,28 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       PRAGMA foreign_keys = ON;
     `,
   },
+  {
+    name: '055_usuario_must_change_password',
+    sql: `
+      ALTER TABLE usuarios ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0;
+      UPDATE usuarios SET must_change_password = 1 WHERE email = 'admin@sudosys.local';
+    `,
+  },
+  {
+    // Índice único PARCIAL (só sobre origem = 'automatico') — não precisa do padrão de
+    // recriação de tabela (SQLite permite CREATE INDEX direto, diferente de constraint de
+    // coluna). Deliberadamente não usa UNIQUE de tabela envolvendo todos os `origem`: o
+    // problema real (REC-0004, item d) era só a ausência de proteção de schema para os
+    // lançamentos AUTOMÁTICOS (INSS/IRRF/FGTS gerados por `folha:calcular`); lançamentos
+    // MANUAIS podem legitimamente repetir a mesma rubrica na mesma folha+funcionário (ex.:
+    // dois adiantamentos na mesma competência) e nunca tiveram esse problema.
+    name: '056_folha_lancamentos_unique',
+    sql: `
+      CREATE UNIQUE INDEX idx_folha_lancamentos_automatico_unico
+      ON folha_lancamentos(folha_id, funcionario_id, rubrica_codigo, origem)
+      WHERE origem = 'automatico';
+    `,
+  },
 ]
 
 function runMigrations(db: BetterSqlite3.Database): void {

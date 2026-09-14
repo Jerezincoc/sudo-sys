@@ -53,8 +53,8 @@ Antes de sugerir ou alterar qualquer coisa no projeto, todo agente deve:
 - **Stack principal:** Electron, React, TypeScript, Vite, SQLite e pnpm monorepo.
 - **Estado atual:** Protótipo funcional com baixa confiabilidade operacional e fiscal.
 - **Fase atual:** Estabilização do build e da distribuição Electron.
-- **Última ação registrada:** `ACAO-0014` — execução parcial da `REC-0009`, com CSV de CBO no pacote, remoção de fontes TypeScript do ASAR, geração do instalador NSIS e smoke test isolado.
-- **Próxima ação recomendada:** `REC-0002` — eliminar a credencial padrão conhecida em uma ação de segurança separada, mediante autorização específica.
+- **Última ação registrada:** `ACAO-0021` — reconciliação documental do merge entre o commit local e os 10 commits remotos, preservando os históricos dos dois lados. A ação local de empacotamento Electron/`REC-0009`, antes registrada como `ACAO-0014`, foi renumerada para `ACAO-0020` para evitar colisão com a `ACAO-0014` remota. Nenhuma nova REC foi iniciada.
+- **Próxima ação recomendada:** aguardando decisão do usuário sobre qual recomendação executar em seguida — candidatas ativas: `REC-0009`, `REC-0008`, `REC-0010`, `REC-0011`, `REC-0012`, `REC-0013`, `REC-0014`, `REC-0015`, e o restante de `REC-0003` (Rescisão/Férias/Ponto) (ver seção 7).
 - **Uso em produção:** Não recomendado antes das correções críticas e dos testes de cálculo.
 
 ## 2. Objetivo do projeto
@@ -68,7 +68,7 @@ O escopo fiscal definitivo, incluindo eSocial, obrigações acessórias e uso mu
 - **`packages/ui`:** interface React/Vite, páginas, formulários, componentes, rotas, estado Zustand e cliente IPC. É uma das áreas mais completas do projeto.
 - **`app-host`:** processo principal e preload do Electron, registro dos handlers IPC, inicialização do banco SQLite, autenticação, configuração inicial e geração de PDFs. É o backend efetivo da aplicação.
 - **`packages/shared`:** tipos e contratos compartilhados entre UI e host. Parte dos arquivos planejados está vazia.
-- **`packages/domain`:** entidades, enums, value objects, serviços e motor de fórmulas da arquitetura de domínio pretendida. Essa camada não governa o runtime atual e contém implementações muito pequenas ou incompletas.
+- **`packages/domain`:** entidades, enums, value objects, serviços e motor de fórmulas da arquitetura de domínio pretendida. A maior parte dessa camada não governa o runtime atual e contém implementações muito pequenas ou incompletas. Exceção: o motor de fórmulas (`formula/`) foi implementado na `ACAO-0018` e conectado à UI na `ACAO-0019` (botão "ƒ" em `LancamentosEditor.tsx`) — é a primeira e única parte de `packages/domain` com um consumidor real em runtime. Publicado como **ESM** (não CommonJS como `application`/`infrastructure`) desde a revisão técnica registrada na `ACAO-0019`, para ser importável pelo bundle Vite da UI.
 - **`packages/application`:** portas, DTOs e casos de uso da Clean Architecture pretendida. A maioria dos casos de uso está vazia e o runtime atual não usa essa camada.
 - **`packages/infrastructure`:** repositórios SQLite, hash de senha e serviço de cálculo de folha. Parte desta camada é usada diretamente pelo `app-host`; vários arquivos planejados continuam vazios.
 - **`config`:** arquivos de configuração padrão. Os arquivos identificados no diagnóstico estão vazios.
@@ -109,7 +109,7 @@ Existem duas arquiteturas concorrentes: uma Clean Architecture quase vazia e uma
 
 ### Segurança
 
-Não foram encontrados secrets, tokens ou chaves privadas versionados. Foram encontrados riscos relevantes: administrador com credencial padrão conhecida, configuração de conexão potencialmente sensível salva em texto puro, canais de setup públicos após a inicialização, autorização limitada a uma distinção parcial de administrador e ausência de auditoria funcional.
+Não foram encontrados secrets, tokens ou chaves privadas versionados. Foram encontrados riscos relevantes: configuração de conexão potencialmente sensível salva em texto puro, canais de setup públicos após a inicialização, autorização limitada a uma distinção parcial de administrador e ausência de auditoria funcional. O risco de credencial padrão conhecida (`admin@sudosys.local`/`admin123`) foi mitigado na `ACAO-0014` (`REC-0002`): o seed do admin agora nasce marcado para troca obrigatória de senha no primeiro login, e a UI não expõe mais a credencial.
 
 ### Performance
 
@@ -117,7 +117,7 @@ O processo principal executa operações síncronas de SQLite, hash de senha, fi
 
 ### Testes
 
-Não há testes automatizados funcionais. Os arquivos de teste identificados estão vazios, não há framework de testes configurado e não existe script `test` funcional na raiz.
+Desde a `ACAO-0015` existe um framework de testes (`vitest`) e uma suíte funcional (`pnpm test`, raiz), hoje cobrindo: motor de cálculo IRRF/INSS/FGTS (`packages/infrastructure/src/services/CalculoFolha.test.ts`, 7 testes), transação/idempotência do recálculo de folha (`packages/infrastructure/src/repositories/SqliteFolhaRepository.test.ts`, 4 testes) e o motor de fórmulas (`packages/domain/src/formula/Formula.test.ts`, 25 testes) — **36 testes no total**. Rescisão, férias, ponto e os demais cálculos trabalhistas continuam sem nenhum teste automatizado (`REC-0003` parcialmente executada).
 
 ### Motor de cálculo (IRRF) e schema de funcionários
 
@@ -127,7 +127,7 @@ A tabela `funcionarios` (`app-host/src/db/database.ts`) ganhou a migration `054_
 
 ### Build
 
-Os quatro pacotes internos geram JavaScript e declarações em `dist`, expõem entradas públicas e são compilados antes dos consumidores. Os 19 imports privados do `app-host` foram substituídos pela API pública de `@sudo-sys/infrastructure`. A `ACAO-0014` incluiu o CSV completo de CBO no caminho esperado do ASAR, removeu todos os `.ts`/`.tsx` e diretórios `src` dos workspaces empacotados, gerou o instalador NSIS e abriu `#/setup` com 2.495 CBOs em banco temporário. Permanecem pendentes um ícone oficial, assinatura e execução controlada do instalador.
+Os quatro pacotes internos geram JavaScript e declarações em `dist`, expõem entradas públicas e são compilados antes dos consumidores. Os 19 imports privados do `app-host` foram substituídos pela API pública de `@sudo-sys/infrastructure`. A `ACAO-0020` incluiu o CSV completo de CBO no caminho esperado do ASAR, removeu todos os `.ts`/`.tsx` e diretórios `src` dos workspaces empacotados, gerou o instalador NSIS e abriu `#/setup` com 2.495 CBOs em banco temporário. Permanecem pendentes um ícone oficial, assinatura e execução controlada do instalador.
 
 ### Manutenção
 
@@ -168,12 +168,22 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 
 ### DEC-0004
 
-- **Status:** Ativa
+- **Status:** Parcialmente superada (ver `DEC-0005`)
 - **Decisão:** Publicar `@sudo-sys/shared` como ESM e `@sudo-sys/domain`, `@sudo-sys/application` e `@sudo-sys/infrastructure` como CommonJS na configuração atual.
 - **Motivo:** O renderer Vite consome exports nomeados de `shared`, enquanto o processo principal Electron emitido atualmente usa `require()`.
 - **Impacto:** Os consumidores usam a API pública de cada pacote em `dist`; qualquer mudança futura de formato deve validar UI, host, desenvolvimento e pacote Electron em conjunto.
 - **Autor/origem:** Codex
 - **Data:** 2026-09-11
+
+### DEC-0005
+
+- **Status:** Ativa
+- **Decisão:** `@sudo-sys/domain` passa a ser publicado como **ESM** (não mais CommonJS), revisando a parte de `DEC-0004` específica a esse pacote. `application` e `infrastructure` continuam CommonJS, sem mudança.
+- **Motivo:** A `ACAO-0019` precisou importar o motor de fórmulas (`FormulaEvaluator`/`FormulaValidator`/`contarDiasUteis`) direto no `packages/ui` (bundle Vite/Rollup). O formato CommonJS original de `domain` não bundlava corretamente nesse contexto (Rollup não resolvia os exports nomeados através da cadeia de barrels, mesmo com o shape de módulo comprovadamente correto em runtime). Como `@sudo-sys/domain` nunca teve nenhum consumidor real em CommonJS (`app-host` não o importa; `application` só usa `import type`, que independe do formato de saída), a razão original de `DEC-0004` para esse pacote específico não se aplicava na prática.
+- **Impacto:** `packages/domain` segue o mesmo padrão de `@sudo-sys/shared` (`"type": "module"`, condição `"import"` no `package.json`, `tsconfig.json` herdando `ESNext`/`bundler` do `tsconfig.base.json`). Se `app-host` algum dia precisar importar `@sudo-sys/domain` diretamente (hoje não importa), isso vai exigir validação — `app-host` compila para CommonJS.
+- **Autor/origem:** Claude
+- **Data:** 2026-09-12
+- **Ação relacionada:** `ACAO-0019`
 
 ## 7. Recomendações ativas para próximos agentes
 
@@ -189,30 +199,33 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 
 ### REC-0002
 
-- **Status:** Não executado
+- **Status:** Executado
 - **Recomendação:** Remover credencial padrão fixa e exigir criação ou troca de senha no primeiro uso.
 - **Motivo:** Existe risco de segurança por credenciais conhecidas.
 - **Prioridade:** Crítica
 - **Origem:** Codex
 - **Data:** 2026-09-11
+- **Execução:** Concluída na `ACAO-0014` — migration `055_usuario_must_change_password`, canal IPC `auth:trocarSenha`, tela `TrocarSenhaPage.tsx` e ajuste no state machine de `App.tsx` para bloquear o acesso ao Dashboard até a troca; removido também o texto que expunha a credencial no rodapé do `LoginPage.tsx`. Validado via UI real (login → troca forçada → Dashboard liberado → logout/login com senha nova sem nova cobrança).
 
 ### REC-0003
 
-- **Status:** Não executado
+- **Status:** Parcialmente executado
 - **Recomendação:** Criar testes automatizados para cálculos trabalhistas críticos.
 - **Motivo:** Rescisão, férias, ponto, INSS e IRRF têm risco funcional e fiscal.
 - **Prioridade:** Crítica
 - **Origem:** Codex
 - **Data:** 2026-09-11
+- **Execução:** Parcialmente concluída na `ACAO-0015` — introduzido `vitest` (primeiro framework de testes do projeto, instalado em `packages/infrastructure`) e criada suíte para `calcularIRRF`/`calcularINSS`/`calcularFGTS` (`CalculoFolha.test.ts`), cobrindo os 4 cenários de IRRF e a guarda de competência do redutor da Lei 15.270/2025 validados manualmente nesta sessão. Rodável via `pnpm test` (raiz) ou `pnpm --filter @sudo-sys/infrastructure test`. **Escopo restante pendente:** Rescisão, Férias, Ponto e demais cálculos trabalhistas continuam sem nenhum teste automatizado — restrição de escopo foi instrução explícita do usuário, não limitação técnica.
 
 ### REC-0004
 
-- **Status:** Não executado
+- **Status:** Executado
 - **Recomendação:** Tornar o recálculo da folha transacional e idempotente.
 - **Motivo:** Evitar dados parcialmente atualizados em caso de erro.
 - **Prioridade:** Alta
 - **Origem:** Codex
 - **Data:** 2026-09-11
+- **Execução:** Concluída na `ACAO-0016` — `folha:calcular` roda inteiro (todos os funcionários + totais da folha + status) dentro de uma única `runInTransaction`, e `folha_lancamentos` ganhou proteção de unicidade contra automáticos duplicados (migration `056`). Validado com rollback simulado (holerite e lançamentos revertem juntos), recálculo duplo (sem duplicar automáticos, manuais intactos) e a constraint rejeitando duplicata fora do fluxo normal. Item de controle de concorrência (lock) ficou fora do escopo — ver `REC-0015`. **Ajuste de escopo na `ACAO-0017`:** a migration `056` originalmente usava `UNIQUE(folha_id, funcionario_id, rubrica_codigo, origem)` de tabela inteira, o que bloqueava também lançamentos manuais duplicados (fora do escopo pedido); corrigida para um índice único **parcial**, `WHERE origem = 'automatico'` — manuais duplicados voltaram a ser aceitos, automáticos duplicados continuam rejeitados.
 
 ### REC-0005
 
@@ -261,7 +274,7 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Prioridade:** Alta
 - **Origem:** Codex
 - **Data:** 2026-09-11
-- **Execução:** `ACAO-0014` incluiu e validou o CSV, eliminou fontes TypeScript, gerou o NSIS e passou no smoke test. Ícone oficial, assinatura e instalação efetiva permanecem **A confirmar**.
+- **Execução:** `ACAO-0020` incluiu e validou o CSV, eliminou fontes TypeScript, gerou o NSIS e passou no smoke test. Ícone oficial, assinatura e instalação efetiva permanecem **A confirmar**. Esta ação era a `ACAO-0014` local e foi renumerada durante a reconciliação documentada na `ACAO-0021` para evitar colisão com a `ACAO-0014` remota.
 
 ### REC-0010
 
@@ -313,6 +326,16 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Data:** 2026-09-11
 - **Referência:** `ACAO-0012`. **Não executar sem decisão explícita do usuário.**
 
+### REC-0015
+
+- **Status:** Não executado
+- **Recomendação:** Implementar um lock de concorrência para `folha:calcular` (ex.: campo/estado `status = 'calculando'` checado no início do handler, rejeitando uma segunda chamada sobreposta para a mesma folha).
+- **Motivo:** Item 3 do diagnóstico da `REC-0004`, deixado de fora por instrução do usuário. Hoje não existe nenhum controle de concorrência — a proteção atual contra clicar "calcular" duas vezes rápido é só um efeito colateral do event loop síncrono de um único processo Node, não uma garantia deliberada. `folha_holerites` já tem `UNIQUE(folha_id, funcionario_id)` e `folha_lancamentos` ganhou um índice único parcial sobre os automáticos (`ACAO-0016`, ajustado na `ACAO-0017`), o que já limita bastante o dano de uma corrida real sobre os automáticos, mas não impede duas transações concorrentes de colidir (uma delas falharia com erro de constraint em vez de simplesmente ser bloqueada de forma amigável).
+- **Prioridade:** Não definida — só é necessário se/quando o sistema deixar de ser single-user/single-instância (hoje documentado como tal). Não é uma correção urgente enquanto essa premissa se mantiver.
+- **Origem:** Claude
+- **Data:** 2026-09-12
+- **Referência:** `ACAO-0016`.
+
 ## 8. Ambiente padrão do projeto
 
 - **Estratégia de ambiente:** Documentada em `README_AMBIENTE.md`; instalação e desenvolvimento validados; versões fixadas provisoriamente na `ACAO-0005`.
@@ -329,7 +352,7 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Comando de typecheck:** `pnpm typecheck`; passou na `ACAO-0006` e compila os pacotes internos antes da verificação.
 - **Comando de lint:** `pnpm lint`. Atualmente não executa lint real.
 - **Comando de build:** `pnpm build`; compila `shared`, `domain`, `application` e `infrastructure` antes da UI e do `app-host`.
-- **Comando de teste:** A confirmar, pois não há script de teste funcional identificado.
+- **Comando de teste:** `pnpm test` (raiz) roda `packages/domain` e `packages/infrastructure` em sequência (36 testes no total); `pnpm --filter @sudo-sys/domain test` ou `pnpm --filter @sudo-sys/infrastructure test` isoladamente. Cobertura restrita a IRRF/INSS/FGTS, transação de folha e motor de fórmulas; outras áreas (Rescisão, Férias, Ponto) continuam sem teste automatizado.
 - **Desenvolvimento limpo:** Validado. `pnpm dev` gera preload e reconstrói `better-sqlite3` automaticamente antes de iniciar Electron.
 - **Isolamento do banco de desenvolvimento:** Confirmado em `<raiz>/.dev-user-data`, via `--user-data-dir` explícito; Linux e macOS continuam **A confirmar**.
 
@@ -351,14 +374,21 @@ Nenhum agente deve corrigir erro de execução antes de verificar se o ambiente 
 
 ## 10. Próximo passo recomendado
 
-Após a estabilização parcial da distribuição, a próxima ação técnica recomendada é:
+`REC-0002` foi executada na `ACAO-0014`. `REC-0003` foi parcialmente executada na `ACAO-0015` (só o motor IRRF/INSS/FGTS). `REC-0004` foi executada na `ACAO-0016` (transação + constraint; lock de concorrência virou `REC-0015` separada). Não há uma única próxima ação definida entre as demais — várias recomendações continuam ativas e não executadas, aguardando priorização do usuário:
 
-1. `REC-0002` — eliminar a credencial padrão conhecida, risco crítico ainda pendente.
-2. `REC-0003` — criar testes automatizados para cálculos trabalhistas críticos.
-3. Concluir a parte remanescente da `REC-0009` somente quando houver ícone oficial e um ambiente autorizado para testar a instalação.
-4. Manter `REC-0008`, `REC-0010`, `REC-0011`, `REC-0012`, `REC-0013` e `REC-0014` separadas; `REC-0014` exige decisão explícita do usuário.
+1. `REC-0009` — fornecer um ícone oficial, tratar assinatura e validar instalação/desinstalação do NSIS em ambiente autorizado; a inclusão do CSV, a remoção das fontes excedentes e o smoke test foram concluídos parcialmente na `ACAO-0020`.
+2. `REC-0003` (restante) — estender os testes automatizados para Rescisão, Férias, Ponto e demais cálculos trabalhistas críticos.
+3. `REC-0008` — planejar (sem executar ainda) a migração controlada de Node 20 para uma linha LTS suportada.
+4. `REC-0010` — definir o escopo funcional de `custos`/`extras`/`quickcalc` antes de implementar qualquer backend para eles.
+5. `REC-0011` — decidir a granularidade de RBAC por rota/canal antes de aplicar qualquer guard novo.
+6. `REC-0012` — corrigir `scripts/test-holerite.ps1` em `main` (nome de API desatualizado; baixa prioridade, script de teste manual).
+7. `REC-0013` — confirmar se o domínio "Chamados" ainda é um recurso desejado.
+8. `REC-0014` — decidir o tratamento de VT/VR no motor de Relatórios Personalizados. **Não executar sem decisão explícita do usuário.**
+9. `REC-0015` — lock de concorrência para `folha:calcular`. Só necessário se/quando o sistema deixar de ser single-user/single-instância.
 
-A `REC-0009` foi executada parcialmente na `ACAO-0014`. Nenhuma outra recomendação foi iniciada nessa ação.
+`[7a]` (motor de fórmulas) foi concluído na `ACAO-0019` — motor implementado (`ACAO-0018`) e conectado à UI (botão "ƒ" em `LancamentosEditor.tsx`), validado via UI real. Não é mais um item pendente.
+
+A reconciliação da `ACAO-0021` não iniciou nenhuma nova REC nem alterou a prioridade das recomendações pendentes.
 
 ## 11. Referência do histórico
 

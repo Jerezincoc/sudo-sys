@@ -4,7 +4,7 @@ import { getDb } from '../../db/database'
 import { SqliteUsuarioRepository } from '@sudo-sys/infrastructure'
 import { SimplePasswordHasher } from '@sudo-sys/infrastructure'
 import { setSessionUser, clearSessionUser } from '../authGuard'
-import type { Usuario, LoginPayload } from '@sudo-sys/shared'
+import type { Usuario, LoginPayload, TrocarSenhaPayload } from '@sudo-sys/shared'
 
 function repo() {
   return new SqliteUsuarioRepository(getDb())
@@ -57,6 +57,31 @@ export async function registerAuthHandlers(): Promise<void> {
       setSessionUser(e, updated)
 
       return { success: true, usuario: sanitize(updated), token }
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // ── auth:trocarSenha ─────────────────────────────────────────────
+  ipcMain.handle('auth:trocarSenha', async (_e, payload: TrocarSenhaPayload) => {
+    try {
+      const requester = tokenMap.get(payload.token)
+      if (!requester) return { success: false, error: 'Sessão inválida.' }
+
+      const r2 = repo()
+      const senhaHash = r2.getSenhaHash(requester.id)
+      if (!senhaHash) return { success: false, error: 'Credenciais inválidas.' }
+
+      const ok = await hasher.verify(payload.senhaAtual, senhaHash)
+      if (!ok) return { success: false, error: 'Senha atual incorreta.' }
+
+      const novoHash = await hasher.hash(payload.novaSenha)
+      r2.updateSenhaEClearMustChange(requester.id, novoHash)
+
+      const updated = r2.getById(requester.id)!
+      tokenMap.set(payload.token, updated)
+
+      return { success: true }
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) }
     }

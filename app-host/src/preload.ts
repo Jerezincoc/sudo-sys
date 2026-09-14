@@ -17,6 +17,8 @@ import type {
   UpdateFuncionarioPayload,
   LoginPayload,
   LoginResult,
+  TrocarSenhaPayload,
+  TrocarSenhaResult,
   Usuario,
   Rescisao,
   CreateRescisaoPayload,
@@ -154,6 +156,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   logout: (token: string): Promise<{ success: boolean }> =>
     ipcRenderer.invoke('auth:logout', token),
+
+  trocarSenha: (payload: TrocarSenhaPayload): Promise<TrocarSenhaResult> =>
+    ipcRenderer.invoke('auth:trocarSenha', payload),
 
   register: (payload: { nome: string; email: string; senha: string; papel: string; requestingToken: string }): Promise<LoginResult> =>
     ipcRenderer.invoke('auth:register', payload),

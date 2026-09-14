@@ -4,6 +4,7 @@ export interface Usuario {
   email: string
   papel: 'admin' | 'operador' | 'visualizador'
   ativo: number
+  must_change_password: number
   ultimo_login?: string | null
   created_at: string
   updated_at: string
@@ -11,3 +12,5 @@ export interface Usuario {
 
 export interface LoginPayload { email: string; senha: string }
 export interface LoginResult { success: boolean; usuario?: Usuario; token?: string; error?: string }
+export interface TrocarSenhaPayload { token: string; senhaAtual: string; novaSenha: string }
+export interface TrocarSenhaResult { success: boolean; error?: string }

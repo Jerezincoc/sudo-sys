@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@sudo-sys/domain": "workspace:*",
     "@sudo-sys/shared": "workspace:*",
     "lucide-react": "^0.441.0",
     "react": "^18.3.1",

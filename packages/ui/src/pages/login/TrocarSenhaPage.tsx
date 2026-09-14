@@ -1,36 +1,47 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { ipcClient } from '@/api/ipcClient'
-import { useSessionStore, usuarioToSessionUser } from '@/state/sessionSlice'
+import { useSessionStore } from '@/state/sessionSlice'
 
 interface Props {
-  onLogin: (mustChangePassword: boolean) => void
+  onDone: () => void
 }
 
-export default function LoginPage({ onLogin }: Props) {
-  const [email, setEmail] = useState('')
-  const [senha, setSenha] = useState('')
+export default function TrocarSenhaPage({ onDone }: Props) {
+  const [senhaAtual, setSenhaAtual] = useState('')
+  const [novaSenha, setNovaSenha] = useState('')
+  const [confirmarSenha, setConfirmarSenha] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const senhaRef = useRef<HTMLInputElement>(null)
-  const { setUser } = useSessionStore()
+  const novaSenhaRef = useRef<HTMLInputElement>(null)
+  const confirmarSenhaRef = useRef<HTMLInputElement>(null)
+  const { token } = useSessionStore()
 
   useEffect(() => {
-    document.title = 'SudoSys — Acesso ao Sistema'
+    document.title = 'SudoSys — Trocar Senha'
   }, [])
 
   async function handleSubmit() {
-    if (!email.trim() || !senha) return
-    setLoading(true)
-    setError(null)
-    const res = await ipcClient.login({ email: email.trim(), senha })
-    setLoading(false)
-    if (!res.success || !res.usuario || !res.token) {
-      setError(res.error ?? 'Falha ao autenticar.')
+    if (!senhaAtual || !novaSenha || !confirmarSenha || !token) return
+    if (novaSenha.length < 8) {
+      setError('A nova senha deve ter pelo menos 8 caracteres.')
       return
     }
-    setUser(usuarioToSessionUser(res.usuario), res.token)
-    onLogin(res.usuario.must_change_password === 1)
+    if (novaSenha !== confirmarSenha) {
+      setError('A confirmação não coincide com a nova senha.')
+      return
+    }
+    setLoading(true)
+    setError(null)
+    const res = await ipcClient.trocarSenha({ token, senhaAtual, novaSenha })
+    setLoading(false)
+    if (!res.success) {
+      setError(res.error ?? 'Falha ao trocar senha.')
+      return
+    }
+    onDone()
   }
+
+  const podeEnviar = !loading && !!senhaAtual && !!novaSenha && !!confirmarSenha
 
   return (
     <div style={{
@@ -44,7 +55,6 @@ export default function LoginPage({ onLogin }: Props) {
       gap: 0,
       userSelect: 'none',
     }}>
-      {/* Card */}
       <div style={{
         width: 380,
         background: 'var(--color-bg-white)',
@@ -53,71 +63,62 @@ export default function LoginPage({ onLogin }: Props) {
         display: 'flex',
         flexDirection: 'column',
       }}>
-        {/* Header brand */}
         <div style={{
           background: 'var(--color-brand)',
           padding: '16px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
         }}>
-          <div style={{
-            width: 32,
-            height: 32,
-            background: 'rgba(255,255,255,0.2)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}>
-            <svg viewBox="0 0 24 24" fill="none" style={{ width: 18, height: 18 }} stroke="white" strokeWidth={2.5}>
-              <rect x={3} y={3} width={7} height={7} rx={0} />
-              <rect x={14} y={3} width={7} height={7} rx={0} />
-              <rect x={3} y={14} width={7} height={7} rx={0} />
-              <rect x={14} y={14} width={7} height={7} rx={0} />
-            </svg>
-          </div>
-          <div>
-            <div style={{ color: '#fff', fontWeight: 700, fontSize: 15, lineHeight: 1.1 }}>SudoSys</div>
-            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10 }}>Gestão de Folha de Pagamento</div>
-          </div>
+          <div style={{ color: '#fff', fontWeight: 700, fontSize: 15, lineHeight: 1.1 }}>SudoSys</div>
+          <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10 }}>Gestão de Folha de Pagamento</div>
         </div>
 
-        {/* Title bar */}
         <div style={{
           padding: '10px 20px 0',
           borderBottom: '1px solid var(--color-border-main)',
           paddingBottom: 10,
         }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-primary)', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
-            Acesso ao Sistema
+            Troca de Senha Obrigatória
           </div>
         </div>
 
-        {/* Form body */}
         <div style={{ padding: '18px 20px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Field label="E-mail">
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+            Este acesso ainda usa a senha padrão. Defina uma nova senha antes de continuar.
+          </div>
+
+          <Field label="Senha atual">
             <input
-              type="email"
-              value={email}
+              type="password"
+              value={senhaAtual}
               autoFocus
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') senhaRef.current?.focus() }}
+              onChange={(e) => setSenhaAtual(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') novaSenhaRef.current?.focus() }}
               style={inputStyle}
-              placeholder="usuario@empresa.com"
               disabled={loading}
             />
           </Field>
 
-          <Field label="Senha">
+          <Field label="Nova senha">
             <input
-              ref={senhaRef}
+              ref={novaSenhaRef}
               type="password"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
+              value={novaSenha}
+              onChange={(e) => setNovaSenha(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') confirmarSenhaRef.current?.focus() }}
+              style={inputStyle}
+              placeholder="Mínimo 8 caracteres"
+              disabled={loading}
+            />
+          </Field>
+
+          <Field label="Confirmar nova senha">
+            <input
+              ref={confirmarSenhaRef}
+              type="password"
+              value={confirmarSenha}
+              onChange={(e) => setConfirmarSenha(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
               style={inputStyle}
-              placeholder="••••••••"
               disabled={loading}
             />
           </Field>
@@ -136,7 +137,7 @@ export default function LoginPage({ onLogin }: Props) {
 
           <button
             onClick={handleSubmit}
-            disabled={loading || !email.trim() || !senha}
+            disabled={!podeEnviar}
             style={{
               marginTop: 4,
               height: 28,
@@ -145,13 +146,13 @@ export default function LoginPage({ onLogin }: Props) {
               border: '1px solid var(--color-brand)',
               fontSize: 12,
               fontWeight: 600,
-              cursor: loading || !email.trim() || !senha ? 'not-allowed' : 'pointer',
-              opacity: loading || !email.trim() || !senha ? 0.65 : 1,
+              cursor: podeEnviar ? 'pointer' : 'not-allowed',
+              opacity: podeEnviar ? 1 : 0.65,
               letterSpacing: '0.03em',
               borderRadius: 0,
             }}
           >
-            {loading ? 'Autenticando…' : 'Entrar'}
+            {loading ? 'Salvando…' : 'Trocar senha e continuar'}
           </button>
         </div>
       </div>

@@ -221,27 +221,27 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 
 ### REC-0002 — 2026-09-11 — Codex
 
-- **Status:** Não executado
+- **Status:** Executado
 - **Recomendação:** Remover credencial padrão fixa e exigir criação ou troca de senha no primeiro uso.
 - **Motivo:** Existe risco de segurança por credenciais conhecidas.
 - **Prioridade:** Crítica
-- **Ação relacionada:** `ACAO-0001`
+- **Ações relacionadas:** recomendada na `ACAO-0001`; executada na `ACAO-0014`.
 
 ### REC-0003 — 2026-09-11 — Codex
 
-- **Status:** Não executado
+- **Status:** Parcialmente executado
 - **Recomendação:** Criar testes automatizados para cálculos trabalhistas críticos.
 - **Motivo:** Rescisão, férias, ponto, INSS e IRRF têm risco funcional e fiscal.
 - **Prioridade:** Crítica
-- **Ação relacionada:** `ACAO-0001`
+- **Ações relacionadas:** recomendada na `ACAO-0001`; parcialmente executada na `ACAO-0015` (cobre só IRRF/INSS/FGTS de `CalculoFolha.ts`, por pedido explícito do usuário de não expandir escopo para Rescisão/Férias/Ponto nesta tarefa).
 
 ### REC-0004 — 2026-09-11 — Codex
 
-- **Status:** Não executado
+- **Status:** Executado
 - **Recomendação:** Tornar o recálculo da folha transacional e idempotente.
 - **Motivo:** Evitar dados parcialmente atualizados em caso de erro.
 - **Prioridade:** Alta
-- **Ação relacionada:** `ACAO-0001`
+- **Ações relacionadas:** recomendada na `ACAO-0001`; diagnosticada (sem código alterado, só levantamento) numa conversa anterior à `ACAO-0016` — não registrada como ação própria por instrução do usuário de só diagnosticar naquele momento; executada na `ACAO-0016`.
 
 ### REC-0005 — 2026-09-11 — ChatGPT/Codex
 
@@ -532,7 +532,7 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 - **Recomendação:** Finalizar a higiene e os assets da distribuição Electron, copiando o CSV de CBO e o ícone, removendo fontes TypeScript excedentes do ASAR e validando o instalador completo.
 - **Motivo:** A distribuição já resolve os pacotes por `dist`, mas ainda inclui fontes desnecessárias e possui assets e etapas finais de empacotamento pendentes.
 - **Prioridade:** Alta
-- **Ações relacionadas:** recomendada na `ACAO-0006`; executada parcialmente na `ACAO-0014`.
+- **Ações relacionadas:** recomendada na `ACAO-0006`; executada parcialmente na `ACAO-0020` (renumerada de `ACAO-0014` durante a reconciliação da `ACAO-0021`).
 
 ### ACAO-0006 — 2026-09-11 — Codex
 
@@ -868,7 +868,257 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 - **Próxima ação sugerida:**
   - Decidir se a próxima execução será `REC-0009`, `REC-0002`, `REC-0003` ou `REC-0014` (ou outra das recomendações pendentes listadas em `CONTEXTO_TOTAL.md`).
 
-### ACAO-0014 — 2026-09-11 — Codex
+### ACAO-0014 — 2026-09-11 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Correção de segurança / Schema / Backend / UI
+- **Status:** Concluído
+- **Resumo:**
+  - Executada a `REC-0002`: eliminada a exposição da credencial padrão (`admin@sudosys.local` / `admin123`) e implementado fluxo de troca obrigatória de senha no primeiro login desse usuário, via flag `must_change_password` checado no login e uma tela nova que bloqueia o acesso ao restante do sistema até a troca.
+- **O que foi encontrado (diagnóstico, Passo 1 pedido pelo usuário):**
+  - O seed do admin (`035b_usuario_admin_seed`, `app-host/src/db/database.ts:321-325`) roda dentro de `runMigrations()`, chamada incondicionalmente por `initDatabase()` (`app-host/src/main.ts:96`) — **sem nenhum gate de ambiente**. Confirmado que roda em todo ambiente, inclusive no instalador final para clientes, não só em dev.
+  - `authHandlers.ts:25-34` trocava o hash placeholder do seed pelo hash real de `admin123` na primeira inicialização — outro ponto onde a senha padrão era fixada em código.
+  - `LoginPage.tsx:166` (antes da correção) exibia literalmente `Primeiro acesso? Use admin@sudosys.local / admin123` na tela de login, em texto visível a qualquer pessoa com acesso ao instalador — agravava o risco descrito em `REC-0002`, então foi removido junto (não estava listado explicitamente na recomendação original, mas é parte do mesmo risco e é uma remoção trivial de uma linha).
+  - Não existia nenhuma tela ou canal IPC de "trocar senha" no sistema (Passo 3 pedido pelo usuário) — precisou ser criado do zero. Reportado ao usuário antes de implementar (Passo 5): escopo cabia numa única tarefa (1 migration + 1 canal IPC + 1 tela nova), sem abrir escopo maior.
+- **O que foi mudado:**
+  - `app-host/src/db/database.ts`: nova migration `055_usuario_must_change_password` — `ALTER TABLE usuarios ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0` e `UPDATE usuarios SET must_change_password = 1 WHERE email = 'admin@sudosys.local'` (marca só o admin seed; usuários criados depois via `usuario:create`/`auth:register` nascem com `0`, decisão consistente com o escopo da REC — o risco é especificamente a credencial padrão conhecida, não senhas escolhidas por um admin ao criar outro usuário).
+  - `packages/shared/src/types/usuario.ts`: `Usuario.must_change_password: number`; novos tipos `TrocarSenhaPayload` e `TrocarSenhaResult`.
+  - `packages/infrastructure/src/repositories/SqliteUsuarioRepository.ts`: novo método `updateSenhaEClearMustChange(id, senha_hash)` — grava o novo hash e zera o flag numa única instrução.
+  - `app-host/src/ipc/handlers/authHandlers.ts`: novo canal `auth:trocarSenha` — valida a senha atual (`hasher.verify`) contra o hash existente, grava o novo hash com `updateSenhaEClearMustChange` e atualiza o `tokenMap` em memória. Não foi adicionado a `CANAIS_PUBLICOS` em `authGuard.ts` — fica protegido pelo gate padrão (exige sessão via `WebContents`, já amarrada no login), consistente com o modelo de segurança existente.
+  - `app-host/src/preload.ts` e `packages/ui/src/electron.d.ts`: expõem `trocarSenha(payload)` no `electronAPI`.
+  - `packages/ui/src/api/ipcClient.ts`: método `trocarSenha` no cliente IPC do renderer, com fallback de modo browser (sem Electron) igual aos demais métodos de auth.
+  - `packages/ui/src/pages/login/LoginPage.tsx`: `onLogin` passou a receber `mustChangePassword: boolean` (lido de `res.usuario.must_change_password === 1`) em vez de não receber argumento; removido o texto que expunha a credencial padrão no rodapé da tela.
+  - `packages/ui/src/pages/login/TrocarSenhaPage.tsx` (novo arquivo): tela no mesmo padrão visual do `LoginPage.tsx` — campos "Senha atual", "Nova senha" (mínimo 8 caracteres, validado no cliente) e "Confirmar nova senha"; chama `ipcClient.trocarSenha` usando o token já presente em `useSessionStore`.
+  - `packages/ui/src/app/App.tsx`: novo estado `'change-password'` no state machine (`loading | setup | login | change-password | main`). Login com `must_change_password = 1` vai para `'change-password'` em vez de `'main'`; só ao concluir a troca (`onDone`) o estado avança para `'main'`. Não há como pular essa tela e acessar rotas do `AppRouter` sem passar por ela.
+- **Reaproveitamento (Passo 3):** confirmado que não havia tela de troca de senha existente para reaproveitar — a única coisa parecida (`AdminPage.tsx`) é o formulário de criação de usuário, que já usa `usuario:create`/`hasher.hash` sem relação com troca de senha do próprio usuário logado. Nada foi duplicado; a lógica de hash (`SimplePasswordHasher`) e o padrão de resposta (`{success, error}`) foram reaproveitados dos handlers de auth já existentes.
+- **Validação:**
+  - `pnpm typecheck` (todos os 7 workspaces) passou limpo após as mudanças.
+  - **Achado de ambiente, não relacionado ao código desta ação:** neste ambiente novo (casa), `packages/application/node_modules/@types/node` não estava linkado apesar de declarado em `package.json` e presente no lockfile — `pnpm typecheck`/`pnpm dev` falhavam com `Cannot find name 'Buffer'` mesmo em arquivos não tocados por esta ação (`FileStore.ts`, `PdfRenderer.ts`). Reproduzido também fazendo `git stash` das mudanças desta ação, confirmando que não é causado por elas. Corrigido rodando `pnpm install --frozen-lockfile` novamente (aceitando a recriação completa de `node_modules` que o pnpm propôs) — depois disso o link apareceu e todo o typecheck passou. Não há indicação de que isso afete outros ambientes; registrado aqui para o caso de reaparecer.
+  - Teste via UI real (Passo 4), com `pnpm dev` rodando o Electron real (`--remote-debugging-port=9222`) e interação via Chrome DevTools Protocol (script Node ad-hoc, mesmo princípio de `scripts/cdp-test.mjs`, não commitado — descartado ao final): banco de dev resetado (`.dev-user-data` removido); completado o setup wizard via `window.electronAPI.saveConfig(...)`; login com `admin@sudosys.local` / `admin123` **forçou** a tela "Troca de Senha Obrigatória" antes de qualquer outra coisa; preenchida a troca (senha atual `admin123`, nova `teste12345`) e confirmado que o Dashboard (`AppShell`, ribbon, menu, botão "Sair") foi liberado normalmente após a troca; logout e novo login com `teste12345` foram direto ao Dashboard, **sem** pedir troca de senha novamente. Os quatro passos do fluxo bateram com o esperado.
+- **Por que foi feito:**
+  - `REC-0002` (Crítica): a credencial padrão documentada e hardcoded no seed, replicada em todo ambiente incluindo produção, era um risco de acesso não autorizado conhecido e trivial de explorar — qualquer instalação nova do produto nasce com esse usuário/senha até alguém trocar manualmente, o que hoje não era nem possível de fazer pela UI.
+- **Arquivos envolvidos:**
+  - `app-host/src/db/database.ts`
+  - `app-host/src/ipc/handlers/authHandlers.ts`
+  - `app-host/src/preload.ts`
+  - `packages/infrastructure/src/repositories/SqliteUsuarioRepository.ts`
+  - `packages/shared/src/types/usuario.ts`
+  - `packages/ui/src/api/ipcClient.ts`
+  - `packages/ui/src/app/App.tsx`
+  - `packages/ui/src/electron.d.ts`
+  - `packages/ui/src/pages/login/LoginPage.tsx`
+  - `packages/ui/src/pages/login/TrocarSenhaPage.tsx` (novo)
+- **Riscos ou observações:**
+  - O flag `must_change_password` só é setado automaticamente para o usuário seed (`admin@sudosys.local`). Se algum admin resetar a senha de outro usuário manualmente direto no banco (fora da UI) para um valor "padrão" combinado fora do sistema, esse flag não é ativado — o mecanismo cobre especificamente o seed automático, que era o escopo pedido.
+  - `auth:register` continua fora do gate central de `authGuard.ts` (decisão de outro agente, documentada em `authGuard.ts:38-41`) — não alterado nesta ação, fora de escopo da `REC-0002`.
+  - O achado de ambiente (`@types/node` não linkado nesta máquina) não tem relação com a REC-0002, mas foi corrigido no processo de validação porque bloqueava totalmente `pnpm dev`/`pnpm typecheck`; não foi feita nenhuma mudança de versão ou configuração, só reinstalação de dependências.
+- **Recomendações deixadas para próximos agentes:**
+  - Nenhuma nova recomendação. `REC-0002` passa para `Executado` em `CONTEXTO_TOTAL.md` e nesta seção.
+- **Próxima ação sugerida:**
+  - Retomar a priorização já listada em `CONTEXTO_TOTAL.md` (`REC-0009`, `REC-0003`, `REC-0008`, etc.), conforme decisão do usuário.
+
+### ACAO-0015 — 2026-09-12 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Testes automatizados / Framework de testes
+- **Status:** Concluído
+- **Resumo:**
+  - Executada parcialmente a `REC-0003`, por instrução explícita do usuário de não expandir escopo: criada suíte automatizada só para o motor de cálculo IRRF/INSS/FGTS (`packages/infrastructure/src/services/CalculoFolha.ts`), cobrindo os 4 cenários de IRRF (isenção total, faixa de transição do redutor, acima do teto, desconto simplificado) e 1 teste de guarda de competência (redutor da Lei 15.270/2025 não se aplica antes de 2026-01), além de checagem dos valores de INSS e FGTS usados nesses mesmos cenários. Rescisão, Férias, Ponto e demais áreas ficam fora desta ação.
+- **O que foi encontrado (Passo 1 pedido pelo usuário):**
+  - Nenhum framework de teste configurado em nenhum lugar do monorepo — sem `vitest`/`jest` em nenhum `package.json` da raiz ou dos workspaces, e nenhum dos dois presentes no store do pnpm (`node_modules/.pnpm`). Confirma o que já estava registrado em `CONTEXTO_TOTAL.md` ("não há framework de testes configurado").
+- **O que foi mudado:**
+  - `packages/infrastructure/package.json`: adicionado `vitest` como devDependency e script `"test": "vitest run"`. Instalada primeiro a versão mais recente (`5.0.0`), que gerou aviso de peer dependency (exige `vite@^6/7/8`, mas o monorepo usa `vite@5.4.21` fixado pela UI); removida e reinstalada como `vitest@^3.2.4` (resolveu `3.2.7`), compatível com `vite@5.x` — sem avisos de peer dependency.
+  - `packages/infrastructure/tsconfig.json`: adicionado `"exclude": ["src/**/*.test.ts"]`. Sem isso, `pnpm --filter @sudo-sys/infrastructure build` compilava o arquivo de teste para `dist/services/CalculoFolha.test.js` (+`.d.ts`, + `.map`), poluindo o pacote publicado (`files: ["dist"]` no `package.json` o incluiria). Descoberto rodando o build depois de criar o teste e inspecionando `dist/`; corrigido e revalidado (rebuild limpo confirma que não sobra mais nenhum arquivo de teste em `dist/`).
+  - `packages/infrastructure/src/services/CalculoFolha.test.ts` (novo arquivo): 7 testes — 4 cenários de `calcularIRRF` (A: bruto 2800/0 dep/tradicional → R$0,00; B: bruto 6000/0 dep/tradicional → R$385,10; C: bruto 8500/2 dep/tradicional → R$1.052,77; D: bruto 4500/0 dep/simplificado → R$0,00), 1 teste de guarda de competência (mesma base do cenário B, mas competência `2025-12` em vez de `2026-01` → R$564,85, valor da tabela cheia sem redutor), 1 teste com os 4 valores de `calcularINSS` usados nos cenários acima (R$227,69 / R$641,51 / R$988,09 / R$431,51) e 1 teste de `calcularFGTS` (8% sobre R$2.800 e R$6.000).
+  - `package.json` (raiz): adicionado script `"test": "pnpm --filter @sudo-sys/infrastructure test"`, para existir um comando único e óbvio (`pnpm test`) sem precisar saber o nome do workspace.
+- **Verificação dos valores esperados (antes de escrever as asserções):** os 5 valores de IRRF, os 4 de INSS e os 2 de FGTS pedidos pelo usuário foram recalculados manualmente a partir do código atual de `CalculoFolha.ts` (tabelas INSS 2026-01, tabela IRRF vigente desde 2025-05, redutor da Lei 15.270/2025) antes de escrever o teste — todos batem exatamente com os valores informados pelo usuário como já confirmados nesta sessão. O teste de guarda de competência reaproveita a mesma base de cálculo (bruto − INSS) do cenário B para isolar exclusivamente o efeito do gate de competência do redutor, em vez de recalcular o INSS de 2025-12 (que usa uma tabela diferente e daria um número final diferente do R$564,85 esperado) — essa escolha foi deliberada para testar o comportamento específico pedido, não uma coincidência.
+- **Validações executadas:**
+  - `pnpm --filter @sudo-sys/infrastructure test` (e o atalho `pnpm test` na raiz): **7/7 testes passaram** contra o código atual, sem nenhum ajuste de valor esperado necessário.
+  - `pnpm typecheck` (todos os 7 workspaces): passou limpo depois de adicionar o teste e o `exclude` no `tsconfig.json`.
+  - `pnpm --filter @sudo-sys/infrastructure build`: rebuild limpo (`dist` removido antes) confirmado sem nenhum arquivo `*.test.*` na saída.
+- **Por que foi feito:**
+  - `REC-0003` (Crítica): o motor de IRRF já teve um bug real corrigido nesta sessão (Lei 15.270/2025 usando a base errada para o redutor, corrigido na `ACAO-0008`) e não havia nenhuma proteção automatizada contra regressão — só validação manual pontual. Esta suíte fixa os 4 cenários e a guarda de competência já validados manualmente como comportamento esperado, para que qualquer mudança futura em `CalculoFolha.ts` que quebre esses casos seja pega antes de chegar a produção.
+- **Arquivos envolvidos:**
+  - `packages/infrastructure/package.json`
+  - `packages/infrastructure/tsconfig.json`
+  - `packages/infrastructure/src/services/CalculoFolha.test.ts` (novo)
+  - `package.json`
+- **Riscos ou observações:**
+  - Cobertura deliberadamente restrita ao motor IRRF/INSS/FGTS, por instrução explícita do usuário — Rescisão, Férias, Ponto e o restante dos cálculos trabalhistas mencionados na `REC-0003` original continuam sem nenhum teste automatizado. Por isso `REC-0003` foi marcada como `Parcialmente executado`, não `Executado`.
+  - A suíte testa `calcularIRRF`/`calcularINSS`/`calcularFGTS` isoladamente (unção pura, sem banco/IPC) — não cobre o ponto de integração em `folhaHandlers.ts` que monta `baseIrrf` a partir dos lançamentos da competência; um teste de integração desse trecho continua fora do escopo desta ação.
+  - `vitest` ficou instalado só como devDependency de `packages/infrastructure`, não na raiz nem em outros workspaces — qualquer suíte futura em outro pacote precisa da mesma decisão de instalação (e da mesma checagem de compatibilidade de peer dependency com a versão de `vite` já fixada pela UI).
+- **Recomendações deixadas para próximos agentes:**
+  - Nenhuma nova recomendação. `REC-0003` passa para `Parcialmente executado` em `CONTEXTO_TOTAL.md` e nesta seção; o escopo restante (Rescisão, Férias, Ponto e demais cálculos) continua pendente de decisão do usuário sobre prioridade.
+- **Próxima ação sugerida:**
+  - Retomar a priorização já listada em `CONTEXTO_TOTAL.md` (`REC-0009`, `REC-0008`, `REC-0010` a `REC-0014`, e o restante de `REC-0003`), conforme decisão do usuário.
+
+### ACAO-0016 — 2026-09-12 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Correção de confiabilidade / Transação / Schema
+- **Status:** Concluído
+- **Resumo:**
+  - Executados os itens 1 e 2 do diagnóstico da `REC-0004` (item 3 — lock de concorrência — ficou de fora por instrução do usuário, virou `REC-0015`): o recálculo de folha em `folha:calcular` (`folhaHandlers.ts`) agora roda inteiro dentro de uma única transação SQLite (`runInTransaction`), e `folha_lancamentos` ganhou `UNIQUE(folha_id, funcionario_id, rubrica_codigo, origem)` via migration `056`.
+- **Diagnóstico prévio (conversa anterior a esta ação, sem código alterado):** confirmado que o cálculo era uma sequência de `.run()` soltos sem transação; que um crash no meio do processo podia deixar holerite com totais novos e lançamentos com os antigos (ou vice-versa) tanto dentro de um funcionário quanto entre funcionários da mesma folha; que lançamentos manuais já sobreviviam corretamente ao recálculo (não eram apagados nem duplicados); e que não havia nenhum controle de concorrência nem constraint de unicidade em `folha_lancamentos`.
+- **ITEM 1 — Transação:**
+  - `app-host/src/ipc/handlers/folhaHandlers.ts`: todo o corpo do recálculo (loop de todos os funcionários da folha — `upsertHolerite` → `deleteLancamentosAutomaticos` → até 3 `addLancamento` por funcionário — mais `recalcularTotaisFolha` e `update({status: 'processada'})` no final) passou a rodar dentro de `runInTransaction(db, () => { ... })`, importado de `@sudo-sys/infrastructure`.
+  - **Granularidade escolhida:** uma transação única para a folha inteira (todos os funcionários), não uma transação por funcionário — mesmo padrão de `023_cbo_completo.ts` (uma transação por operação, não uma por linha/iteração do loop). Justificativa registrada em comentário no próprio código: o diagnóstico anterior identificou inconsistência possível em dois níveis — dentro de um funcionário (holerite com totais novos + lançamentos com os antigos) e entre funcionários (alguns recalculados, outros não, folha nunca marcada `'processada'`). Uma transação por funcionário resolveria só o primeiro nível; só a transação única cobre os dois.
+  - `packages/infrastructure/src/index.ts`: `runInTransaction` (que já existia em `db/sqlite/SqliteTx.ts` desde antes, mas nunca tinha sido exportado nem usado fora do seed de CBO) passou a ser exportado publicamente, para o `app-host` poder importá-lo pela API pública do pacote (mesmo padrão dos demais exports, sem import por `/src`).
+- **ITEM 2 — Constraint UNIQUE:**
+  - Antes de aplicar: rodado um script ad-hoc (Electron real, banco de produção em `%APPDATA%\Electron\banco\sudosys.db`, aberto em modo `readonly`, sem gravação) checando `GROUP BY folha_id, funcionario_id, rubrica_codigo, origem HAVING COUNT(*) > 1` em `folha_lancamentos` — **zero grupos duplicados encontrados** (o banco real tinha só 1 lançamento no total). Confirmado que a migration é segura de aplicar nesse banco.
+  - `app-host/src/db/database.ts`: nova migration `056_folha_lancamentos_unique` — mesmo padrão de recriação de tabela da migration `054` (SQLite não suporta `ALTER TABLE ADD CONSTRAINT`): `PRAGMA foreign_keys = OFF`, cria `folha_lancamentos_new` com `UNIQUE(folha_id, funcionario_id, rubrica_codigo, origem)`, copia os dados, `DROP`+`RENAME`, `PRAGMA foreign_keys = ON`. Nenhuma outra tabela tem FK apontando para `folha_lancamentos.id`, então não há cascata a ajustar.
+- **Validação (Passo pedido pelo usuário):**
+  - Criado `packages/infrastructure/src/repositories/SqliteFolhaRepository.test.ts` (3 testes novos, usando banco SQLite real em memória com o schema pós-migration 056, na mesma camada de teste do `REC-0003` — não foi possível testar o handler `folha:calcular` em si porque ele vive no `app-host`, que depende do módulo `electron` e não tem framework de teste configurado; os testes cobrem os mesmos métodos de repositório e o mesmo `runInTransaction` que o handler usa, na mesma sequência de chamadas):
+    1. **Rollback completo:** simulado um `throw` dentro do callback passado a `runInTransaction` (sem tocar em `folhaHandlers.ts` — só no callback de teste), entre `deleteLancamentosAutomaticos` e o `addLancamento` do automático novo. Confirmado: o holerite continua com os totais **antigos** e o lançamento automático antigo continua existindo — nada mudou, exatamente como esperado de uma transação atômica.
+    2. **Idempotência:** o mesmo ciclo `upsertHolerite`→`deleteLancamentosAutomaticos`→`addLancamento` (dentro de `runInTransaction`) rodado duas vezes seguidas — confirmado 1 único lançamento automático (não duplicou) e o lançamento manual intacto (mesmo valor, mesma linha).
+    3. **Constraint em ação:** inserir manualmente duas linhas `automatico` com a mesma `folha_id`+`funcionario_id`+`rubrica_codigo` fora do fluxo de delete-então-insert agora lança `UNIQUE constraint failed`, provando que a proteção não depende só da lógica da aplicação.
+  - `pnpm --filter @sudo-sys/infrastructure test`: **10/10 testes passaram** (7 da suíte do `REC-0003` + 3 novos), sem alterar nenhum valor esperado da suíte de IRRF/INSS/FGTS.
+  - `pnpm typecheck` (todos os 7 workspaces): passou limpo.
+  - `pnpm --filter @sudo-sys/infrastructure build`: rebuild limpo confirmou que os dois arquivos de teste (o do `REC-0003` e o novo) continuam fora de `dist/` (exclude já configurado na `ACAO-0015`).
+- **Achado de ambiente durante a validação (não é bug de código, registrado para o próximo agente não se confundir):** ao rodar `pnpm --filter @sudo-sys/infrastructure test` pela primeira vez após esta sessão, os 3 testes novos falharam com erro de ABI do `better-sqlite3` (`NODE_MODULE_VERSION 128` vs `115` exigido) — porque o binário nativo tinha sido recompilado para a ABI do Electron (128) durante o teste de UI da `ACAO-0014`/`ACAO-0016` anterior, e `vitest` roda sob Node puro (ABI 115). `pnpm rebuild better-sqlite3` não teve efeito (não reconstrói de fato quando o pacote já tem um binário presente, mesmo que para a ABI errada). A correção foi rodar `prebuild-install`/`node-gyp rebuild --release` diretamente dentro de `node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3` para forçar o binário de volta à ABI do Node. **Consequência prática:** depois de rodar os testes, `pnpm dev`/o Electron real vão precisar reconstruir `better-sqlite3` de novo para a ABI do Electron antes de abrir — isso já acontece automaticamente hoje via `electron:dev:prepare` (que roda `electron-rebuild -f -w better-sqlite3` antes de todo `pnpm dev`), então não é uma ação manual nova, mas explica por que alternar entre "rodar os testes" e "rodar o app" nesta máquina exige esse rebuild de ida e volta.
+- **Por que foi feito:**
+  - `REC-0004` (Alta): o diagnóstico anterior confirmou que a ausência de transação era uma lacuna real (não só teórica) e que a peça técnica para resolvê-la (`runInTransaction`) já existia no projeto, sem uso. A constraint UNIQUE fecha a mesma lacuna por um segundo caminho independente (schema, não só lógica de aplicação), coerente com o que o diagnóstico anterior apontou sobre `folha_lancamentos` não ter nenhuma proteção de unicidade ao contrário de `folha_holerites`.
+- **Arquivos envolvidos:**
+  - `app-host/src/db/database.ts`
+  - `app-host/src/ipc/handlers/folhaHandlers.ts`
+  - `packages/infrastructure/src/index.ts`
+  - `packages/infrastructure/src/repositories/SqliteFolhaRepository.test.ts` (novo)
+- **Riscos ou observações:**
+  - **A constraint nova vale para `origem = 'manual'` também, não só `'automatico'`.** Não foi encontrada nenhuma trava na UI (`LancamentosEditor.tsx`) impedindo hoje o usuário de adicionar dois lançamentos manuais com a mesma rubrica na mesma folha+funcionário (ex.: dois adiantamentos sob o mesmo código de rubrica) — com a migration `056`, isso passaria a ser rejeitado com `UNIQUE constraint failed` em vez de aceito. Implementado assim porque foi a especificação explícita do usuário e não há dado real hoje que dependa desse comportamento (confirmado na checagem pré-migration), mas fica registrado como um risco funcional a observar: se esse padrão de uso for legítimo e necessário, a constraint precisará ser revista (ex.: incluir algo que diferencie múltiplos manuais da mesma rubrica, como um `sequencial`, ou restringir o `UNIQUE` só a `origem = 'automatico'` via índice parcial).
+  - **Addendum (`ACAO-0017`):** esse risco se confirmou real e foi corrigido — a migration `056` foi trocada de `UNIQUE` de tabela (todos os `origem`) para um índice único parcial (só `origem = 'automatico'`), antes de rodar em qualquer banco real. Ver `ACAO-0017` para o detalhamento.
+  - O item 3 do diagnóstico (lock de concorrência) foi deliberadamente deixado de fora, por instrução do usuário — ver `REC-0015` abaixo.
+  - A transação única cobre `folha:calcular` (recálculo). Outros handlers de folha com múltiplas escritas (`folha:lancamentos:add`, `folha:lancamentos:delete`) continuam com escrita única cada um, então não têm o mesmo risco de estado parcial — não precisaram de mudança.
+- **Recomendações deixadas para próximos agentes:**
+  - `REC-0015` (Nova) — **Status:** Não executado. **Recomendação:** Implementar um lock de concorrência para `folha:calcular` (ex.: campo/estado `status = 'calculando'` checado no início do handler, rejeitando uma segunda chamada sobreposta para a mesma folha). **Motivo:** item 3 do diagnóstico da `REC-0004` — hoje não existe nenhum controle de concorrência; a proteção atual contra "clicar calcular duas vezes rápido" é só um efeito colateral do event loop síncrono de um único processo Node, não uma garantia deliberada. **Só é necessário se/quando o sistema deixar de ser single-user/single-instância** (hoje documentado como tal); não é uma correção urgente enquanto essa premissa se mantiver. **Prioridade:** Não definida — a confirmar com o usuário se/quando o cenário multiusuário for avaliado. **Origem:** Claude. **Data:** 2026-09-12. **Referência:** `ACAO-0016`.
+- **Próxima ação sugerida:**
+  - Retomar a priorização já listada em `CONTEXTO_TOTAL.md` (`REC-0009`, `REC-0008`, `REC-0010` a `REC-0013`, `REC-0015`, e o restante de `REC-0003`), conforme decisão do usuário. `REC-0014` continua bloqueada até decisão explícita.
+
+### ACAO-0017 — 2026-09-12 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Correção de escopo (ajuste de uma tarefa anterior deste mesmo agente)
+- **Status:** Concluído
+- **Resumo:**
+  - Corrigido o escopo da migration `056` (introduzida na `ACAO-0016`, `REC-0004`): o usuário identificou que o `UNIQUE(folha_id, funcionario_id, rubrica_codigo, origem)` de tabela inteira bloqueava também lançamentos **manuais** duplicados (mesma rubrica, mesma folha+funcionário) — um caso de uso legítimo (ex.: dois adiantamentos manuais na mesma competência) que nunca foi um problema real. O problema original da `REC-0004` (item d do diagnóstico) era só a ausência de proteção de schema para os lançamentos **automáticos**. Isso não é um bug novo introduzido por mim nesta ação — é uma correção do escopo que eu mesmo tinha implementado largo demais na `ACAO-0016`.
+- **Confirmação antes de mexer na migration 056:** checado, via Electron real, se `056_folha_lancamentos_unique` já tinha sido aplicada em algum banco real (produção em `%APPDATA%\Electron\banco\sudosys.db`, e o de dev em `.dev-user-data`) — **não tinha rodado em nenhum dos dois** (o de dev nem existia; o de produção não tinha a entrada em `_migrations`). Por isso a migration `056` foi **editada diretamente**, em vez de criar uma `057` nova — não há histórico de migration já aplicada para preservar.
+- **O que foi mudado:**
+  - `app-host/src/db/database.ts`: a migration `056_folha_lancamentos_unique` deixou de recriar a tabela `folha_lancamentos` com `UNIQUE` de coluna e passou a ser um `CREATE UNIQUE INDEX idx_folha_lancamentos_automatico_unico ON folha_lancamentos(folha_id, funcionario_id, rubrica_codigo, origem) WHERE origem = 'automatico'` — um índice único **parcial**, sem precisar do padrão de recriação de tabela (SQLite permite `CREATE INDEX` direto; só `ADD CONSTRAINT` de coluna exige recriar a tabela, que era o caso anterior).
+  - `packages/infrastructure/src/repositories/SqliteFolhaRepository.test.ts`: schema do banco de teste atualizado para refletir o índice parcial (em vez do `UNIQUE` de coluna); comentário do arquivo atualizado explicando a correção de escopo; teste da constraint renomeado para deixar claro que é sobre o índice parcial; adicionado 1 teste novo confirmando que dois lançamentos manuais com a mesma rubrica agora são aceitos sem erro (regressão que a versão anterior teria introduzido).
+- **Validações executadas:**
+  - Rodado o SQL exato da migration corrigida direto num banco SQLite real (fora do harness de teste, script ad-hoc) inserindo: 2 automáticos duplicados → rejeitado com `UNIQUE constraint failed` (comportamento preservado); 2 manuais duplicados → aceito sem erro (regressão corrigida).
+  - `pnpm --filter @sudo-sys/infrastructure test`: **11/11 testes passaram** (7 do `REC-0003` + 4 da `REC-0004`, um a mais que antes por causa do novo teste de "manual duplicado permitido"). Nenhum teste precisou ser corrigido por ter assumido a constraint ampla incorretamente — o teste de rollback e o de idempotência já usavam só `origem = 'automatico'` nos casos de duplicação, então continuaram válidos como estavam; só o teste da constraint em si precisou de rename e o novo teste foi adicionado.
+  - `pnpm typecheck` (todos os 7 workspaces): passou limpo.
+- **Por que foi feito:**
+  - O usuário identificou corretamente que a correção da `ACAO-0016` tinha escopo maior do que o problema documentado na `REC-0004`/diagnóstico original — a constraint devia proteger só contra duplicação dos automáticos gerados por `folha:calcular`, não restringir o uso de lançamentos manuais, que é uma área do sistema fora do escopo da `REC-0004`.
+- **Arquivos envolvidos:**
+  - `app-host/src/db/database.ts`
+  - `packages/infrastructure/src/repositories/SqliteFolhaRepository.test.ts`
+- **Riscos ou observações:**
+  - Nenhum risco novo introduzido. O item de risco registrado na `ACAO-0016` sobre a constraint ampla está resolvido por esta ação (ver addendum na `ACAO-0016`).
+  - Como a migration `056` foi editada em vez de virar uma `057`, qualquer ambiente que por algum motivo já tivesse rodado a versão antiga da `056` (nenhum encontrado nesta checagem) ficaria com o schema errado e precisaria de intervenção manual — não é o caso de nenhum banco conhecido hoje, mas vale confirmar de novo em qualquer ambiente que não foi checado aqui antes de considerar a migration definitivamente segura em todo lugar.
+- **Recomendações deixadas para próximos agentes:**
+  - Nenhuma nova recomendação.
+- **Próxima ação sugerida:**
+  - Retomar a priorização já listada em `CONTEXTO_TOTAL.md`, conforme decisão do usuário.
+
+### ACAO-0018 — 2026-09-12 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Implementação (motor isolado, sem integração)
+- **Status:** Concluído — **motor implementado, integração pendente (decisão de produto)**
+- **Resumo:**
+  - Item [7a]: implementados de verdade os 5 stubs de `packages/domain/src/formula/` (`FormulaTokenizer`, `FormulaAst`, `FormulaParser`, `FormulaEvaluator`, `FormulaValidator`), para a gramática já documentada em `VariablesDictionaryPage.tsx` (operadores `+ - * / ( )`, 15 variáveis nomeadas). **Não** foi conectado a `folhaHandlers.ts`, `LancamentosEditor.tsx` ou `RubricaForm.tsx` — por instrução explícita do usuário, a integração é uma decisão de produto separada. O motor continua sem nenhum consumidor em runtime, exatamente como diagnosticado na conversa anterior a esta ação.
+- **O que foi implementado:**
+  - `FormulaAst.ts`: tipo `FormulaNode` (união discriminada: `numero`, `variavel`, `unario`, `binario`).
+  - `FormulaTokenizer.ts`: tokeniza números (com ponto decimal), identificadores (`[A-Za-z_][A-Za-z0-9_]*`), operadores `+ - * /` e parênteses; lança `FormulaSyntaxError` em caractere desconhecido ou número malformado (ex.: `1.2.3`).
+  - `FormulaParser.ts`: parser recursivo descendente com a gramática padrão de precedência (`expressao := termo (('+'|'-') termo)*`, `termo := fator (('*'|'/') fator)*`, `fator := '-'? primario`, `primario := NUMERO | IDENTIFICADOR | '(' expressao ')'`). Suporta unário negativo (`-SALARIO`). Lança `FormulaSyntaxError` para: fórmula vazia, parêntese não fechado, operando faltando, operador duplicado (ex.: `"5 + + 3"`, pois `+` não é aceito como início de `fator`), token sobrando após uma expressão válida (ex.: `"5 5"`).
+  - `FormulaEvaluator.ts`: `evaluate(formula, ctx)` — faz parse e avalia a AST contra o contexto recebido. **Não busca dado nenhum sozinho** (conforme pedido): toda variável vem de `ctx: Record<string, number>`.
+  - `FormulaValidator.ts`: `validate(formula)` — faz parse (capturando erro de sintaxe sem lançar, retornando `{valid: false, errors: [...]}`) e depois verifica se toda variável referenciada está entre as 15 documentadas (`VARIAVEIS_CONHECIDAS`, exportada). **Mudança de assinatura em relação ao stub original** (`validate(_ast: unknown)` → `validate(formula: string)`): decidido porque o stub nunca teve consumidor (dead code) e, para detectar erro de sintaxe como pedido, o validator precisa ser dono do parse — se só recebesse a AST já pronta, uma fórmula sintaticamente inválida nunca chegaria a ele.
+  - `packages/domain/src/formula/DiasUteis.ts` (novo arquivo, não um stub pré-existente): `contarDiasUteis(competencia: string): number` — conta dias de segunda a sexta de uma competência `"AAAA-MM"` (mesma convenção de string usada em `folha_competencias.competencia`/`diasDoMes()` de `CalculoFolha.ts`). Implementado porque, conforme já levantado no diagnóstico anterior, não existia nenhuma função reutilizável de "contar dias úteis do mês" em lugar nenhum do projeto — só detecção de fim de semana embutida no renderer de PDF do espelho de ponto. **Não considera feriados** (nenhuma fonte de feriados existe no projeto hoje). Não foi conectada a `DIAS_UTEIS` como variável de contexto — isso também é integração, fora do escopo.
+  - `packages/domain/src/formula/index.ts`: passou a exportar os 5 arquivos acima (antes só exportava `FormulaEvaluator`).
+- **Decisões de comportamento tomadas e documentadas em código (pedido explícito do usuário para reportar):**
+  - **Variável ausente do `ctx` em tempo de avaliação:** `FormulaEvaluator` lança `FormulaEvaluationError` (`"Variável desconhecida no contexto: X"`), em vez de tratar como `0` silenciosamente. Motivo: um valor de rubrica errado por variável esquecida no contexto é pior do que a rubrica falhar de forma visível.
+  - **Divisão por zero:** `FormulaEvaluator` lança `FormulaEvaluationError` (`"Divisão por zero."`), em vez de propagar `Infinity`/`NaN`. Motivo: numa folha de pagamento, um `Infinity`/`NaN` gravado silenciosamente como valor de lançamento é um risco financeiro maior do que interromper o cálculo com um erro claro no momento em que ele acontece.
+- **Validações executadas:**
+  - Criada `packages/domain/src/formula/Formula.test.ts` (25 testes, `vitest`, mesmo padrão do `REC-0003`): os 3 exemplos reais documentados na UI (`SALARIO * 0.05`, `SALARIO_HORA * 1.5 * HORAS_EXTRAS_50`, `BASE_INSS * 0.08`); precedência de operador (`"2 + 3 * 4"` → `14`, não `20`); parênteses simples e aninhados; unário negativo; divisão combinada com subtração; divisão por zero direta e via subexpressão (ambas lançam); variável ausente do contexto (lança); 6 casos de erro de sintaxe no parser (parêntese não fechado, operador duplicado, operando faltando, fórmula vazia/só espaço, caractere desconhecido, token sobrando); validator aceitando os 3 exemplos e as 15 variáveis individualmente, rejeitando variável desconhecida (com nome exato no erro), rejeitando os 2 erros de sintaxe sem tentar avaliar, e reportando múltiplos erros de uma vez (`"FOO + BAR"` → 2 erros); `contarDiasUteis` para janeiro/2026 (22 dias úteis) e fevereiro/2026 (20 dias úteis) — valores conferidos por script Node antes de escrever a asserção, não chutados.
+  - `pnpm --filter @sudo-sys/domain test`: **25/25 passaram** na primeira execução, sem precisar ajustar nenhuma implementação.
+  - Instalado `vitest@^3.2.4` em `packages/domain` (mesma versão do `REC-0003`, compatível com `vite@5.x` já fixado pela UI, sem aviso de peer dependency) e adicionado script `"test"`; `packages/domain/tsconfig.json` ganhou `exclude` do arquivo de teste (mesmo ajuste já feito em `infrastructure` no `REC-0003`) — confirmado rebuild limpo sem `*.test.*` em `dist/`.
+  - `package.json` (raiz): `"test"` passou a rodar `domain` e depois `infrastructure` (`pnpm --filter @sudo-sys/domain test && pnpm --filter @sudo-sys/infrastructure test`) — `pnpm test`: **36/36 testes passaram** (25 novos + 11 já existentes).
+  - `pnpm typecheck` (todos os 7 workspaces): passou limpo.
+- **Por que foi feito:**
+  - O usuário pediu explicitamente para construir só o motor, deixando a integração (onde e como conectar ao cálculo de folha) para decisão de produto posterior — a gramática e as variáveis já estavam de fato documentadas em código de UI (`VariablesDictionaryPage.tsx`), então não havia ambiguidade de design a resolver para essa parte.
+- **Arquivos envolvidos:**
+  - `packages/domain/src/formula/FormulaAst.ts`
+  - `packages/domain/src/formula/FormulaTokenizer.ts`
+  - `packages/domain/src/formula/FormulaParser.ts`
+  - `packages/domain/src/formula/FormulaEvaluator.ts`
+  - `packages/domain/src/formula/FormulaValidator.ts`
+  - `packages/domain/src/formula/DiasUteis.ts` (novo)
+  - `packages/domain/src/formula/index.ts`
+  - `packages/domain/src/formula/Formula.test.ts` (novo)
+  - `packages/domain/package.json`
+  - `packages/domain/tsconfig.json`
+  - `package.json`
+- **Riscos ou observações:**
+  - **O motor continua sem nenhum consumidor em runtime.** Nenhuma rubrica em produção usa `modo_valor = 'formula'` hoje (confirmado no diagnóstico anterior) e nada em `folhaHandlers.ts`/`LancamentosEditor.tsx`/`RubricaForm.tsx` foi tocado — esta ação não muda o comportamento observável do sistema para nenhum usuário. `[7a]` **não deve ser marcado como totalmente concluído** enquanto a integração não for decidida e feita.
+  - `VariableDictionary.ts` (stub irmão em `packages/domain/src/formula/`) **não foi tocado** — fora do escopo explícito desta tarefa (só os 5 arquivos listados + a utilidade de dias úteis).
+  - A lista `VARIAVEIS_CONHECIDAS` em `FormulaValidator.ts` duplica manualmente os 15 nomes já existentes em `packages/ui/src/pages/rubricas/VariablesDictionaryPage.tsx` (`FORMULA_VARIAVEIS`) — não há hoje um pacote compartilhado entre UI e domínio para essa lista viver uma única vez. Se um dos dois lugares for atualizado no futuro (nova variável), o outro precisa ser atualizado manualmente até essa duplicação ser resolvida — provavelmente parte natural do trabalho de integração.
+  - `contarDiasUteis` não considera feriados nem tem teste de virada de ano/ano bissexto além dos dois meses testados — suficiente para provar a lógica de dias úteis Mon-Sex, mas quem for integrar `DIAS_UTEIS` de verdade deve avaliar se feriados importam para o caso de uso real antes de usar em produção.
+- **Recomendações deixadas para próximos agentes:**
+  - Nenhuma nova `REC` formal — a decisão de integração (onde plugar o motor: botão "calcular a partir da fórmula" em `LancamentosEditor.tsx`? Automático em `folha:calcular` como um novo tipo de lançamento?) foi explicitamente reservada para o usuário decidir com o Jeremias, fora do escopo de uma recomendação técnica unilateral.
+- **Próxima ação sugerida:**
+  - Aguardar decisão do usuário/Jeremias sobre o desenho da integração do motor de fórmulas ao fluxo de cálculo de folha, antes de qualquer código novo nessa área.
+
+### ACAO-0019 — 2026-09-12 — Claude
+
+- **Autor da ação:** Claude
+- **Tipo de ação:** Integração de UI (item `[7a]`, agora concluído)
+- **Status:** Concluído
+- **Resumo:**
+  - Conectado o motor de fórmulas (`ACAO-0018`) ao `LancamentosEditor.tsx`: botão manual "ƒ" que aparece só quando a rubrica selecionada tem `modo_valor = 'formula'`. Ao clicar, resolve o contexto real (funcionário + competência + ponto + holerite já calculado, se existir), valida a fórmula, avalia e preenche o campo Valor — sem travar o campo (o usuário ainda pode editar manualmente depois). Sob demanda, sem preview em tempo real, por decisão do usuário (evitar reprocessamento a cada tecla). `[7a]` agora está de fato conectado — não é mais só motor isolado.
+- **Pré-requisito confirmado antes de começar:** `pnpm --filter @sudo-sys/domain test` — 25/25 passando (motor da `ACAO-0018` intacto).
+- **PASSO 1 — como o usuário adiciona um lançamento hoje:** modal `LancamentoFormModal` (aberto pelo botão "+ Lançamento" do `LancamentosEditor.tsx`), com um `<select>` de rubrica que já recebe o array completo `Rubrica[]` como prop — `handleRubrica()` já fazia `rubricas.find(...)`, então o objeto completo (incluindo `modo_valor` e `formula`) **já estava disponível no cliente antes desta ação**, sem precisar de nenhum fetch novo. `referencia` e `valor` eram (e continuam sendo) campos de texto digitados manualmente.
+- **PASSO 2 — o que foi implementado:**
+  - `packages/ui/src/pages/folha/LancamentosEditor.tsx`: `LancamentoFormModal` passou a receber `funcionario: Funcionario | null` e `folha: FolhaCompetencia` como novas props (o pai já tinha ambos disponíveis). Adicionado botão "ƒ" ao lado do campo Valor, visível quando `rubricaSelecionada?.modo_valor === 'formula' && rubricaSelecionada.formula` — mesmo caractere "ƒ" já usado em `RubricasPage.tsx` ("ƒ Variáveis de Fórmula"), para consistência visual.
+  - `resolverContextoFormula(funcionario, folha)`: função nova que monta o `ctx: Record<string,number>` das 15 variáveis:
+    - `SALARIO`/`CARGA_HORARIA`/`VALE_REFEICAO`/`PLANO_SAUDE`: direto do objeto `Funcionario` já em memória (prop `funcionarios`, sem IPC novo).
+    - `SALARIO_HORA`/`DIAS_MES`/`SALARIO_DIA`/`DIAS_UTEIS`: computados no cliente — `DIAS_UTEIS` via `contarDiasUteis` (de `@sudo-sys/domain`, `ACAO-0018`); `DIAS_MES` via uma função local de uma linha (`calcularDiasMes`, mesma fórmula de `diasDoMes()` em `CalculoFolha.ts`, mas o `app-host` não é importável no renderer — replicar essa linha específica foi mais simples que criar infraestrutura de compartilhamento só para isso).
+    - `HORAS_TRABALHADAS`/`HORAS_EXTRAS_50`/`HORAS_EXTRAS_100`/`HORAS_FALTA`: via `window.electronAPI.espelhoPonto(empresaId, funcionarioId, mes, ano)` — canal IPC que **já existia**, nenhum novo.
+    - `BASE_INSS`/`BASE_IRRF`/`BASE_FGTS`: via `window.electronAPI.getHolerite(folhaId, funcionarioId)` — também **já existia**. Ver decisão de fallback abaixo.
+  - Fluxo do clique: `FormulaValidator().validate(formula)` primeiro — se inválida, mostra `formulaError` sem tentar avaliar; senão resolve o contexto (`resolverContextoFormula`, assíncrono, com estado `calculandoFormula` desabilitando o botão) e roda `FormulaEvaluator().evaluate(formula, ctx)`, preenchendo `form.valor` com `resultado.toFixed(2)` em caso de sucesso, ou mostrando a mensagem de `FormulaEvaluationError` em caso de falha (variável ausente, divisão por zero). O campo continua um `<input>` normal — nada foi desabilitado ou travado.
+  - `packages/ui/package.json`: adicionada dependência `@sudo-sys/domain` (nova — a UI nunca tinha consumido esse pacote).
+- **Decisões de fallback tomadas (Passo 4 do pedido — nenhuma exigiu parar e perguntar, mas todas registradas como pedido):**
+  - `HORAS_*` sem nenhum ponto registrado: `ponto:espelho` já retorna totais zerados quando não há `registros_ponto` (confirmado lendo `SqlitePontoRepository.espelho()` — usa `reduce` com acumulador inicial zero sobre array vazio, não lança erro). **0 é o valor real** ("não bateu ponto ainda"), não uma aproximação — não havia decisão de produto real aqui.
+  - `BASE_INSS`/`BASE_IRRF`: lidos de `folha_holerites` via `getHolerite`, se a folha já tiver sido calculada ao menos uma vez para aquele funcionário; se não, **fallback 0** — não há base ainda, é o estado real do sistema antes do primeiro `folha:calcular`. Sem ambiguidade de produto: é literalmente "ainda não foi calculado".
+  - `BASE_FGTS`: **achado do Passo 2** — `folha_holerites` não tem coluna própria de base de FGTS (só `valor_fgts`, o valor já calculado); diferente de `base_inss`/`base_irrf`, que são persistidas diretamente. Decidido **recuperar a base de forma matematicamente exata**: como `calcularFGTS(base) = base * 0.08` sempre (sem faixas/teto), a conta inversa `valor_fgts / 0.08` reproduz o valor original exatamente (a menos de um resíduo de centavos por causa do arredondamento já aplicado ao gravar `valor_fgts`, que é desprezível). Não tratei isso como "decisão de produto que exige parar" porque a derivação é uma inversão determinística de uma fórmula já existente no código, não uma escolha arbitrária — mas está reportada aqui explicitamente para o usuário poder rever se discordar.
+  - `CARGA_HORARIA = 0` (edge case defensivo, não uma decisão de produto): `SALARIO_HORA` usa `cargaHoraria > 0 ? salario / cargaHoraria : 0`, evitando `Infinity` entrar no contexto por um cadastro de funcionário incomum.
+- **Achado técnico não trivial (bloqueou a integração até ser resolvido):** `@sudo-sys/domain` era publicado como **CommonJS** (decisão `DEC-0004`, pensada para o processo principal Electron). Ao importar `FormulaEvaluator`/`FormulaValidator`/`contarDiasUteis` no `packages/ui` (bundled via Vite/Rollup), o build falhava com `"X is not exported by dist/index.js"` para **todos** os nomes importados — não um problema específico de `contarDiasUteis`, confirmado isolando um nome por vez. Diagnosticado: o CJS interop do Rollup não conseguia enxergar através da cadeia de `export * from` (`__exportStar` em tempo de execução) usada nos barrels (`formula/index.ts` → `index.ts`), mesmo com o shape de exports **comprovadamente correto** em runtime (`require('@sudo-sys/domain')` de dentro de `packages/ui` listava `contarDiasUteis` normalmente). Como `@sudo-sys/domain` nunca teve nenhum consumidor real em CommonJS (`app-host` nunca o importa — confirmado por `grep`), a decisão original da `DEC-0004` não se aplicava na prática para este pacote. Resolvido migrando `packages/domain` para o mesmo padrão **ESM** já usado e comprovadamente funcional em `@sudo-sys/shared` (`"type": "module"`, condição `"import"` no `exports`, removido o override `module: CommonJS`/`moduleResolution: node` do `tsconfig.json` do pacote, voltando a herdar `ESNext`/`bundler` do `tsconfig.base.json`) — e trocando os barrels de `export *` para reexportações nomeadas explícitas (mais robusto para bundlers em geral, não só uma correção pontual). `packages/application`, único outro lugar que referencia `@sudo-sys/domain` (só `import type`, código morto), não foi afetado — tipos não dependem do formato de módulo de saída.
+- **Validações executadas:**
+  - `pnpm typecheck` (todos os 7 workspaces): passou limpo após a migração de `domain` para ESM.
+  - `pnpm test` (raiz): **36/36 testes passaram** (25 do motor de fórmulas + 11 de folha/IRRF), sem nenhum ajuste necessário.
+  - `pnpm build` (raiz, incluindo `app-host`): passou limpo — confirma que `app-host` (que não usa `domain`, só `type import` morto em `application`) continua buildando normalmente após a mudança de formato de módulo.
+  - **Teste via UI real (Passo 3, Electron real + CDP)**: banco de dev resetado; setup wizard concluído via IPC; criada empresa (`EMP01`), funcionário real (`Joao da Silva`, `salario_base: 3000`, `carga_horaria` padrão 220), rubrica `0900` com `modo_valor: 'formula'` e `formula: 'SALARIO * 0.05'`, e uma folha aberta (competência `2026-02`, ainda não calculada). Navegado pela UI real até "Folha de Pagamento" → selecionada a folha → selecionado o funcionário → "+ Lançamento" → selecionada a rubrica `0900` (botão "ƒ" apareceu, texto "Fórmula da rubrica: SALARIO \* 0.05" visível) → clicado "ƒ" → campo Valor preenchido com **150.00** (= 3000 × 0.05, exatamente o esperado) → clicado "Adicionar" → lançamento persistido e visível na grade (`0900 | Bonus Formula Teste | provento | 0 | 150,00 | manual`). **Caminho de erro**: criada uma segunda rubrica `0901` com fórmula inválida (`"SALARIO * (0.05"`, parêntese não fechado); ao clicar "ƒ", mensagem clara exibida — `"Fórmula inválida: Parêntese não fechado (encontrado "fim da fórmula" na posição 15)."` — sem crash, sem preencher o campo.
+- **PASSO 4 — nenhuma variável exigiu parar e reportar antes de decidir:** todos os casos levantados (HORAS_* sem ponto, BASE_INSS/IRRF sem cálculo prévio, BASE_FGTS sem coluna própria) tiveram fallback/derivação defensável e sem ambiguidade real de produto — documentados no código e nesta entrada, não decididos silenciosamente sem registro.
+- **Por que foi feito:**
+  - Completar a integração do motor de fórmulas construído na `ACAO-0018`, por pedido explícito do usuário, com preenchimento assistido (não automático/obrigatório) do campo de valor — decisão já tomada pelo usuário de ser sob demanda, não em tempo real, para não gastar processamento a cada edição de fórmula.
+- **Arquivos envolvidos:**
+  - `packages/ui/src/pages/folha/LancamentosEditor.tsx`
+  - `packages/ui/package.json`
+  - `packages/domain/package.json`
+  - `packages/domain/tsconfig.json`
+  - `packages/domain/src/index.ts`
+  - `packages/domain/src/formula/index.ts`
+- **Riscos ou observações:**
+  - O botão "ƒ" só recalcula quando clicado — se o funcionário/competência/ponto mudar depois de o valor já ter sido preenchido (e antes de salvar), o usuário precisa clicar de novo; isso é o comportamento pedido (sob demanda), não um bug.
+  - `BASE_FGTS` derivada por divisão (`valor_fgts / 0.08`) deixa de ser exata se `calcularFGTS` algum dia ganhar faixas/teto/lógica não-linear — quem alterar `calcularFGTS` no futuro precisa lembrar de rever essa derivação também (não há teste automatizado ligando os dois pontos, por estarem em pacotes diferentes — `infrastructure` vs `domain`/`ui`).
+  - A migração de `domain` para ESM não foi validada num pacote consumidor CommonJS de verdade (porque não existe nenhum) — se algum dia `app-host` precisar importar `domain` diretamente (não apenas `application`'s `import type` morto), isso pode exigir ajuste, já que `app-host` compila para CommonJS. Registrado para não ser surpresa futura.
+  - Nenhum teste automatizado novo cobre `resolverContextoFormula` ou o botão "ƒ" em si (é código de UI, o projeto não tem framework de teste de componentes/E2E configurado) — a validação desta ação foi toda manual via CDP, não repetível automaticamente numa suíte.
+- **Recomendações deixadas para próximos agentes:**
+  - Nenhuma nova recomendação formal.
+- **Próxima ação sugerida:**
+  - Retomar a priorização das recomendações pendentes já listadas em `CONTEXTO_TOTAL.md`, conforme decisão do usuário.
+
+### ACAO-0020 — 2026-09-11 — Codex
 
 - **Autor da ação:** Codex
 - **Tipo de ação:** Correção de build / Assets / Empacotamento Electron
@@ -925,3 +1175,27 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - Executar a `REC-0002` em ação separada, mediante autorização, por ser o próximo risco crítico bem delimitado.
 - **Próxima ação sugerida:**
   - Executar somente a `REC-0002`, após autorização específica, sem misturar RBAC ou outras recomendações.
+- **Nota de reconciliação:**
+  - Esta ação foi registrada originalmente como `ACAO-0014` no histórico local e renumerada para `ACAO-0020` durante a reconciliação da `ACAO-0021`, evitando colisão com a `ACAO-0014` remota sem apagar nenhum histórico válido.
+
+### ACAO-0021 — 2026-09-14 — Codex
+
+- **Autor da ação:** Codex
+- **Tipo de ação:** Reconciliação Git / Documentação / Merge
+- **Status:** Concluído
+- **Resumo:**
+  - Reconciliada a divergência entre o ambiente local e `origin/main`: havia 1 commit local e 10 commits remotos.
+  - O merge apresentava conflitos documentais em `CONTEXTO_TOTAL.md` e `HISTORICO_AGENTES.md`, além de colisão do ID `ACAO-0014`.
+  - As ações remotas `ACAO-0014` a `ACAO-0019` foram preservadas integralmente; a ação local de empacotamento Electron/`REC-0009`, originalmente `ACAO-0014`, foi preservada e renumerada para `ACAO-0020`.
+  - O histórico dos dois lados, as decisões técnicas vigentes e as pendências marcadas como **A confirmar** foram preservados.
+  - Nenhuma nova REC foi iniciada nesta reconciliação.
+- **O que foi mudado:**
+  - `HISTORICO_AGENTES.md`: conflitos resolvidos, colisão de ID eliminada e esta ação registrada.
+  - `CONTEXTO_TOTAL.md`: estado reconciliado, última ação e referências da `REC-0009` atualizados.
+  - `README_AMBIENTE.md`: referências do empacotamento atualizadas para `ACAO-0020`; existência de `pnpm test` e publicação ESM de `@sudo-sys/domain` refletidas conforme os manifests recebidos do remoto.
+  - Nenhuma regra de negócio, cálculo trabalhista, autenticação, autorização, RBAC, relatório ou dependência foi alterada nesta reconciliação.
+- **Riscos ou observações:**
+  - `REC-0009` permanece **Parcial**; ícone oficial, assinatura e instalação/desinstalação controladas continuam pendentes ou **A confirmar**.
+  - A reconciliação não alterou prioridades nem escolheu qual REC pendente deve ser executada em seguida.
+- **Próxima ação sugerida:**
+  - Revisar o merge commit reconciliado e, somente após aprovação, decidir separadamente qual recomendação pendente priorizar.

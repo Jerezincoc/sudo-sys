@@ -4,8 +4,9 @@ import AppRouter from './Router'
 import { ThemeProvider } from './theme/ThemeContext'
 import { ipcClient } from '@/api/ipcClient'
 import LoginPage from '@/pages/login/LoginPage'
+import TrocarSenhaPage from '@/pages/login/TrocarSenhaPage'
 
-type AppState = 'loading' | 'setup' | 'login' | 'main'
+type AppState = 'loading' | 'setup' | 'login' | 'change-password' | 'main'
 
 export default function App() {
   const [state, setState] = useState<AppState>('loading')
@@ -49,7 +50,15 @@ export default function App() {
   if (state === 'login') {
     return (
       <ThemeProvider>
-        <LoginPage onLogin={() => setState('main')} />
+        <LoginPage onLogin={(mustChangePassword) => setState(mustChangePassword ? 'change-password' : 'main')} />
+      </ThemeProvider>
+    )
+  }
+
+  if (state === 'change-password') {
+    return (
+      <ThemeProvider>
+        <TrocarSenhaPage onDone={() => setState('main')} />
       </ThemeProvider>
     )
   }
