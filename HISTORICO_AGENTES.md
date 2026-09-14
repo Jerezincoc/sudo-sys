@@ -1512,3 +1512,120 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 * **Próxima ação sugerida:**
 
   * Aguardar confirmação do usuário sobre qual máquina/sessão precisa da migração de path antes de repetir esta tarefa; não presumir que o path atual desta sessão precisa de qualquer mudança.
+
+### ACAO-0030 — 2026-09-14 — Claude (Sonnet 5)
+
+* **Autor da ação:** Claude (Sonnet 5)
+* **Tipo de ação:** Diagnóstico de segurança / Varredura sistemática de autenticação e autorização em IPC (nenhuma correção aplicada)
+* **Status:** Concluído (diagnóstico completo; correções ficam para tarefa separada, por guardrail explícito do usuário)
+* **Resumo:**
+
+  * Varredura completa de todos os canais IPC (`ipcMain.handle`) do projeto, cruzando cada um com o gate central `authGuard.ts` (commit `0273154`) e com a distinção de papel (`admin` vs. não-admin) usada no frontend (`RequireAdmin`), para achar deliberadamente gaps do mesmo tipo dos já corrigidos por acaso em `REC-0002`/`ACAO-0027` (canal que escapa da checagem central de sessão/senha obrigatória).
+  * Encontrado e **confirmado na prática via IPC direto (CDP)** um gap real e não documentado antes: os canais `setup:save-config` e `setup:get-config` são públicos (`CANAIS_PUBLICOS` em `authGuard.ts`) e o handler nunca verifica `isInitialized()` — ficam abertos, sem qualquer sessão, para sempre, não só durante o wizard inicial.
+  * Nenhuma correção foi aplicada nesta ação — só diagnóstico, teste e registro, por guardrail explícito do usuário.
+* **PASSO 1 — Lista completa de canais IPC (`ipcMain.handle`), por arquivo:**
+
+  * `ipcRouter.ts`: `shell:open-path`.
+  * `setupHandlers.ts`: `setup:check-initialized`, `setup:test-database`, `setup:save-config`, `setup:get-config`.
+  * `authHandlers.ts`: `auth:login`, `auth:trocarSenha`, `auth:logout`, `auth:register`, `auth:me`, `usuario:list`, `usuario:create`, `usuario:delete`.
+  * `adminHandlers.ts`: `admin:backup`.
+  * `cboHandlers.ts`: `cbo:list`, `cbo:list-grupos`, `cbo:list-subgrupo`, `cbo:search`.
+  * `documentosHandlers.ts`: `doc:contrato`, `doc:aditivo`, `doc:vale`, `doc:advertencia`.
+  * `empresaHandlers.ts`: `empresa:list`, `empresa:get`, `empresa:create`, `empresa:update`, `empresa:delete`, `empresa:export`, `dialog:open-file`, `empresa:import`.
+  * `feriasHandlers.ts`: `ferias:list`, `ferias:listByFuncionario`, `ferias:get`, `ferias:create`, `ferias:update`, `ferias:delete`, `ferias:gerar-pdf`.
+  * `folhaHandlers.ts`: `folha:list`, `folha:get`, `folha:create`, `folha:update`, `folha:fechar`, `folha:lancamentos:list`, `folha:lancamentos:add`, `folha:lancamentos:delete`, `folha:calcular`, `folha:holerites:list`, `folha:holerites:get`, `folha:gerar-holerite`.
+  * `funcionarioHandlers.ts`: `funcionario:list`, `funcionario:get`, `funcionario:create`, `funcionario:update`, `funcionario:delete`, `funcionario:gerar-ficha-pdf`.
+  * `pontoHandlers.ts`: `ponto:list`, `ponto:get`, `ponto:create`, `ponto:update`, `ponto:delete`, `ponto:espelho`, `ponto:gerar-espelho-pdf`.
+  * `relatorioHandlers.ts`: `relatorio:list`, `relatorio:get`, `relatorio:create`, `relatorio:update`, `relatorio:delete`, `relatorio:executar`, `relatorio:gerar-pdf`.
+  * `rescisaoHandlers.ts`: `rescisao:list`, `rescisao:get`, `rescisao:create`, `rescisao:update`, `rescisao:delete`, `rescisao:calcular`, `rescisao:gerar-pdf`.
+  * `rubricaHandlers.ts`: `rubrica:list`, `rubrica:get`, `rubrica:create`, `rubrica:update`, `rubrica:delete`.
+  * `custosHandlers.ts`, `extrasHandlers.ts`, `quickCalcHandlers.ts`: 0 bytes, nenhum canal registrado (confirmado com `wc -l`; consistente com `REC-0010`).
+  * Total: **81 canais IPC ativos**, todos via `ipcMain.handle` — nenhum uso de `ipcMain.on` foi encontrado em todo o `app-host/src` (`grep` recursivo sem resultado), então não existe canal "fire-and-forget" escapando do mecanismo de interceptação do `authGuard`.
+* **PASSO 2 — Todos os canais passam pelo gate central:**
+
+  * `main.ts:94` chama `installIpcAuthGuard()` antes de `registerSetupHandlers()` (linha 95) e de `registerAllHandlers()` (linha 97) — confirmado por leitura direta do arquivo. Como `installIpcAuthGuard()` substitui `ipcMain.handle` globalmente antes do primeiro registro real, **todos** os 81 canais (setup incluso) passam pela versão interceptada, mesmo os que depois se revelam "públicos".
+  * "Público" aqui não significa "fora do gate" — significa que o gate, ao interceptar, decide devolver o handler original sem checagem porque o canal está em `CANAIS_PUBLICOS`. Não existe registro de canal antes da instalação do gate nem uso de `ipcMain.on` para escapar dessa interceptação.
+* **PASSO 3 — Cruzamento com RBAC do frontend:**
+
+  * A única distinção de papel no frontend é `isAdmin` (`usePermission.ts`), usada em `RequireAdmin` (só a rota `/admin`) e em `Sidebar.tsx` (esconder o grupo de navegação `ADMIN`). Não há nenhuma outra checagem de papel (`role ===`/`papel ===`) em `packages/ui/src` — busca recursiva não encontrou mais nenhuma ocorrência.
+  * Os canais chamados pela `AdminPage.tsx` (`usuario:list`, `usuario:create`, `usuario:delete`, `admin:backup`) são exatamente os 4 canais em `CANAIS_ADMIN` no backend — não há assimetria nova aqui (frontend e backend concordam).
+  * Não foi encontrado nenhum canal que devesse ter restrição de papel adicional e não tem, além do que já está documentado e em aberto na `REC-0011` (ausência de distinção prática entre `operador` e `visualizador`, tanto no frontend quanto no backend — não é uma assimetria, é uma lacuna simétrica já conhecida).
+* **PASSO 4 — Testes reais via IPC direto (CDP), sem sessão:**
+
+  * Ambiente: `pnpm dev` real, banco de desenvolvimento isolado (`.dev-user-data`, não o banco real do usuário), Electron com `--remote-debugging-port=9222`, script `scripts/cdp-authguard-scan.ps1` criado para esta varredura (chama `window.electronAPI.*` via `Runtime.evaluate` do CDP, sem nunca chamar `login`).
+  * `listFolhas(1)` sem sessão → **rejeitado**: `Error: Sessão inválida. Faça login novamente.` (gate funcionando).
+  * `listUsuarios()` sem sessão → **rejeitado**: mesma mensagem (gate funcionando; e mesmo com sessão de não-admin teria caído na checagem `CANAIS_ADMIN`, não testada aqui por já estar coberta por `usuario:list` sem sessão nenhuma, cenário mais permissivo).
+  * `saveConfig({database:{type:'sqlite'}, empresa:{razaoSocial:'AUTHGUARD_SCAN_PROBE_ACAO0030'}})` sem sessão, com `checkInitialized() === false` → **aceito** (`{"success":true}`), e `getConfig()` subsequente confirmou a gravação.
+  * Repetido com `checkInitialized() === true` (sistema já inicializado pelo probe anterior) e um payload adversarial (`database.type: 'postgresql'`, `host: 'attacker-controlled.example'`, `user: 'pwn'`) → **aceito de novo**, sem nenhuma checagem de sessão, papel ou estado de inicialização. `getConfig()` confirmou a sobrescrita completa do `config.json`, incluindo a seção `database`.
+  * **Confirmado na prática:** qualquer código capaz de chamar `window.electronAPI.saveConfig(...)` — sem login, a qualquer momento, mesmo com o sistema já configurado — pode reescrever a configuração inteira do app, inclusive a conexão de banco. Não houve dano real: o teste rodou contra `.dev-user-data` (isolado, gitignored), e o `config.json` poluído pelo probe foi removido ao final da ação; o banco SQLite de desenvolvimento (`banco/sudosys.db`) não foi tocado.
+* **PASSO 5 — Tabela final (canal | protegido por authGuard | restrição de role no backend | gap | severidade):**
+
+  | Canal | `authGuard` (sessão) | Role no backend | Gap | Severidade |
+  |---|---|---|---|---|
+  | `setup:check-initialized` | Público (esperado) | — | Não | — |
+  | `setup:test-database` | Público (esperado — necessário para o wizard testar conexão antes de haver usuário) | — | Não | — |
+  | `setup:save-config` | Público, **sem checar `isInitialized()`** | — | **Sim — reescreve config/DB a qualquer momento, sem sessão** | **Crítica** |
+  | `setup:get-config` | Público, **sem checar `isInitialized()`** | — | **Sim — pode expor connection string/dados de empresa sem sessão** | **Alta** |
+  | `auth:login` | Público (esperado) | — | Não | — |
+  | `auth:logout` | Público (esperado) | — | Não | — |
+  | `auth:me` | Público (esperado — apenas ecoa dado do token informado) | — | Não | — |
+  | `auth:register` | **Público, mas com checagem própria de admin via `requestingToken`** (mecanismo próprio, não o gate central por `webContents`) | Sim (própria) | Parcial — canal não usado por nenhuma tela hoje, mas alcançável direto; se um token de admin vazar, contorna o gate central | Baixa |
+  | `auth:trocarSenha` | Sessão exigida (não está em `CANAIS_PUBLICOS`); liberado mesmo com `must_change_password=1` | — | Não (comportamento intencional, é o único canal que precisa funcionar nesse estado) | — |
+  | `usuario:list` / `usuario:create` / `usuario:delete` | Sessão + admin | Sim (`CANAIS_ADMIN`) | Não | — |
+  | `admin:backup` | Sessão + admin | Sim (`CANAIS_ADMIN`) | Não | — |
+  | `shell:open-path` | Sessão | Não (qualquer papel autenticado) | Não é gap novo — mesma lacuna simétrica da `REC-0011` | Baixa (referência `REC-0011`) |
+  | `cbo:*` (4 canais) | Sessão | Não | Não é gap novo (dado de referência, baixo risco) | — |
+  | `doc:*` (4 canais) | Sessão | Não | Não é gap novo — `REC-0011` | Baixa (referência `REC-0011`) |
+  | `empresa:*` (8 canais, incl. `dialog:open-file`) | Sessão | Não | Não é gap novo — `REC-0011` | Baixa (referência `REC-0011`) |
+  | `ferias:*` (7 canais) | Sessão | Não | Não é gap novo — `REC-0011` | Baixa (referência `REC-0011`) |
+  | `folha:*` (12 canais — dados de folha/salário) | Sessão (confirmado por teste real) | Não | Não é gap novo — `REC-0011` | Média (referência `REC-0011`, mas dado mais sensível) |
+  | `funcionario:*` (6 canais — dados pessoais/salariais) | Sessão | Não | Não é gap novo — `REC-0011` | Média (referência `REC-0011`) |
+  | `ponto:*` (7 canais) | Sessão | Não | Não é gap novo — `REC-0011` | Baixa (referência `REC-0011`) |
+  | `relatorio:*` (7 canais) | Sessão | Não | Não é gap novo — `REC-0011` | Baixa (referência `REC-0011`) |
+  | `rescisao:*` (7 canais) | Sessão | Não | Não é gap novo — `REC-0011` | Baixa (referência `REC-0011`) |
+  | `rubrica:*` (5 canais) | Sessão | Não | Não é gap novo — `REC-0011` | Baixa (referência `REC-0011`) |
+
+  * As linhas marcadas "Não é gap novo — `REC-0011`" representam a lacuna já registrada (ausência de matriz de RBAC além de admin/não-admin) — não são achados novos desta varredura, só confirmação de que continuam assim, sem nenhuma assimetria entre frontend e backend.
+* **O que foi encontrado (achados novos, fora da `REC-0011` já conhecida):**
+
+  * `setup:save-config`/`setup:get-config` públicos e sem checagem de `isInitialized()` — achado novo, confirmado na prática, mesma classe de risco do `REC-0002` original (canal que deveria ter deixado de ser acessível após um certo estado do sistema, mas ficou aberto). Já havia uma menção genérica em `CONTEXTO_TOTAL.md` §5 ("canais de setup públicos após a inicialização"), mas nunca virou uma `REC` numerada nem foi testado na prática — esta ação fecha essa lacuna de registro e comprova o risco com evidência real.
+  * `auth:register` usando mecanismo de autorização próprio (token como parâmetro) em vez do gate central por `webContents` — achado novo, severidade baixa dado que não há consumidor de UI hoje.
+* **O que foi mudado:**
+
+  * Nenhum código de produção foi alterado (guardrail explícito da tarefa: só diagnóstico).
+  * Criado `scripts/cdp-authguard-scan.ps1` — script de teste reutilizável para reproduzir esta varredura (mesmo padrão do `scripts/cdp-test.ps1` já existente).
+  * `.dev-user-data/config.json`, poluído pelos dois probes do Passo 4, foi removido ao final para deixar o ambiente de desenvolvimento limpo para o próximo `pnpm dev` (o wizard de setup volta a rodar do zero); `.dev-user-data/banco/sudosys.db` (dado de dev, não o banco real) não foi tocado.
+  * `HISTORICO_AGENTES.md` (esta entrada) e `CONTEXTO_TOTAL.md` (`REC-0017` e `REC-0018`) atualizados.
+* **Por que foi feito:**
+
+  * Para achar deliberadamente, antes de um incidente real, canais IPC que repetem o padrão dos dois gaps já corrigidos por acaso (`REC-0002`/`ACAO-0027`): checagem de autenticação ausente ou incompleta em um canal que deveria exigi-la.
+* **Arquivos envolvidos:**
+
+  * `app-host/src/ipc/authGuard.ts` — lido, não alterado.
+  * `app-host/src/ipc/ipcRouter.ts` — lido, não alterado.
+  * `app-host/src/main.ts` — lido, não alterado.
+  * `app-host/src/ipc/handlers/*.ts` (todos os 14 arquivos não vazios) — lidos/grepados, não alterados.
+  * `app-host/src/setup/configManager.ts` — lido, não alterado.
+  * `app-host/src/preload.ts` — lido, não alterado.
+  * `packages/ui/src/permissions/usePermission.ts`, `guards.tsx`, `components/layout/Sidebar.tsx`, `app/Router.tsx`, `pages/admin/AdminPage.tsx` — lidos, não alterados.
+  * Criado: `scripts/cdp-authguard-scan.ps1`.
+  * Atualizados: `HISTORICO_AGENTES.md`, `CONTEXTO_TOTAL.md`.
+* **Validações executadas:**
+
+  * `git status -sb` verificado antes de iniciar (árvore limpa) e novamente ao longo da ação.
+  * `pnpm dev` real contra `.dev-user-data` isolado, com `--remote-debugging-port=9222`.
+  * Testes de IPC direto via CDP (`Runtime.evaluate`) para `listFolhas`, `listUsuarios`, `checkInitialized`, `getConfig`, `saveConfig` (duas vezes, antes e depois de `initialized=true`), sem nenhum `login()` chamado em nenhum momento.
+  * Processos `electron.exe`/`node.exe` iniciados por esta ação foram encerrados por PID específico ao final (não foi usado `taskkill` genérico por nome de imagem).
+* **Riscos ou observações:**
+
+  * **Trabalho em paralelo de outro agente detectado durante a ação:** no meio da varredura, `git status -sb` passou a mostrar `packages/ui/src/pages/empresas/EmpresasPage.tsx` modificado (209 inserções/49 remoções) e diretórios não rastreados `.codex-pnpm-9-copy/`, `.codex-pnpml-copy/`, `.codex-pnpm-runtime/` — nenhum desses foi criado por esta ação. Consistente com o Codex trabalhando em paralelo nesta mesma árvore. Esses arquivos **não foram tocados, lidos em detalhe nem incluídos no commit desta ação** — só `HISTORICO_AGENTES.md` e `CONTEXTO_TOTAL.md` foram adicionados via `git add` explícito, conforme guardrail da tarefa. Registrado aqui para o próximo agente não confundir essas mudanças com as desta ação.
+  * `setup:save-config`/`setup:get-config` continuam vulneráveis em produção — nenhuma correção foi aplicada, por guardrail explícito desta tarefa (só diagnóstico). Ver `REC-0017`.
+  * `auth:register` continua com o mecanismo próprio de autorização — ver `REC-0018`.
+  * `REC-0011` (matriz de RBAC além de admin/não-admin) permanece a lacuna estrutural mais ampla; nada nesta varredura contradiz ou substitui essa recomendação já existente.
+* **Recomendações deixadas para próximos agentes:**
+
+  * `REC-0017`: corrigir `setup:save-config` (e considerar `setup:get-config`) para checar `isInitialized()` e recusar chamadas fora do fluxo legítimo do wizard após a primeira inicialização — ou, alternativamente, trazer esses canais para dentro do gate central de sessão assim que `initialized=true`. Prioridade crítica — risco de reescrita da configuração/conexão de banco sem autenticação, confirmado na prática.
+  * `REC-0018`: avaliar se `auth:register` deve ser removido (não tem consumidor de UI) ou migrado para usar o gate central por `webContents` como os demais canais admin, em vez de seu próprio mecanismo de token por parâmetro.
+* **Próxima ação sugerida:**
+
+  * Corrigir `REC-0017` em uma tarefa separada, dedicada e pequena (guardrail desta ação foi só diagnóstico); antes de começar, confirmar com o Codex se `EmpresasPage.tsx` já foi commitado, para não colidir com esse trabalho em paralelo.
