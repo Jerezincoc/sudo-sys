@@ -9,8 +9,11 @@ Antes de alterar scripts, dependências, build ou configuração, todo agente ou
 1. `CONTEXTO_TOTAL.md`
 2. `HISTORICO_AGENTES.md`
 3. `README_AMBIENTE.md`
+4. `BLOQUEIOS_AGENTES.md`
+5. `COMUNICACAO_AGENTES.md`
+6. `DECISOES_TECNICAS.md`
 
-Mudanças relevantes devem seguir as decisões e recomendações registradas nesses arquivos. Informações não confirmadas neste documento aparecem como `A confirmar` e não devem ser tratadas como decisões já tomadas.
+Mudanças relevantes devem seguir as decisões, recomendações, bloqueios e handoffs registrados nesses arquivos. Informações não confirmadas neste documento aparecem como `A confirmar` e não devem ser tratadas como decisões já tomadas.
 
 ## 2. Resumo do projeto
 

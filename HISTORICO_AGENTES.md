@@ -1411,3 +1411,61 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
   - Se no futuro outra tela além de `TrocarSenhaPage` precisar funcionar durante `must_change_password=1` (ex. um botão de logout visível nessa tela), o canal correspondente precisa ser adicionado a `CANAIS_PERMITIDOS_COM_TROCA_PENDENTE` explicitamente — hoje só `auth:trocarSenha` está lá porque é só o que a tela chama.
 - **Próxima ação sugerida:**
   - Nenhuma nova REC. Esta ação fecha a lacuna de enforcement encontrada durante o diagnóstico da `REC-0002` nesta mesma sessão; a `REC-0002` permanece "Executado", agora com a ressalva de que o enforcement é também no backend, não só na UI.
+
+### ACAO-0028 — 2026-09-14 — Codex
+
+* **Autor da ação:** Codex
+* **Tipo de ação:** Documentação / Coordenação entre agentes
+* **Status:** Concluído
+* **Resumo:**
+
+  * Foram criados arquivos de coordenação entre agentes para registrar bloqueios, comunicação e decisões técnicas vigentes.
+
+* **O que foi mudado:**
+
+  * Criado `BLOQUEIOS_AGENTES.md`.
+  * Criado `COMUNICACAO_AGENTES.md`, incluindo a mensagem inicial `MSG-0001` sobre separação de responsabilidades.
+  * Criado `DECISOES_TECNICAS.md`, consolidando fielmente `DEC-0001` a `DEC-0005`; a `DEC-0005` foi incluída porque substitui parcialmente a `DEC-0004` e já estava registrada no projeto.
+  * Atualizado `CONTEXTO_TOTAL.md` para citar os seis arquivos de leitura obrigatória, explicar suas funções e refletir esta ação como a mais recente.
+  * Atualizado `README_AMBIENTE.md` porque seu fluxo de leitura inicial também orienta agentes antes de alterar scripts, dependências, build ou configuração.
+
+* **O que foi melhorado:**
+
+  * Melhor coordenação entre ChatGPT, Claude, Codex e outros agentes.
+  * Menor risco de sobrescrever trabalho incompleto ou confundir tarefas de agentes diferentes.
+  * Decisões técnicas vigentes ficam mais fáceis de consultar sem substituir o histórico completo.
+
+* **Por que foi feito:**
+
+  * Para permitir que os agentes tenham liberdade de propor melhorias sem perder alinhamento, histórico e responsabilidade.
+
+* **Diagnóstico de alteração preexistente:**
+
+  * `scripts/test-holerite.ps1` estava limpo no início desta ação. A alteração observada anteriormente era intencional, relacionada à `REC-0012`, registrada na `ACAO-0026` e commitada em `96fc492`; o script não foi tocado nesta ação.
+  * Nenhum bloqueio ativo foi identificado no working tree no início desta ação.
+
+* **Arquivos envolvidos:**
+
+  * `BLOQUEIOS_AGENTES.md`
+  * `COMUNICACAO_AGENTES.md`
+  * `DECISOES_TECNICAS.md`
+  * `CONTEXTO_TOTAL.md`
+  * `HISTORICO_AGENTES.md`
+  * `README_AMBIENTE.md`
+
+* **Validações executadas:**
+
+  * `git status -sb` e `git diff --stat` foram conferidos antes da alteração; o working tree estava limpo.
+  * `git diff -- scripts/test-holerite.ps1` não mostrou alteração pendente.
+  * `git diff --check`, busca por marcadores de conflito e conferência do escopo documental foram executados após as edições.
+  * Testes de código não foram executados porque a ação altera somente arquivos Markdown e não modifica código, scripts funcionais, dependências ou configuração de build.
+
+* **Riscos ou observações:**
+
+  * Os novos arquivos são índices e instrumentos de coordenação; `CONTEXTO_TOTAL.md`, `HISTORICO_AGENTES.md` e `README_AMBIENTE.md` continuam sendo as fontes já definidas para estado, histórico e ambiente.
+  * Bloqueios resolvidos, mensagens e decisões antigas não devem ser apagados; seus status devem ser atualizados preservando o histórico.
+  * Nenhuma nova REC, decisão técnica ou tarefa funcional foi iniciada.
+
+* **Próxima ação sugerida:**
+
+  * Antes de nova tarefa funcional, verificar se existe alteração não commitada e consultar bloqueios, mensagens e decisões; se surgir trabalho residual, diagnosticar e decidir seu destino separadamente.

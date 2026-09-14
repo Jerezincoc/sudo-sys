@@ -19,17 +19,16 @@ Este arquivo não substitui o histórico completo. O histórico detalhado, acumu
 
 ## Como agentes devem usar este arquivo
 
-Antes de sugerir ou alterar qualquer coisa no projeto, todo agente deve:
+Antes de sugerir ou alterar qualquer coisa no projeto, todo agente deve ler, nesta ordem:
 
-1. Ler este arquivo.
-2. Ler o `HISTORICO_AGENTES.md`.
-3. Identificar o estado atual do projeto.
-4. Verificar a fase atual.
-5. Verificar recomendações pendentes.
-6. Verificar decisões técnicas já tomadas.
-7. Evitar mudanças grandes sem justificativa.
-8. Registrar qualquer ação relevante no histórico.
-9. Atualizar este arquivo se o estado atual do projeto mudar.
+1. `CONTEXTO_TOTAL.md` — estado atual, fase, riscos e recomendações.
+2. `HISTORICO_AGENTES.md` — histórico completo das ações executadas.
+3. `README_AMBIENTE.md` — ambiente, comandos, build e cuidados operacionais.
+4. `BLOQUEIOS_AGENTES.md` — áreas e tarefas que exigem verificação antes de alteração.
+5. `COMUNICACAO_AGENTES.md` — mensagens, handoffs, dúvidas e orientações entre agentes.
+6. `DECISOES_TECNICAS.md` — índice das decisões técnicas que ainda importam para o estado atual.
+
+Depois da leitura, o agente deve identificar a fase atual, verificar recomendações, decisões e bloqueios, evitar mudanças grandes sem justificativa, registrar ações relevantes no histórico e atualizar este arquivo se o estado atual mudar.
 
 ## Relação com o HISTORICO_AGENTES.md
 
@@ -53,8 +52,8 @@ Antes de sugerir ou alterar qualquer coisa no projeto, todo agente deve:
 - **Stack principal:** Electron, React, TypeScript, Vite, SQLite e pnpm monorepo.
 - **Estado atual:** Protótipo funcional com baixa confiabilidade operacional e fiscal.
 - **Fase atual:** Estabilização do build e da distribuição Electron.
-- **Última ação registrada:** `ACAO-0021` — reconciliação documental do merge entre o commit local e os 10 commits remotos, preservando os históricos dos dois lados. A ação local de empacotamento Electron/`REC-0009`, antes registrada como `ACAO-0014`, foi renumerada para `ACAO-0020` para evitar colisão com a `ACAO-0014` remota. Nenhuma nova REC foi iniciada.
-- **Próxima ação recomendada:** aguardando decisão do usuário sobre qual recomendação executar em seguida — candidatas ativas: `REC-0009`, `REC-0008`, `REC-0010`, `REC-0011`, `REC-0012`, `REC-0013`, `REC-0014`, `REC-0015`, e o restante de `REC-0003` (Rescisão/Férias/Ponto) (ver seção 7).
+- **Última ação registrada:** `ACAO-0028` — criação da camada documental de coordenação entre agentes, separando bloqueios, comunicação e decisões técnicas vigentes. Nenhuma nova REC foi iniciada.
+- **Próxima ação recomendada:** antes de iniciar nova tarefa funcional, verificar o Git e os arquivos de coordenação; no momento desta ação não havia alteração não commitada restante. A priorização das recomendações pendentes continua dependente de decisão do usuário.
 - **Uso em produção:** Não recomendado antes das correções críticas e dos testes de cálculo.
 
 ## 2. Objetivo do projeto
