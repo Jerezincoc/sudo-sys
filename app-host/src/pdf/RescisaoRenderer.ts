@@ -137,7 +137,6 @@ function drawRescisao(doc: PDFKit.PDFDocument, data: RescisaoData): void {
     { cod: '55', desc: 'Férias Proporcionais',        val: data.rescisao.ferias_proporcionais },
     { cod: '56', desc: '1/3 s/ Férias Proporcionais',val: (data.rescisao.ferias_proporcionais ?? 0) / 3 },
     { cod: '57', desc: 'Aviso Prévio Indenizado',     val: data.rescisao.aviso_previo_valor },
-    { cod: '58', desc: 'Multa FGTS 40%',              val: data.rescisao.multa_fgts },
     { cod: '59', desc: 'Outros Proventos',             val: data.rescisao.outros_proventos },
   ].filter((v) => (v.val ?? 0) > 0)
 
@@ -219,6 +218,14 @@ function drawRescisao(doc: PDFKit.PDFDocument, data: RescisaoData): void {
     .text(fmtMoeda(data.rescisao.valor_liquido), ML + PW * 0.5 + 4, y + 1,
       { lineBreak: false, width: PW * 0.5 - 8, align: 'right' })
   y += ROW_H + 8
+
+  // Multa FGTS: depositada na conta vinculada (Lei 8.036/90 art. 18 §1º), não compõe o líquido.
+  if ((data.rescisao.multa_fgts ?? 0) > 0) {
+    const pct = data.rescisao.motivo === 'acordo_mutuo' ? '20% (art. 484-A CLT)' : '40%'
+    field(doc, `Informativo — Multa FGTS ${pct}, depositada na conta vinculada (não compõe o líquido)`,
+      `R$ ${fmtMoeda(data.rescisao.multa_fgts)}`, ML, y, PW, 20)
+    y += 24
+  }
 
   if (data.rescisao.observacao) {
     field(doc, 'Observações', data.rescisao.observacao, ML, y, PW, 20)

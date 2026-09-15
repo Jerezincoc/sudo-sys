@@ -5,46 +5,12 @@ import { getDb } from '../../db/database'
 import { SqliteRescisaoRepository } from '@sudo-sys/infrastructure'
 import { SqliteFuncionarioRepository } from '@sudo-sys/infrastructure'
 import { SqliteEmpresaRepository } from '@sudo-sys/infrastructure'
+import { calcularRescisao } from '@sudo-sys/infrastructure'
 import type { CreateRescisaoPayload, UpdateRescisaoPayload } from '@sudo-sys/shared'
 import { RescisaoRenderer } from '../../pdf/RescisaoRenderer'
 
 function repo() {
   return new SqliteRescisaoRepository(getDb())
-}
-
-function round2(v: number): number {
-  return Math.round(v * 100) / 100
-}
-
-function parseLocalDate(s: string): Date {
-  const [y, m, d] = s.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
-
-function diffMonths(start: Date, end: Date): number {
-  return Math.max(
-    0,
-    (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()),
-  )
-}
-
-// Months in current acquisition period (last anniversary of admission to demissao)
-function mesesPeriodoAquisitivo(dataAdmissao: string, dataDemissao: string): number {
-  const adm = parseLocalDate(dataAdmissao)
-  const dem = parseLocalDate(dataDemissao)
-  const aniversario = new Date(adm)
-  aniversario.setFullYear(dem.getFullYear())
-  if (aniversario > dem) aniversario.setFullYear(dem.getFullYear() - 1)
-  return Math.min(diffMonths(aniversario, dem), 11)
-}
-
-// Months worked in current calendar year
-function mesesNoAnoCorrente(dataAdmissao: string, dataDemissao: string): number {
-  const adm = parseLocalDate(dataAdmissao)
-  const dem = parseLocalDate(dataDemissao)
-  const inicioAno = new Date(dem.getFullYear(), 0, 1)
-  const inicio = adm > inicioAno ? adm : inicioAno
-  return Math.min(diffMonths(inicio, dem) + 1, 12)
 }
 
 export function registerRescisaoHandlers(): void {
@@ -109,46 +75,32 @@ export function registerRescisaoHandlers(): void {
       const funcionario = funcRepo.getById(rescisao.funcionario_id)
       if (!funcionario) return { success: false, error: 'Funcionário não encontrado.' }
 
-      const sal        = rescisao.salario_referencia
-      const dias       = rescisao.dias_trabalhados   ?? 0
-      const feriasVenc = rescisao.ferias_vencidas    ?? 0
-      const outrosProv = rescisao.outros_proventos   ?? 0
-      const inssResc   = rescisao.inss_rescisao      ?? 0
-      const irrfResc   = rescisao.irrf_rescisao      ?? 0
-      const outrosDesc = rescisao.outros_descontos   ?? 0
-
-      const mesesPeriodo = mesesPeriodoAquisitivo(funcionario.data_admissao, rescisao.data_demissao)
-      const mesesAno     = mesesNoAnoCorrente(funcionario.data_admissao, rescisao.data_demissao)
-
-      const saldoSalario        = round2((sal / 30) * dias)
-      const feriasProporcionais  = round2((sal / 12) * mesesPeriodo)
-      const umTercoFerias        = round2(feriasProporcionais / 3)
-      const decimoTerceiro       = round2((sal / 12) * mesesAno)
-      const avisoValor           = rescisao.aviso_previo === 'indenizado' ? round2(sal) : 0
-      // Multa FGTS: preserve user-entered value only for qualifying motivos
-      const multaFgts            =
-        rescisao.motivo === 'sem_justa_causa' || rescisao.motivo === 'acordo_mutuo'
-          ? round2(rescisao.multa_fgts ?? 0)
-          : 0
-
-      const totalProventos = round2(
-        saldoSalario + feriasVenc + feriasProporcionais + umTercoFerias +
-        decimoTerceiro + avisoValor + multaFgts + outrosProv,
-      )
-      const totalDescontos = round2(inssResc + irrfResc + outrosDesc)
-      const valorLiquido   = round2(totalProventos - totalDescontos)
+      const c = calcularRescisao({
+        dataAdmissao:       funcionario.data_admissao,
+        dataDemissao:       rescisao.data_demissao,
+        motivo:             rescisao.motivo,
+        avisoPrevio:        rescisao.aviso_previo ?? null,
+        salario:            rescisao.salario_referencia,
+        diasTrabalhados:    rescisao.dias_trabalhados ?? 0,
+        feriasVencidas:     rescisao.ferias_vencidas  ?? 0,
+        outrosProventos:    rescisao.outros_proventos ?? 0,
+        inss:               rescisao.inss_rescisao    ?? 0,
+        irrf:               rescisao.irrf_rescisao    ?? 0,
+        outrosDescontos:    rescisao.outros_descontos ?? 0,
+        multaFgtsInformada: rescisao.multa_fgts       ?? 0,
+      })
 
       const updated = r.update({
         id,
-        saldo_salario:        saldoSalario,
-        ferias_proporcionais: feriasProporcionais,
-        um_terco_ferias:      umTercoFerias,
-        decimo_terceiro:      decimoTerceiro,
-        aviso_previo_valor:   avisoValor,
-        multa_fgts:           multaFgts,
-        total_proventos:      totalProventos,
-        total_descontos:      totalDescontos,
-        valor_liquido:        valorLiquido,
+        saldo_salario:        c.saldoSalario,
+        ferias_proporcionais: c.feriasProporcionais,
+        um_terco_ferias:      c.umTercoFerias,
+        decimo_terceiro:      c.decimoTerceiro,
+        aviso_previo_valor:   c.avisoPrevioValor,
+        multa_fgts:           c.multaFgts,
+        total_proventos:      c.totalProventos,
+        total_descontos:      c.totalDescontos,
+        valor_liquido:        c.valorLiquido,
         status:               'calculada',
       })
 

@@ -1749,3 +1749,90 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 * **Próxima ação sugerida:**
 
   * Confirmar com o Codex se `EmpresasPage.tsx` já pode ser commitado/enviado, já que o push dele ficou pendente por restrição de ambiente (relatado na `ACAO-0031`). Depois, avaliar `REC-0018` e `REC-0011` como próximas tarefas de segurança, se priorizadas pelo usuário.
+
+### ACAO-0033 — 2026-09-14 — Claude (Opus 5)
+
+* **Autor da ação:** Claude (Opus 5)
+* **Tipo de ação:** Diagnóstico fiscal/trabalhista contra fonte oficial + correção de divergências confirmadas (módulo Rescisão/TRCT)
+* **Status:** Concluído — as 6 verbas pedidas foram avaliadas; divergências confirmadas corrigidas; pontos em dúvida registrados como `[A CONFIRMAR]` (`REC-0019`) sem correção; lacunas de implementação registradas em `REC-0020`.
+* **Resumo:**
+
+  * Validação verba a verba do cálculo de rescisão contra o **texto literal** da lei (baixado de planalto.gov.br nesta sessão) e jurisprudência/orientação oficial, no mesmo padrão do `[9e]` (IRRF): exemplos calculados à mão → testes automatizados → execução via IPC real (CDP) → conferência do PDF gerado.
+  * O cálculo vivia inline em `rescisaoHandlers.ts` (sem teste possível). Foi extraído **sem mudança de comportamento** para `packages/infrastructure/src/services/CalculoRescisao.ts` (mesmo padrão de `CalculoFolha.ts`), com testes de caracterização do código original passando (3 testes) **antes** de qualquer correção; só então as correções foram aplicadas.
+* **PASSO 1 — Mapa do código real:**
+
+  * Canal `rescisao:calcular` → `calcularRescisao()` (novo serviço). Tabela `rescisoes` (migration `033_rescisao`). PDF em `app-host/src/pdf/RescisaoRenderer.ts`. UI em `packages/ui/src/pages/rescisao/RescisaoForm.tsx`.
+  * Verbas **calculadas** pelo sistema: saldo de salário, aviso prévio indenizado, férias proporcionais, 1/3 de férias, 13º proporcional.
+  * Verbas **digitadas manualmente** (sem cálculo): férias vencidas (R$), multa FGTS (R$), INSS, IRRF, outros proventos/descontos. Não existe cálculo de saldo/depósito de FGTS rescisório.
+* **Fontes oficiais usadas (texto literal conferido nesta sessão):**
+
+  * CLT (Decreto-Lei 5.452/43, planalto.gov.br): art. 64 e p.ú.; art. 146 e p.ú.; art. 147; art. 484-A; art. 487 caput e §§1º–6º.
+  * Lei 12.506/2011 (aviso proporcional), art. 1º e p.ú.; Nota Técnica nº 184/2012/CGRT/SRT/MTE (1 ano completo = 33 dias).
+  * Lei 4.090/62 (13º), art. 1º §§1º–2º e art. 3º.
+  * Lei 8.036/90 (FGTS), art. 18 caput e §§1º–3º.
+  * TST: Súmulas 171, 261, 328 e 157; OJ 82 SBDI-1 (data de saída = término do aviso, ainda que indenizado); Súmula 371. Página oficial NUGEP/TST "Temas Afetados": **IRR Tema 96** ("O empregado, dispensado por justa causa, tem direito ao pagamento de décimo terceiro salário proporcional e férias proporcionais?") — afetado em 07/05/2025, **sem tese firmada, sem suspensão de processos**.
+* **PASSO 2 — Resultado verba a verba:**
+
+  | # | Verba | Código original | Fonte | Resultado |
+  |---|---|---|---|---|
+  | 1 | Saldo de salário | `salário/30 × dias` | CLT art. 64 (mensalista, divisor 30) | **Conforme** — sem alteração. `dias_trabalhados` continua digitado manualmente. |
+  | 2a | Aviso — proporcionalidade | Sempre 1 salário (30 dias) | Lei 12.506/2011 art. 1º p.ú. + NT 184/2012 | **Divergente → corrigido**: 30 dias + 3 por ano completo, máx. 90; valor = salário/30 × dias. |
+  | 2b | Aviso — justa causa / pedido de demissão | Pagava 1 salário se "indenizado" | CLT art. 487 caput ("sem justo motivo") e §2º (falta de aviso do empregado dá direito ao **empregador**) | **Divergente → corrigido**: zero. |
+  | 2c | Aviso — acordo mútuo | Pagava integral | CLT art. 484-A, I, a ("por metade") | **Divergente → corrigido**: metade do aviso proporcional. |
+  | 2d | Aviso — aposentadoria / aviso trabalhado >30 dias | — | — | **[A CONFIRMAR]** (`REC-0019`) — comportamento mantido. |
+  | 3a | 1/3 sobre férias vencidas | Não entrava no total (o PDF imprimia a linha "1/3 s/ Férias Vencidas", mas o total não somava — PDF e total inconsistentes) | CF art. 7º XVII; Súmula 328/TST | **Divergente → corrigido**: `um_terco_ferias` = 1/3 vencidas + 1/3 proporcionais, somado ao total. |
+  | 3b | Avos de férias — fração | Diferença de mês-calendário, ignorando dias (ex.: 5 meses e 13 dias contava 6/12); teto 11 | CLT art. 146 p.ú. ("fração superior a 14 dias") | **Divergente → corrigido**: meses cheios desde o último aniversário de admissão + 1 se fração ≥15 dias; teto 12. |
+  | 3c | Projeção do aviso indenizado nas férias | Ignorada | CLT art. 487 §1º e §6º; OJ 82 SBDI-1 | **Divergente → corrigido** na dispensa sem justa causa. No acordo mútuo: **[A CONFIRMAR]**. |
+  | 3d | Férias proporcionais na justa causa | Pagava | CLT art. 146 p.ú. / Súmula 171 negam, mas **IRR Tema 96 pendente no TST** | **[A CONFIRMAR]** — não corrigido. |
+  | 4a | 13º — fração | `meses + 1`: contava o mês da demissão (e o de admissão) com qualquer nº de dias | Lei 4.090 art. 1º §2º ("fração igual ou superior a 15 dias") | **Divergente → corrigido**: 1/12 por mês-calendário com ≥15 dias trabalhados. |
+  | 4b | 13º — projeção do aviso indenizado | Ignorada | CLT art. 487 §1º; OJ 82 | **Divergente → corrigido** (sem justa causa). |
+  | 4c | 13º no pedido de demissão | Pagava | Súmula 157/TST | **Conforme**. |
+  | 4d | 13º na justa causa | Pagava | Lei 4.090 art. 3º nega; IRR Tema 96 pendente | **[A CONFIRMAR]** — não corrigido. |
+  | 5a | Multa FGTS no líquido | Somada a `total_proventos` e `valor_liquido` | Lei 8.036 art. 18 §1º ("depositará este, **na conta vinculada**") | **Divergente → corrigido**: continua gravada e impressa, mas como **informativa**, fora do total e do líquido. |
+  | 5b | Multa 20% no acordo | Valor digitado; UI/PDF rotulavam "40%" | CLT art. 484-A, I, b | Rótulo **corrigido** (20% no acordo). O percentual em si não é calculado — valor continua manual (o sistema não tem saldo da conta vinculada) → `REC-0020`. |
+  | 5c | Multa em pedido de demissão / justa causa | Zerada | Lei 8.036 art. 18 §1º | **Conforme**. |
+  | 5d | Depósito de FGTS do mês da rescisão e anterior | Inexistente | Lei 8.036 art. 18 caput | **Não implementado** → `REC-0020`. |
+  | 6 | INSS / IRRF (distinção indenizatória × salarial) | **Não há cálculo**: ambos são digitados em R$ pelo usuário, sem base, sem separação de verbas | — | **Não implementado — não há fórmula para validar**. O risco equivalente ao `[9e]` existe do lado do usuário (digitar INSS/IRRF sobre base errada). Fontes de incidência **não foram levantadas nesta ação** → `REC-0020`. |
+
+* **PASSO 3 — Cenários calculados à mão (todos também em `CalculoRescisao.test.ts`):**
+
+  * **(a) Sem justa causa**, admissão 10/03/2023, demissão 05/09/2025, R$3.000, 5 dias, aviso indenizado, multa informada R$2.400: 2 anos completos → aviso 36 dias = **R$3.600**; projeção até 11/10/2025; férias 10/03→11/10 = 7 meses + 2 dias = **7/12 = R$1.750**, 1/3 **R$583,33**; 13º jan–set (outubro com 11 dias não conta) = **9/12 = R$2.250**; saldo **R$500**. **Total = líquido = R$8.683,33**; multa R$2.400 informativa. (Código original: R$8.750,00 — aviso 30 dias, 6/12 férias, multa somada.)
+  * **(b) Pedido de demissão**, admissão 20/06/2024, demissão 18/09/2025, R$3.000, 18 dias, aviso trabalhado, multa informada R$1.000: saldo **R$1.800**; férias 20/06→18/09 = 2 meses + 30 dias = **3/12 = R$750**, 1/3 **R$250**; 13º jan–set (setembro com 18 dias) = **9/12 = R$2.250**; aviso 0; multa 0. **Total = R$5.050,00.** (Mesmo resultado do código original — cenário de não-regressão.)
+  * **(c) Acordo mútuo (art. 484-A)**, admissão 03/02/2020, demissão 14/08/2025, R$4.000, 14 dias, aviso indenizado, férias vencidas R$4.000, multa informada R$3.200: 5 anos → aviso 45 dias = R$6.000, **metade = R$3.000**; saldo **R$1.866,67**; férias proporcionais 03/02→14/08 = 6 meses + 12 dias = **6/12 = R$2.000**; 1/3 = R$1.333,33 (vencidas) + R$666,67 (proporcionais) = **R$2.000**; 13º jan–jul (agosto com 14 dias não conta) = **7/12 = R$2.333,33**. **Total = R$15.200,00**; multa R$3.200 informativa (rótulo 20%). (Código original: R$18.866,67 — aviso integral, 13º 8/12, 1/3 das vencidas fora, multa somada.)
+  * O projeto **suporta** acordo mútuo (`motivo = 'acordo_mutuo'`); não é ausência.
+* **PASSO 4 — Execução via IPC real (CDP) + PDF:**
+
+  * App real (`electron-dev.cjs` + Vite) com `--remote-debugging-port=9222` e **`--user-data-dir` descartável no scratchpad da sessão** (banco novo com seed; `.dev-user-data` e banco real **não tocados** — a senha atual do admin do `.dev-user-data` não era conhecida).
+  * Script `scripts/cdp-rescisao-verify.mjs`: login admin → troca obrigatória de senha → cria empresa, 3 funcionários e 3 rescisões via IPC → `rescisao:calcular` → confere 9 campos por cenário → `rescisao:gerar-pdf` → move o PDF da pasta Downloads para o scratchpad (a pasta Downloads do usuário não ficou com arquivos de teste).
+  * Resultado: **27/27 campos conferem** nos 3 cenários ("TODOS OS CAMPOS CONFEREM").
+  * PDFs lidos: linhas de verbas somam exatamente o "Total de Vencimentos"; líquido correto; bloco "Informativo — Multa FGTS 40%/20% (art. 484-A CLT), depositada na conta vinculada (não compõe o líquido)" presente em (a) e (c), ausente em (b).
+  * A primeira execução falhou antes de criar dados (`createEmpresa` bloqueado por troca de senha pendente — detecção de `must_change_password` no script estava errada); script corrigido e reexecutado com banco ainda limpo.
+  * Processos `electron.exe`/Vite desta ação encerrados por PID específico (filtro por `userdata-acao0033` na linha de comando e dono da porta 5173).
+* **PASSO 5 — Regressão:**
+
+  * `pnpm typecheck` (raiz): passou em todos os workspaces.
+  * `pnpm test` (raiz): **60/60** (25 `domain` + 35 `infrastructure`, dos quais 24 novos de rescisão). `better-sqlite3` foi reconstruído para a ABI do Electron pelo `electron:dev:prepare` e restaurado para a ABI do Node com `npx prebuild-install` antes da regressão (procedimento já documentado na `ACAO-0032`).
+  * Cenário (b) mantém o mesmo valor do código original (não houve regressão no caso sem aviso indenizado nem fração limítrofe).
+* **O que foi mudado:**
+
+  * Criado `packages/infrastructure/src/services/CalculoRescisao.ts` (motor puro) e `CalculoRescisao.test.ts` (24 testes).
+  * `packages/infrastructure/src/index.ts`: exporta o novo serviço.
+  * `app-host/src/ipc/handlers/rescisaoHandlers.ts`: `rescisao:calcular` passa a chamar `calcularRescisao()`; helpers de data locais removidos.
+  * `app-host/src/pdf/RescisaoRenderer.ts`: multa FGTS saiu da grade de verbas somadas e virou bloco informativo com percentual por motivo.
+  * `packages/ui/src/pages/rescisao/RescisaoForm.tsx`: linha da multa movida para depois do total, com rótulo 40%/20% e "informativa, depositada na conta vinculada".
+  * Criado `scripts/cdp-rescisao-verify.mjs`.
+  * Nenhuma migration, schema, contrato IPC ou tipo compartilhado alterado.
+* **Riscos ou observações:**
+
+  * **Mudança de valores:** rescisões já gravadas com status `calculada` mantêm os valores antigos até alguém clicar "Calcular" de novo — não houve recálculo em lote.
+  * Ambiente: Node local observado nesta sessão é **20.20.0** (engine fixado em 20.20.2 → só aviso `Unsupported engine`, sem falha).
+  * Layout do PDF (pré-existente, fora do escopo): descrições longas ("13° Salário Proporcional", "Aviso Prévio Indenizado", "1/3 s/ Férias Proporcionais") quebram linha e ficam cortadas na célula.
+  * Adiantamento de 13º já pago, férias vencidas em dobro (art. 137) e média de variáveis continuam fora do cálculo (valores manuais via "outros").
+  * `scripts/cdp-authguard-scan.ps1` (não rastreado, de ação anterior) não foi tocado nem incluído no commit.
+* **Recomendações deixadas para próximos agentes:**
+
+  * `REC-0019` — decisões `[A CONFIRMAR]` do usuário sobre regras de rescisão (justa causa × Tema 96; projeção no acordo; aposentadoria; dias adicionais com aviso trabalhado; desconto do aviso no pedido de demissão).
+  * `REC-0020` — implementar INSS/IRRF rescisórios com separação de verbas indenizatórias × tributáveis, FGTS rescisório e multa a partir do saldo, com levantamento de fontes oficiais próprio.
+* **Próxima ação sugerida:**
+
+  * Decisão do usuário sobre `REC-0019`; depois, `REC-0020` começando por INSS/IRRF (maior risco fiscal), no mesmo padrão desta ação.

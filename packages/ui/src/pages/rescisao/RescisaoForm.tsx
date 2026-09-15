@@ -625,10 +625,13 @@ export default function RescisaoForm({ rescisao, empresaId, funcionarios, onClos
               <ValueRow label="1/3 de Férias"             value={form.um_terco_ferias} />
               <ValueRow label="13° Salário Proporcional"  value={form.decimo_terceiro} />
               <ValueRow label="Aviso Prévio"              value={form.aviso_previo_valor} />
-              <ValueRow label="Multa FGTS (40%)"          value={form.multa_fgts} />
               <ValueRow label="Outros Proventos"          value={form.outros_proventos} />
               <div style={{ height: 1, background: 'var(--color-border-main)', margin: '4px 0' }} />
               <ValueRow label="TOTAL PROVENTOS"           value={form.total_proventos} bold />
+              <ValueRow
+                label={`Multa FGTS ${form.motivo === 'acordo_mutuo' ? '(20%)' : '(40%)'} — informativa, depositada na conta vinculada`}
+                value={form.multa_fgts}
+              />
               <div style={{
                 padding: '6px 8px', fontSize: 11, color: 'var(--color-text-muted)', fontStyle: 'italic',
               }}>

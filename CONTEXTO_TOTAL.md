@@ -52,8 +52,8 @@ Depois da leitura, o agente deve identificar a fase atual, verificar recomendaç
 - **Stack principal:** Electron, React, TypeScript, Vite, SQLite e pnpm monorepo.
 - **Estado atual:** Protótipo funcional com baixa confiabilidade operacional e fiscal.
 - **Fase atual:** Estabilização do build e da distribuição Electron.
-- **Última ação registrada:** `ACAO-0032` — corrigida a `REC-0017` (crítica): `authGuard.ts` agora checa `isInitialized()` para `setup:save-config`/`setup:get-config` — públicos só antes da primeira configuração; depois disso, exigem sessão + papel admin. Validado via IPC direto (CDP) em 3 cenários (pré-init sem sessão continua funcionando, pós-init sem sessão passou a ser rejeitado, pós-init com sessão admin continua funcionando) e `pnpm test` 36/36 sem regressão.
-- **Próxima ação recomendada:** confirmar com o Codex se `packages/ui/src/pages/empresas/EmpresasPage.tsx` (visto modificado, não commitado, desde a `ACAO-0030`) já pode ser finalizado/enviado, para não colidir com esse trabalho em paralelo. Depois, avaliar `REC-0018` (mecanismo próprio de `auth:register`, baixa prioridade) e `REC-0011` (matriz de RBAC) como próximas tarefas de segurança, se priorizadas pelo usuário. Também confirmar se `REC-0016` (migração de path para fora do OneDrive) se aplica a alguma outra máquina/sessão do projeto.
+- **Última ação registrada:** `ACAO-0033` — diagnóstico do cálculo de Rescisão (TRCT) contra o texto literal da CLT, Lei 12.506/2011, Lei 4.090/62 e Lei 8.036/90. Motor extraído para `CalculoRescisao.ts` (com testes). Corrigidos: aviso prévio proporcional; aviso zerado em justa causa/pedido de demissão e pela metade no acordo; 1/3 sobre férias vencidas no total; fração de dias em férias/13º; projeção do aviso indenizado; multa FGTS fora do líquido. Validado com 3 cenários à mão, via IPC real (CDP) e nos PDFs (27/27 campos). `pnpm test` 60/60. Pontos em dúvida em `REC-0019`; INSS/IRRF/FGTS rescisórios não implementados em `REC-0020`.
+- **Próxima ação recomendada:** decisão do usuário sobre os itens `[A CONFIRMAR]` da `REC-0019` (principalmente justa causa × IRR Tema 96 do TST); depois `REC-0020` (INSS/IRRF rescisórios com separação de verbas indenizatórias × tributáveis). Continuam pendentes: confirmar com o Codex o envio de `EmpresasPage.tsx` (`ACAO-0031`), `REC-0018`, `REC-0011` e `REC-0016`.
 - **Uso em produção:** Não recomendado antes das correções críticas e dos testes de cálculo.
 
 ## 2. Objetivo do projeto
@@ -116,7 +116,11 @@ O processo principal executa operações síncronas de SQLite, hash de senha, fi
 
 ### Testes
 
-Desde a `ACAO-0015` existe um framework de testes (`vitest`) e uma suíte funcional (`pnpm test`, raiz), hoje cobrindo: motor de cálculo IRRF/INSS/FGTS (`packages/infrastructure/src/services/CalculoFolha.test.ts`, 7 testes), transação/idempotência do recálculo de folha (`packages/infrastructure/src/repositories/SqliteFolhaRepository.test.ts`, 4 testes) e o motor de fórmulas (`packages/domain/src/formula/Formula.test.ts`, 25 testes) — **36 testes no total**. Rescisão, férias, ponto e os demais cálculos trabalhistas continuam sem nenhum teste automatizado (`REC-0003` parcialmente executada).
+Desde a `ACAO-0015` existe um framework de testes (`vitest`) e uma suíte funcional (`pnpm test`, raiz), hoje cobrindo: motor de cálculo IRRF/INSS/FGTS (`packages/infrastructure/src/services/CalculoFolha.test.ts`, 7 testes), transação/idempotência do recálculo de folha (`packages/infrastructure/src/repositories/SqliteFolhaRepository.test.ts`, 4 testes) o motor de fórmulas (`packages/domain/src/formula/Formula.test.ts`, 25 testes) e, desde a `ACAO-0033`, o cálculo de rescisão (`packages/infrastructure/src/services/CalculoRescisao.test.ts`, 24 testes) — **60 testes no total**. Férias (módulo próprio), ponto e os demais cálculos trabalhistas continuam sem teste automatizado (`REC-0003` parcialmente executada).
+
+### Motor de cálculo (Rescisão/TRCT)
+
+Desde a `ACAO-0033`, `rescisao:calcular` usa `calcularRescisao()` (`packages/infrastructure/src/services/CalculoRescisao.ts`), validado contra o texto legal. Saldo de salário, aviso prévio (proporcional, por motivo), férias proporcionais + 1/3 (inclusive sobre vencidas) e 13º proporcional são calculados. Férias vencidas, multa FGTS (agora informativa, fora do líquido), INSS e IRRF continuam **digitados manualmente** — ver `REC-0020`. Regras em dúvida mantidas como no código original — ver `REC-0019`.
 
 ### Motor de cálculo (IRRF) e schema de funcionários
 
@@ -216,6 +220,7 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Origem:** Codex
 - **Data:** 2026-09-11
 - **Execução:** Parcialmente concluída na `ACAO-0015` — introduzido `vitest` (primeiro framework de testes do projeto, instalado em `packages/infrastructure`) e criada suíte para `calcularIRRF`/`calcularINSS`/`calcularFGTS` (`CalculoFolha.test.ts`), cobrindo os 4 cenários de IRRF e a guarda de competência do redutor da Lei 15.270/2025 validados manualmente nesta sessão. Rodável via `pnpm test` (raiz) ou `pnpm --filter @sudo-sys/infrastructure test`. **Escopo restante pendente:** Rescisão, Férias, Ponto e demais cálculos trabalhistas continuam sem nenhum teste automatizado — restrição de escopo foi instrução explícita do usuário, não limitação técnica.
+- **Extensão (`ACAO-0033`):** Rescisão passou a ter suíte própria (`CalculoRescisao.test.ts`, 24 testes, com caracterização prévia do código original). Restam Férias (módulo), Ponto e INSS/IRRF rescisórios (`REC-0020`).
 
 ### REC-0004
 
@@ -368,6 +373,32 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Data:** 2026-09-14
 - **Referência:** `ACAO-0030`.
 
+### REC-0019
+
+- **Status:** A confirmar — aguardando decisão do usuário
+- **Recomendação:** Decidir as regras de rescisão abaixo, que ficaram **sem correção** na `ACAO-0033` porque a regra correta não pôde ser confirmada com segurança. Hoje todas mantêm o comportamento do código original.
+  1. **Justa causa × férias proporcionais e 13º proporcional:** o sistema **paga** as duas verbas. A CLT (art. 146 p.ú.), a Lei 4.090/62 (art. 3º) e a Súmula 171/TST as negam, mas o TST afetou o **IRR Tema 96** exatamente sobre isso (afetação publicada em 07/05/2025, sem tese, sem suspensão de processos) e há turmas concedendo com base na Convenção 132 da OIT. Opções: seguir a lei e as súmulas vigentes (zerar) até a tese sair, ou manter.
+  2. **Acordo mútuo — projeção do aviso indenizado** (pago pela metade, art. 484-A I a) nos avos de férias/13º: hoje **não projeta**. Falta confirmar se projeta os dias integrais, a metade ou nada.
+  3. **Motivo "aposentadoria":** o aviso indenizado continua fixo em 30 dias, sem proporcionalidade nem projeção. Falta confirmar o que esse motivo representa no produto (aposentadoria espontânea não extingue o contrato por si só) e qual regra aplicar.
+  4. **Aviso trabalhado com mais de 1 ano de casa:** os dias adicionais da Lei 12.506/2011 além de 30 não são calculados. Falta confirmar se devem ser indenizados ou trabalhados.
+  5. **Pedido de demissão sem cumprir aviso:** o desconto do aviso pelo empregador (CLT art. 487 §2º) é faculdade, não obrigação; hoje não é automatizado (só via "outros descontos"). Falta decidir se deve virar campo/opção.
+  6. **Projeção que completa novo período aquisitivo:** os avos de férias ficam limitados ao período em curso na data da demissão (teto 12/12). Falta confirmar o tratamento do período que se completa só com a projeção.
+- **Motivo:** Guardrail da tarefa: só corrigir divergência confirmada contra fonte oficial; em dúvida, reportar e não presumir.
+- **Prioridade:** Alta para o item 1 (afeta quem é dispensado por justa causa); média para os demais.
+- **Origem:** Claude
+- **Data:** 2026-09-14
+- **Referência:** `ACAO-0033`.
+
+### REC-0020
+
+- **Status:** Não executado
+- **Recomendação:** Implementar, no módulo de Rescisão, (a) o cálculo de INSS e IRRF rescisórios com **separação entre verbas indenizatórias e tributáveis** (aviso prévio indenizado, férias indenizadas + 1/3 e multa FGTS × saldo de salário, 13º e aviso trabalhado; 13º com tributação separada), reaproveitando `calcularINSS`/`calcularIRRF`; (b) o depósito de FGTS do mês da rescisão e do anterior (Lei 8.036/90 art. 18 caput); (c) a multa FGTS calculada (40% / 20% no art. 484-A) a partir do saldo da conta vinculada, se o produto passar a guardar esse saldo.
+- **Motivo:** Hoje INSS, IRRF e multa FGTS são **digitados à mão** em R$ — não há fórmula nem classificação de incidência, então o risco de base errada (mesma classe do bug do `[9e]` no IRRF) fica inteiramente com o usuário. As fontes de incidência (Lei 8.212/91 art. 28 §9º, Lei 7.713/88 art. 6º, RIR/2018, posição da RFB/PGFN) **não foram levantadas nem validadas** na `ACAO-0033` e precisam ser, antes da implementação.
+- **Prioridade:** Alta (risco fiscal).
+- **Origem:** Claude
+- **Data:** 2026-09-14
+- **Referência:** `ACAO-0033`.
+
 ## 8. Ambiente padrão do projeto
 
 - **Estratégia de ambiente:** Documentada em `README_AMBIENTE.md`; instalação e desenvolvimento validados; versões fixadas provisoriamente na `ACAO-0005`.
@@ -384,7 +415,7 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Comando de typecheck:** `pnpm typecheck`; passou na `ACAO-0006` e compila os pacotes internos antes da verificação.
 - **Comando de lint:** `pnpm lint`. Atualmente não executa lint real.
 - **Comando de build:** `pnpm build`; compila `shared`, `domain`, `application` e `infrastructure` antes da UI e do `app-host`.
-- **Comando de teste:** `pnpm test` (raiz) roda `packages/domain` e `packages/infrastructure` em sequência (36 testes no total); `pnpm --filter @sudo-sys/domain test` ou `pnpm --filter @sudo-sys/infrastructure test` isoladamente. Cobertura restrita a IRRF/INSS/FGTS, transação de folha e motor de fórmulas; outras áreas (Rescisão, Férias, Ponto) continuam sem teste automatizado.
+- **Comando de teste:** `pnpm test` (raiz) roda `packages/domain` e `packages/infrastructure` em sequência (60 testes no total desde a `ACAO-0033`); `pnpm --filter @sudo-sys/domain test` ou `pnpm --filter @sudo-sys/infrastructure test` isoladamente. Cobertura: IRRF/INSS/FGTS, transação de folha, motor de fórmulas e cálculo de rescisão; Férias (módulo) e Ponto continuam sem teste automatizado. Validação de rescisão via IPC real: `scripts/cdp-rescisao-verify.mjs` (usar `--user-data-dir` descartável).
 - **Desenvolvimento limpo:** Validado. `pnpm dev` gera preload e reconstrói `better-sqlite3` automaticamente antes de iniciar Electron.
 - **Isolamento do banco de desenvolvimento:** Confirmado em `<raiz>/.dev-user-data`, via `--user-data-dir` explícito; Linux e macOS continuam **A confirmar**.
 
@@ -418,6 +449,8 @@ Nenhum agente deve corrigir erro de execução antes de verificar se o ambiente 
 8. `REC-0015` — lock de concorrência para `folha:calcular`. Só necessário se/quando o sistema deixar de ser single-user/single-instância.
 9. `REC-0016` — confirmar em qual máquina/sessão (`holdi`, OneDrive) a migração de path do projeto ainda é necessária.
 10. `REC-0018` — avaliar remoção ou migração de `auth:register` para o gate central; prioridade baixa, sem consumidor de UI hoje.
+11. `REC-0019` — decidir as regras de rescisão `[A CONFIRMAR]` (justa causa × IRR Tema 96/TST, projeção no acordo, aposentadoria, dias adicionais com aviso trabalhado, desconto do aviso no pedido de demissão). **Não alterar sem decisão do usuário.**
+12. `REC-0020` — implementar INSS/IRRF rescisórios com separação de verbas indenizatórias × tributáveis, FGTS rescisório e multa a partir do saldo; levantar fontes oficiais de incidência antes.
 
 `REC-0012` foi executada na `ACAO-0026` — `scripts/test-holerite.ps1` corrigido e validado com PDF real gerado contra o banco de dev.
 
