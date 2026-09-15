@@ -1836,3 +1836,37 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 * **Próxima ação sugerida:**
 
   * Decisão do usuário sobre `REC-0019`; depois, `REC-0020` começando por INSS/IRRF (maior risco fiscal), no mesmo padrão desta ação.
+
+### ACAO-0034 — 2026-09-15 — Claude (Sonnet 5)
+
+* **Autor da ação:** Claude (Sonnet 5)
+* **Tipo de ação:** Diagnóstico de trabalho duplicado (nenhuma alteração funcional)
+* **Status:** Concluído (diagnóstico; nenhum código aplicado nesta sessão)
+* **Resumo:**
+
+  * Uma sessão anterior (Codex) havia deixado, sem commit, uma melhoria de UI/UX em `packages/ui/src/pages/empresas/EmpresasPage.tsx` (cabeçalho com botão "Nova empresa", busca com rótulo acessível e botão de limpar, contagem por status nos filtros, estado vazio acionável), registrada localmente como `ACAO-0029`.
+  * Ao sincronizar com `origin/main` (5 commits atrás), identifiquei que o commit `1fd19a9` (`feat(ui): improve companies page usability`) já implementa a mesma melhoria de forma mais completa (inclui também import/export, dois estados vazios distintos — sem cadastro vs. sem resultado de busca —, `clearFilters` e contagem de ativas/inativas no rodapé da grid).
+  * Também identifiquei colisão de numeração: `ACAO-0029` já estava em uso no upstream (`eccdc60`, assunto de divergência de path OneDrive/REC-0016), e o histórico upstream já chega a `ACAO-0033`.
+
+* **O que foi feito:**
+
+  * Descartado o diff local de `EmpresasPage.tsx` (duplicado e superado pelo upstream); a versão de `origin/main` foi mantida integralmente após o merge/rebase.
+  * Removida a entrada `ACAO-0029` (Codex) duplicada/renumerada incorretamente e substituída por esta entrada (`ACAO-0034`), preservando o registro de que o trabalho existiu, mas não foi commitado por ser redundante.
+
+* **Arquivos envolvidos:**
+
+  * `HISTORICO_AGENTES.md`
+
+* **Validações executadas:**
+
+  * `git log --oneline origin/main` e `git show origin/main:HISTORICO_AGENTES.md` para confirmar o commit e a numeração já usados upstream.
+  * `git diff` local comparado linha a linha com o conflito de rebase para confirmar que a versão upstream é um superconjunto da mudança local.
+
+* **Riscos ou observações:**
+
+  * Nenhum código de `EmpresasPage.tsx` foi alterado nesta ação; a versão em produção é a do commit `1fd19a9`.
+  * Sessões futuras devem conferir `git log origin/main` antes de numerar uma nova `ACAO-XXXX`, para evitar nova colisão.
+
+* **Próxima ação sugerida:**
+
+  * Nenhuma pendente para esta tela; a melhoria de UI de Empresas já está em `main`.
