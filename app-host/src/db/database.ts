@@ -502,6 +502,18 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       WHERE origem = 'automatico';
     `,
   },
+  {
+    // REC-0020 / ACAO-0035: INSS e IRRF do 13º em linhas separadas (tetos independentes),
+    // saldo da conta vinculada informado e depósito de FGTS da rescisão. `inss_rescisao`,
+    // `irrf_rescisao` e `multa_fgts` passam a ser calculados (saldo de salário / multa).
+    name: '057_rescisao_inss_irrf_fgts',
+    sql: `
+      ALTER TABLE rescisoes ADD COLUMN inss_decimo_terceiro REAL;
+      ALTER TABLE rescisoes ADD COLUMN irrf_decimo_terceiro REAL;
+      ALTER TABLE rescisoes ADD COLUMN saldo_fgts REAL;
+      ALTER TABLE rescisoes ADD COLUMN fgts_rescisao REAL;
+    `,
+  },
 ]
 
 function runMigrations(db: BetterSqlite3.Database): void {

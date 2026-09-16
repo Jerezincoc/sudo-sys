@@ -1,9 +1,11 @@
 import type { Rescisao } from '@sudo-sys/shared'
+import { calcularFGTS, calcularINSS, calcularIRRF } from './CalculoFolha'
 
 // Motor de cálculo das verbas rescisórias (TRCT). Extraído de `rescisaoHandlers.ts`
 // para ser testável isoladamente (mesmo padrão de `CalculoFolha.ts`) e validado verba a
 // verba contra o texto legal na ACAO-0033. Pontos marcados [A CONFIRMAR] mantêm o
-// comportamento original de propósito — ver REC-0019 em CONTEXTO_TOTAL.md.
+// comportamento original de propósito — ver REC-0019 e REC-0021 em CONTEXTO_TOTAL.md.
+// INSS/IRRF/FGTS rescisórios (ACAO-0035): plano e fontes em docs/plano-rec-0020.md.
 
 export interface EntradaRescisao {
   dataAdmissao: string // AAAA-MM-DD
@@ -14,10 +16,12 @@ export interface EntradaRescisao {
   diasTrabalhados: number
   feriasVencidas: number // valor simples, sem o 1/3
   outrosProventos: number
-  inss: number
-  irrf: number
   outrosDescontos: number
-  multaFgtsInformada: number
+  /** Saldo da conta vinculada informado pelo usuário (o sistema não acessa a conta CAIXA),
+   *  sem os depósitos gerados por esta rescisão. */
+  saldoFgts: number
+  dependentes: number
+  regimeIrrf: 'dependentes' | 'simplificado'
 }
 
 export interface ResultadoRescisao {
@@ -27,6 +31,12 @@ export interface ResultadoRescisao {
   decimoTerceiro: number
   avisoPrevioDias: number
   avisoPrevioValor: number
+  inss: number // sobre o saldo de salário
+  inssDecimoTerceiro: number
+  irrf: number // sobre o saldo de salário
+  irrfDecimoTerceiro: number
+  /** Informativo: depósito de FGTS sobre saldo de salário, 13º e aviso indenizado. */
+  fgtsRescisao: number
   /** Informativa: depositada na conta vinculada (Lei 8.036/90, art. 18 §1º), não soma ao líquido. */
   multaFgts: number
   totalProventos: number
@@ -141,25 +151,48 @@ export function calcularRescisao(e: EntradaRescisao): ResultadoRescisao {
   // Justa causa: Lei 4.090 art. 3º nega, mas mesmo IRR Tema 96 — [A CONFIRMAR], mantido.
   const decimoTerceiro = round2((sal / 12) * avos13(adm, dem, fimProjetado))
 
-  // ── 5. Multa FGTS ───────────────────────────────────────────────────────────
-  // Lei 8.036/90 art. 18 §1º (40%, despedida sem justa causa) e CLT art. 484-A, I, b (20%,
-  // acordo). O valor continua informado manualmente (o sistema não tem o saldo da conta
-  // vinculada); é DEPOSITADO na conta vinculada, então não entra no total nem no líquido.
-  const multaFgts =
-    e.motivo === 'sem_justa_causa' || e.motivo === 'acordo_mutuo'
-      ? round2(e.multaFgtsInformada)
-      : 0
+  // Tabelas de INSS/IRRF da competência da data de demissão.
+  const competencia = e.dataDemissao.slice(0, 7)
+
+  // ── 5. INSS (Lei 8.212/91 art. 28) ──────────────────────────────────────────
+  // Base: só saldo de salário. Aviso indenizado (STJ Tema 478) e férias + 1/3 (art. 28
+  // §9º d) não incidem. 13º calculado em separado, com teto próprio (Decreto 3.048/99
+  // art. 214 §7º). "Outros proventos" ficam fora de todas as bases: natureza desconhecida
+  // — [A CONFIRMAR], REC-0021.
+  const inss               = calcularINSS(saldoSalario, competencia).valor
+  const inssDecimoTerceiro = calcularINSS(decimoTerceiro, competencia).valor
+
+  // ── 6. IRRF ─────────────────────────────────────────────────────────────────
+  // Aviso indenizado (Lei 7.713/88 art. 6º V) e férias + 1/3 (Súmula 386/STJ) isentos.
+  // 13º com tributação exclusiva, deduzindo o INSS do próprio 13º e dependentes (Lei
+  // 8.134/90 art. 16). Redutor da Lei 15.270 sobre o valor bruto — [A CONFIRMAR], REC-0021.
+  const irrf = calcularIRRF(saldoSalario - inss, e.dependentes, e.regimeIrrf, competencia, saldoSalario).valor
+  const irrfDecimoTerceiro = calcularIRRF(
+    decimoTerceiro - inssDecimoTerceiro, e.dependentes, e.regimeIrrf, competencia, decimoTerceiro,
+  ).valor
+
+  // ── 7. FGTS e multa ─────────────────────────────────────────────────────────
+  // Depósito sobre saldo, 13º e aviso indenizado (Lei 8.036/90 art. 15; Súmula 305/TST);
+  // férias indenizadas + 1/3 excluídas (art. 15 §6º). Multa: 40% (art. 18 §1º) ou 20% no
+  // acordo (CLT art. 484-A, I, b) sobre todos os depósitos (Decreto 99.684/90 art. 9º §§1º
+  // e 3º), incluindo o depósito do aviso indenizado — prática operacional da CAIXA; tema
+  // sem tese firmada no TST (OJ 42 II / RR-1001438-06.2018), ver REC-0021. Ambos são
+  // DEPOSITADOS na conta vinculada: não entram no total nem no líquido.
+  const fgtsRescisao = calcularFGTS(saldoSalario + decimoTerceiro + avisoPrevioValor)
+  const percentualMulta =
+    e.motivo === 'sem_justa_causa' ? 0.4 : e.motivo === 'acordo_mutuo' ? 0.2 : 0
+  const multaFgts = round2((e.saldoFgts + fgtsRescisao) * percentualMulta)
 
   const totalProventos = round2(
     saldoSalario + e.feriasVencidas + feriasProporcionais + umTercoFerias +
     decimoTerceiro + avisoPrevioValor + e.outrosProventos,
   )
-  // ── 6. INSS/IRRF: informados manualmente (não há cálculo nem separação de bases) ─
-  const totalDescontos = round2(e.inss + e.irrf + e.outrosDescontos)
+  const totalDescontos = round2(inss + inssDecimoTerceiro + irrf + irrfDecimoTerceiro + e.outrosDescontos)
   const valorLiquido   = round2(totalProventos - totalDescontos)
 
   return {
     saldoSalario, feriasProporcionais, umTercoFerias, decimoTerceiro,
-    avisoPrevioDias, avisoPrevioValor, multaFgts, totalProventos, totalDescontos, valorLiquido,
+    avisoPrevioDias, avisoPrevioValor, inss, inssDecimoTerceiro, irrf, irrfDecimoTerceiro,
+    fgtsRescisao, multaFgts, totalProventos, totalDescontos, valorLiquido,
   }
 }

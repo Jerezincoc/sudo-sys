@@ -1,7 +1,8 @@
 /**
- * cdp-rescisao-verify.mjs — ACAO-0033
- * Valida o cálculo de rescisão (TRCT) via IPC real (CDP), nos 3 cenários calculados à mão:
- *   (a) sem justa causa, (b) pedido de demissão, (c) acordo mútuo (art. 484-A CLT).
+ * cdp-rescisao-verify.mjs — ACAO-0033 / ACAO-0035
+ * Valida o cálculo de rescisão (TRCT) via IPC real (CDP), nos 4 cenários calculados à mão:
+ *   (a) sem justa causa, (b) pedido de demissão, (c) acordo mútuo (art. 484-A CLT),
+ *   (d) salário alto — IRRF > 0 e teto do INSS no saldo e no 13º (ACAO-0035).
  * Cria empresa/funcionários/rescisões de teste, chama rescisao:calcular e rescisao:gerar-pdf,
  * compara cada campo com o esperado e move os PDFs gerados para OUT_DIR.
  *
@@ -99,26 +100,32 @@ const CENARIOS = [
   {
     nome: '(a) sem justa causa, aviso indenizado',
     func: { nome: 'TESTE ACAO0033 A SEM JUSTA CAUSA', cpf: '11144477735', data_admissao: '2023-03-10', salario_base: 3000 },
-    resc: { data_demissao: '2025-09-05', motivo: 'sem_justa_causa', aviso_previo: 'indenizado', salario_referencia: 3000, dias_trabalhados: 5, ferias_vencidas: 0, multa_fgts: 2400 },
-    esperado: { saldo_salario: 500, aviso_previo_valor: 3600, ferias_proporcionais: 1750, um_terco_ferias: 583.33, decimo_terceiro: 2250, multa_fgts: 2400, total_proventos: 8683.33, total_descontos: 0, valor_liquido: 8683.33 },
+    resc: { data_demissao: '2025-09-05', motivo: 'sem_justa_causa', aviso_previo: 'indenizado', salario_referencia: 3000, dias_trabalhados: 5, ferias_vencidas: 0, saldo_fgts: 5492 },
+    esperado: { saldo_salario: 500, aviso_previo_valor: 3600, ferias_proporcionais: 1750, um_terco_ferias: 583.33, decimo_terceiro: 2250, total_proventos: 8683.33, inss_rescisao: 37.5, inss_decimo_terceiro: 179.73, irrf_rescisao: 0, irrf_decimo_terceiro: 0, fgts_rescisao: 508, multa_fgts: 2400, total_descontos: 217.23, valor_liquido: 8466.1 },
   },
   {
     nome: '(b) pedido de demissão, aviso trabalhado',
     func: { nome: 'TESTE ACAO0033 B PEDIDO DEMISSAO', cpf: '52998224725', data_admissao: '2024-06-20', salario_base: 3000 },
-    resc: { data_demissao: '2025-09-18', motivo: 'pedido_demissao', aviso_previo: 'trabalhado', salario_referencia: 3000, dias_trabalhados: 18, ferias_vencidas: 0, multa_fgts: 1000 },
-    esperado: { saldo_salario: 1800, aviso_previo_valor: 0, ferias_proporcionais: 750, um_terco_ferias: 250, decimo_terceiro: 2250, multa_fgts: 0, total_proventos: 5050, total_descontos: 0, valor_liquido: 5050 },
+    resc: { data_demissao: '2025-09-18', motivo: 'pedido_demissao', aviso_previo: 'trabalhado', salario_referencia: 3000, dias_trabalhados: 18, ferias_vencidas: 0, saldo_fgts: 1000 },
+    esperado: { saldo_salario: 1800, aviso_previo_valor: 0, ferias_proporcionais: 750, um_terco_ferias: 250, decimo_terceiro: 2250, total_proventos: 5050, inss_rescisao: 139.23, inss_decimo_terceiro: 179.73, irrf_rescisao: 0, irrf_decimo_terceiro: 0, fgts_rescisao: 324, multa_fgts: 0, total_descontos: 318.96, valor_liquido: 4731.04 },
   },
   {
     nome: '(c) acordo mútuo (art. 484-A), aviso indenizado, férias vencidas',
     func: { nome: 'TESTE ACAO0033 C ACORDO MUTUO', cpf: '39053344705', data_admissao: '2020-02-03', salario_base: 4000 },
-    resc: { data_demissao: '2025-08-14', motivo: 'acordo_mutuo', aviso_previo: 'indenizado', salario_referencia: 4000, dias_trabalhados: 14, ferias_vencidas: 4000, multa_fgts: 3200 },
-    esperado: { saldo_salario: 1866.67, aviso_previo_valor: 3000, ferias_proporcionais: 2000, um_terco_ferias: 2000, decimo_terceiro: 2333.33, multa_fgts: 3200, total_proventos: 15200, total_descontos: 0, valor_liquido: 15200 },
+    resc: { data_demissao: '2025-08-14', motivo: 'acordo_mutuo', aviso_previo: 'indenizado', salario_referencia: 4000, dias_trabalhados: 14, ferias_vencidas: 4000, saldo_fgts: 15424 },
+    esperado: { saldo_salario: 1866.67, aviso_previo_valor: 3000, ferias_proporcionais: 2000, um_terco_ferias: 2000, decimo_terceiro: 2333.33, total_proventos: 15200, inss_rescisao: 145.23, inss_decimo_terceiro: 187.23, irrf_rescisao: 0, irrf_decimo_terceiro: 0, fgts_rescisao: 576, multa_fgts: 3200, total_descontos: 332.46, valor_liquido: 14867.54 },
+  },
+  {
+    nome: '(d) sem justa causa, salário alto — IRRF > 0, teto do INSS no saldo e no 13º',
+    func: { nome: 'TESTE ACAO0035 D SALARIO ALTO', cpf: '15350946056', data_admissao: '2023-03-10', salario_base: 12000 },
+    resc: { data_demissao: '2025-09-25', motivo: 'sem_justa_causa', aviso_previo: 'indenizado', salario_referencia: 12000, dias_trabalhados: 25, ferias_vencidas: 0, saldo_fgts: 20000 },
+    esperado: { saldo_salario: 10000, aviso_previo_valor: 14400, ferias_proporcionais: 8000, um_terco_ferias: 2666.67, decimo_terceiro: 10000, total_proventos: 45066.67, inss_rescisao: 951.63, inss_decimo_terceiro: 951.63, irrf_rescisao: 1579.57, irrf_decimo_terceiro: 1579.57, fgts_rescisao: 2752, multa_fgts: 9100.8, total_descontos: 5062.4, valor_liquido: 40004.27 },
   },
 ]
 
 async function main() {
   session = await cdpSession(await getWsUrl())
-  console.log('\n=== CDP Rescisão Verify (ACAO-0033) ===\n')
+  console.log('\n=== CDP Rescisão Verify (ACAO-0033 / ACAO-0035) ===\n')
 
   // Login com a senha seed implica troca obrigatória (REC-0002); com a senha nova, não.
   let login = await api('login', { email: 'admin@sudosys.local', senha: 'admin123' })
@@ -142,7 +149,7 @@ async function main() {
     if (!f.success) throw new Error('createFuncionario: ' + f.error)
     const r = await api('createRescisao', {
       empresa_id: empresaId, funcionario_id: f.data.id, data_aviso: null, outros_proventos: 0,
-      inss_rescisao: 0, irrf_rescisao: 0, outros_descontos: 0, status: 'rascunho', observacao: null, ...c.resc,
+      outros_descontos: 0, status: 'rascunho', observacao: null, ...c.resc,
     })
     if (!r.success) throw new Error('createRescisao: ' + r.error)
     const calc = await api('calcularRescisao', r.data.id)

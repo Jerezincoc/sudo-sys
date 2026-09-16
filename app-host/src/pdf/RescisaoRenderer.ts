@@ -11,6 +11,7 @@ export interface RescisaoData {
     um_terco_ferias: number; decimo_terceiro: number; aviso_previo_valor: number
     multa_fgts: number; outros_proventos: number; total_proventos: number
     inss_rescisao: number; irrf_rescisao: number; outros_descontos: number
+    inss_decimo_terceiro: number; irrf_decimo_terceiro: number; fgts_rescisao: number
     total_descontos: number; valor_liquido: number
     observacao: string | null
   }
@@ -177,7 +178,9 @@ function drawRescisao(doc: PDFKit.PDFDocument, data: RescisaoData): void {
   y += 14
   const deducoes = [
     { cod: '100', desc: 'INSS',             val: data.rescisao.inss_rescisao },
+    { cod: '103', desc: 'INSS s/ 13° Salário', val: data.rescisao.inss_decimo_terceiro },
     { cod: '101', desc: 'IRRF',             val: data.rescisao.irrf_rescisao },
+    { cod: '104', desc: 'IRRF s/ 13° Salário', val: data.rescisao.irrf_decimo_terceiro },
     { cod: '102', desc: 'Outros Descontos', val: data.rescisao.outros_descontos },
   ].filter((d) => (d.val ?? 0) > 0)
   while (deducoes.length % 3 !== 0) deducoes.push({ cod: '', desc: '', val: 0 })
@@ -219,12 +222,25 @@ function drawRescisao(doc: PDFKit.PDFDocument, data: RescisaoData): void {
       { lineBreak: false, width: PW * 0.5 - 8, align: 'right' })
   y += ROW_H + 8
 
-  // Multa FGTS: depositada na conta vinculada (Lei 8.036/90 art. 18 §1º), não compõe o líquido.
+  // FGTS e multa: depositados na conta vinculada (Lei 8.036/90 arts. 15 e 18), não compõem o líquido.
+  if ((data.rescisao.fgts_rescisao ?? 0) > 0) {
+    field(doc, 'Informativo — FGTS da rescisão (saldo de salário, 13° e aviso indenizado), depositado na conta vinculada',
+      `R$ ${fmtMoeda(data.rescisao.fgts_rescisao)}`, ML, y, PW, 20)
+    y += 24
+  }
   if ((data.rescisao.multa_fgts ?? 0) > 0) {
     const pct = data.rescisao.motivo === 'acordo_mutuo' ? '20% (art. 484-A CLT)' : '40%'
     field(doc, `Informativo — Multa FGTS ${pct}, depositada na conta vinculada (não compõe o líquido)`,
       `R$ ${fmtMoeda(data.rescisao.multa_fgts)}`, ML, y, PW, 20)
-    y += 24
+    y += 21
+    // Controvérsia registrada em REC-0021: sinalizada, não apresentada como certeza.
+    if ((data.rescisao.aviso_previo_valor ?? 0) > 0) {
+      doc.fontSize(6).font('Helvetica-Oblique').fillColor(LABEL_C)
+        .text('Nota: a base da multa inclui o depósito de FGTS sobre o aviso prévio indenizado, conforme orientação operacional da CAIXA. Matéria sem tese firmada no TST (OJ 42, II, SBDI-1).',
+          ML, y, { lineBreak: false, width: PW })
+      y += 9
+    }
+    y += 3
   }
 
   if (data.rescisao.observacao) {

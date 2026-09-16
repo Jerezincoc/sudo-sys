@@ -1,6 +1,6 @@
 # Plano aprovado — REC-0020 (INSS/IRRF/FGTS rescisórios)
 
-- **Status:** Aprovado pelo usuário em 2026-09-16; implementação em andamento (`ACAO-0035`).
+- **Status:** Aprovado pelo usuário em 2026-09-16; implementado na `ACAO-0035`.
 - **Motivo deste arquivo:** o plano foi perdido uma vez por `/clear` de sessão; registrado antes de codificar.
 
 ## Estado do motor (mapeado em sessão anterior — reconferir no código)

@@ -29,12 +29,14 @@ export class SqliteRescisaoRepository {
         salario_referencia, dias_trabalhados, saldo_salario, ferias_vencidas,
         ferias_proporcionais, um_terco_ferias, decimo_terceiro, aviso_previo_valor,
         multa_fgts, outros_proventos, total_proventos, inss_rescisao, irrf_rescisao,
+        inss_decimo_terceiro, irrf_decimo_terceiro, saldo_fgts, fgts_rescisao,
         outros_descontos, total_descontos, valor_liquido, status, observacao
       ) VALUES (
         @funcionario_id, @empresa_id, @data_demissao, @motivo, @aviso_previo, @data_aviso,
         @salario_referencia, @dias_trabalhados, @saldo_salario, @ferias_vencidas,
         @ferias_proporcionais, @um_terco_ferias, @decimo_terceiro, @aviso_previo_valor,
         @multa_fgts, @outros_proventos, @total_proventos, @inss_rescisao, @irrf_rescisao,
+        @inss_decimo_terceiro, @irrf_decimo_terceiro, @saldo_fgts, @fgts_rescisao,
         @outros_descontos, @total_descontos, @valor_liquido, @status, @observacao
       )
     `)
@@ -59,6 +61,10 @@ export class SqliteRescisaoRepository {
       total_proventos:     payload.total_proventos     ?? null,
       inss_rescisao:       payload.inss_rescisao       ?? null,
       irrf_rescisao:       payload.irrf_rescisao       ?? null,
+      inss_decimo_terceiro: payload.inss_decimo_terceiro ?? null,
+      irrf_decimo_terceiro: payload.irrf_decimo_terceiro ?? null,
+      saldo_fgts:          payload.saldo_fgts          ?? null,
+      fgts_rescisao:       payload.fgts_rescisao       ?? null,
       outros_descontos:    payload.outros_descontos    ?? null,
       total_descontos:     payload.total_descontos     ?? null,
       valor_liquido:       payload.valor_liquido       ?? null,

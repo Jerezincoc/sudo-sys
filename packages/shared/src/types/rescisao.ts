@@ -19,6 +19,10 @@ export interface Rescisao {
   total_proventos?: number | null
   inss_rescisao?: number | null
   irrf_rescisao?: number | null
+  inss_decimo_terceiro?: number | null
+  irrf_decimo_terceiro?: number | null
+  saldo_fgts?: number | null
+  fgts_rescisao?: number | null
   outros_descontos?: number | null
   total_descontos?: number | null
   valor_liquido?: number | null

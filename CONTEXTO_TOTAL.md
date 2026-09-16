@@ -52,8 +52,9 @@ Depois da leitura, o agente deve identificar a fase atual, verificar recomendaç
 - **Stack principal:** Electron, React, TypeScript, Vite, SQLite e pnpm monorepo.
 - **Estado atual:** Protótipo funcional com baixa confiabilidade operacional e fiscal.
 - **Fase atual:** Estabilização do build e da distribuição Electron.
-- **Última ação registrada:** `ACAO-0033` — diagnóstico do cálculo de Rescisão (TRCT) contra o texto literal da CLT, Lei 12.506/2011, Lei 4.090/62 e Lei 8.036/90. Motor extraído para `CalculoRescisao.ts` (com testes). Corrigidos: aviso prévio proporcional; aviso zerado em justa causa/pedido de demissão e pela metade no acordo; 1/3 sobre férias vencidas no total; fração de dias em férias/13º; projeção do aviso indenizado; multa FGTS fora do líquido. Validado com 3 cenários à mão, via IPC real (CDP) e nos PDFs (27/27 campos). `pnpm test` 60/60. Pontos em dúvida em `REC-0019`; INSS/IRRF/FGTS rescisórios não implementados em `REC-0020`.
-- **Próxima ação recomendada:** decisão do usuário sobre os itens `[A CONFIRMAR]` da `REC-0019` (principalmente justa causa × IRR Tema 96 do TST); depois `REC-0020` (INSS/IRRF rescisórios com separação de verbas indenizatórias × tributáveis). Continuam pendentes: confirmar com o Codex o envio de `EmpresasPage.tsx` (`ACAO-0031`), `REC-0018`, `REC-0011` e `REC-0016`.
+- **Última ação registrada:** `ACAO-0035` — `REC-0020` executada: INSS e IRRF rescisórios calculados (saldo de salário e 13º em linhas separadas, tetos independentes, aviso indenizado e férias fora das bases), depósito de FGTS da rescisão e multa 40%/20% calculada sobre o saldo FGTS informado + depósitos da rescisão (incluindo o do aviso indenizado — tema **contestado**, sem tese firmada no TST, sinalizado na tela e no PDF). Migration `057`. Validado com 4 cenários à mão (novo cenário (d) com IRRF > 0 e teto do INSS), via IPC real/CDP (56/56 campos) e nos PDFs. `pnpm test` 69/69. Plano em `docs/plano-rec-0020.md`; pontos `[A CONFIRMAR]` em `REC-0021`.
+- **Ação anterior sobre rescisão:** `ACAO-0033` — diagnóstico do cálculo de Rescisão (TRCT) contra o texto literal da CLT, Lei 12.506/2011, Lei 4.090/62 e Lei 8.036/90. Motor extraído para `CalculoRescisao.ts` (com testes). Corrigidos: aviso prévio proporcional; aviso zerado em justa causa/pedido de demissão e pela metade no acordo; 1/3 sobre férias vencidas no total; fração de dias em férias/13º; projeção do aviso indenizado; multa FGTS fora do líquido. Validado com 3 cenários à mão, via IPC real (CDP) e nos PDFs (27/27 campos). `pnpm test` 60/60. Pontos em dúvida em `REC-0019`; INSS/IRRF/FGTS rescisórios não implementados em `REC-0020`.
+- **Próxima ação recomendada:** decisão do usuário sobre os itens `[A CONFIRMAR]` da `REC-0019` (principalmente justa causa × IRR Tema 96 do TST) e da `REC-0021` (outros proventos; redutor Lei 15.270 no 13º). Continuam pendentes: confirmar com o Codex o envio de `EmpresasPage.tsx` (`ACAO-0031`), `REC-0018`, `REC-0011` e `REC-0016`.
 - **Uso em produção:** Não recomendado antes das correções críticas e dos testes de cálculo.
 
 ## 2. Objetivo do projeto
@@ -120,7 +121,7 @@ Desde a `ACAO-0015` existe um framework de testes (`vitest`) e uma suíte funcio
 
 ### Motor de cálculo (Rescisão/TRCT)
 
-Desde a `ACAO-0033`, `rescisao:calcular` usa `calcularRescisao()` (`packages/infrastructure/src/services/CalculoRescisao.ts`), validado contra o texto legal. Saldo de salário, aviso prévio (proporcional, por motivo), férias proporcionais + 1/3 (inclusive sobre vencidas) e 13º proporcional são calculados. Férias vencidas, multa FGTS (agora informativa, fora do líquido), INSS e IRRF continuam **digitados manualmente** — ver `REC-0020`. Regras em dúvida mantidas como no código original — ver `REC-0019`.
+Desde a `ACAO-0033`, `rescisao:calcular` usa `calcularRescisao()` (`packages/infrastructure/src/services/CalculoRescisao.ts`), validado contra o texto legal. Saldo de salário, aviso prévio (proporcional, por motivo), férias proporcionais + 1/3 (inclusive sobre vencidas) e 13º proporcional são calculados. Desde a `ACAO-0035`, INSS e IRRF (saldo de salário e 13º separados), depósito de FGTS da rescisão e multa FGTS (sobre o saldo FGTS informado pelo usuário) também são calculados, reaproveitando `calcularINSS`/`calcularIRRF`/`calcularFGTS` de `CalculoFolha.ts` com a tabela da competência da demissão. Férias vencidas, saldo FGTS e outros proventos/descontos continuam **informados manualmente**. Regras em dúvida mantidas como no código original — ver `REC-0019` e `REC-0021`.
 
 ### Motor de cálculo (IRRF) e schema de funcionários
 
@@ -220,7 +221,7 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Origem:** Codex
 - **Data:** 2026-09-11
 - **Execução:** Parcialmente concluída na `ACAO-0015` — introduzido `vitest` (primeiro framework de testes do projeto, instalado em `packages/infrastructure`) e criada suíte para `calcularIRRF`/`calcularINSS`/`calcularFGTS` (`CalculoFolha.test.ts`), cobrindo os 4 cenários de IRRF e a guarda de competência do redutor da Lei 15.270/2025 validados manualmente nesta sessão. Rodável via `pnpm test` (raiz) ou `pnpm --filter @sudo-sys/infrastructure test`. **Escopo restante pendente:** Rescisão, Férias, Ponto e demais cálculos trabalhistas continuam sem nenhum teste automatizado — restrição de escopo foi instrução explícita do usuário, não limitação técnica.
-- **Extensão (`ACAO-0033`):** Rescisão passou a ter suíte própria (`CalculoRescisao.test.ts`, 24 testes, com caracterização prévia do código original). Restam Férias (módulo), Ponto e INSS/IRRF rescisórios (`REC-0020`).
+- **Extensão (`ACAO-0033`):** Rescisão passou a ter suíte própria (`CalculoRescisao.test.ts`, 24 testes, com caracterização prévia do código original). Restam Férias (módulo) e Ponto. Na `ACAO-0035` a suíte de rescisão passou a 33 testes (INSS/IRRF/FGTS rescisórios e cenário (d)).
 
 ### REC-0004
 
@@ -391,13 +392,26 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 
 ### REC-0020
 
-- **Status:** Não executado
+- **Status:** Executado — `ACAO-0035` (2026-09-16). Plano aprovado em `docs/plano-rec-0020.md`; pontos em dúvida em `REC-0021`.
 - **Recomendação:** Implementar, no módulo de Rescisão, (a) o cálculo de INSS e IRRF rescisórios com **separação entre verbas indenizatórias e tributáveis** (aviso prévio indenizado, férias indenizadas + 1/3 e multa FGTS × saldo de salário, 13º e aviso trabalhado; 13º com tributação separada), reaproveitando `calcularINSS`/`calcularIRRF`; (b) o depósito de FGTS do mês da rescisão e do anterior (Lei 8.036/90 art. 18 caput); (c) a multa FGTS calculada (40% / 20% no art. 484-A) a partir do saldo da conta vinculada, se o produto passar a guardar esse saldo.
 - **Motivo:** Hoje INSS, IRRF e multa FGTS são **digitados à mão** em R$ — não há fórmula nem classificação de incidência, então o risco de base errada (mesma classe do bug do `[9e]` no IRRF) fica inteiramente com o usuário. As fontes de incidência (Lei 8.212/91 art. 28 §9º, Lei 7.713/88 art. 6º, RIR/2018, posição da RFB/PGFN) **não foram levantadas nem validadas** na `ACAO-0033` e precisam ser, antes da implementação.
 - **Prioridade:** Alta (risco fiscal).
 - **Origem:** Claude
 - **Data:** 2026-09-14
-- **Referência:** `ACAO-0033`.
+- **Referência:** `ACAO-0033`; executada na `ACAO-0035`.
+
+### REC-0021
+
+- **Status:** A confirmar — item 1 decidido pelo usuário, mas **contestado**; itens 2 e 3 aguardando decisão
+- **Recomendação:** Acompanhar/decidir os pontos abaixo, implementados na `ACAO-0035` com o comportamento indicado:
+  1. **FGTS do aviso prévio indenizado na base da multa de 40%/20% — CONTESTADO / sem tese firmada no TST.** Decisão do usuário (2026-09-16): **incluir**, junto com os demais depósitos. Fundamento: Lei 8.036/90 art. 18 §1º e Decreto 99.684/90 art. 9º §1º ("todos os depósitos realizados na conta vinculada durante a vigência do contrato", sem dedução de saques; lidos em planalto.gov.br) não excluem depósito por origem nem mencionam aviso prévio; Súmula 305/TST (FGTS devido sobre o aviso). A OJ 42, II, SBDI-1 ("desconsiderada a projeção do aviso prévio indenizado") trata da **data** do saldo, não da exclusão do depósito. **Ambiguidade:** o TST, no RR-1001438-06.2018.5.02.0043, excluiu na prática "a incidência da multa de 40% do FGTS sobre o aviso prévio indenizado" citando a OJ 42 II com fundamentação pouco clara, e há crítica publicada (Guia Trabalhista, 2018) apontando conflito com a Súmula 305. O comportamento implementado segue a **prática operacional da CAIXA** (manual de recolhimentos rescisórios — PDF não lido diretamente, só via resumo de busca), não uma tese fixada. Sinalizado com nota na aba Proventos e no PDF. Mesmo padrão do Tema 96 (`REC-0019`): reavaliar se surgir tese/IRR.
+  2. **"Outros proventos":** natureza desconhecida — ficam **fora** das bases de INSS, IRRF e FGTS (entram só no total); aviso na tela quando > 0. Falta decidir se o campo deve ser classificado por natureza (ex.: vincular a rubricas com incidências).
+  3. **Redutor da Lei 15.270/2025 no 13º:** aplicado sobre o **valor bruto** do 13º (mesmo critério do saldo de salário). Não afeta cenários de 2025; a página da Receita que poderia confirmar tratamento diferenciado exigia login. Confirmar antes de rescisões com competência ≥ 2026-01 envolvendo 13º entre R$ 5.000 e R$ 7.350.
+- **Motivo:** Guardrail: registrar como contestado/a confirmar o que não tem fonte oficial pacificada, em vez de apresentar como certeza.
+- **Prioridade:** Média (item 1 afeta toda dispensa sem justa causa/acordo com aviso indenizado; itens 2 e 3 são casos mais restritos).
+- **Origem:** Claude
+- **Data:** 2026-09-16
+- **Referência:** `ACAO-0035`; `docs/plano-rec-0020.md`.
 
 ## 8. Ambiente padrão do projeto
 
@@ -415,7 +429,7 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Comando de typecheck:** `pnpm typecheck`; passou na `ACAO-0006` e compila os pacotes internos antes da verificação.
 - **Comando de lint:** `pnpm lint`. Atualmente não executa lint real.
 - **Comando de build:** `pnpm build`; compila `shared`, `domain`, `application` e `infrastructure` antes da UI e do `app-host`.
-- **Comando de teste:** `pnpm test` (raiz) roda `packages/domain` e `packages/infrastructure` em sequência (60 testes no total desde a `ACAO-0033`); `pnpm --filter @sudo-sys/domain test` ou `pnpm --filter @sudo-sys/infrastructure test` isoladamente. Cobertura: IRRF/INSS/FGTS, transação de folha, motor de fórmulas e cálculo de rescisão; Férias (módulo) e Ponto continuam sem teste automatizado. Validação de rescisão via IPC real: `scripts/cdp-rescisao-verify.mjs` (usar `--user-data-dir` descartável).
+- **Comando de teste:** `pnpm test` (raiz) roda `packages/domain` e `packages/infrastructure` em sequência (69 testes no total desde a `ACAO-0035`); `pnpm --filter @sudo-sys/domain test` ou `pnpm --filter @sudo-sys/infrastructure test` isoladamente. Cobertura: IRRF/INSS/FGTS, transação de folha, motor de fórmulas e cálculo de rescisão; Férias (módulo) e Ponto continuam sem teste automatizado. Validação de rescisão via IPC real: `scripts/cdp-rescisao-verify.mjs` (usar `--user-data-dir` descartável).
 - **Desenvolvimento limpo:** Validado. `pnpm dev` gera preload e reconstrói `better-sqlite3` automaticamente antes de iniciar Electron.
 - **Isolamento do banco de desenvolvimento:** Confirmado em `<raiz>/.dev-user-data`, via `--user-data-dir` explícito; Linux e macOS continuam **A confirmar**.
 
@@ -450,7 +464,7 @@ Nenhum agente deve corrigir erro de execução antes de verificar se o ambiente 
 9. `REC-0016` — confirmar em qual máquina/sessão (`holdi`, OneDrive) a migração de path do projeto ainda é necessária.
 10. `REC-0018` — avaliar remoção ou migração de `auth:register` para o gate central; prioridade baixa, sem consumidor de UI hoje.
 11. `REC-0019` — decidir as regras de rescisão `[A CONFIRMAR]` (justa causa × IRR Tema 96/TST, projeção no acordo, aposentadoria, dias adicionais com aviso trabalhado, desconto do aviso no pedido de demissão). **Não alterar sem decisão do usuário.**
-12. `REC-0020` — implementar INSS/IRRF rescisórios com separação de verbas indenizatórias × tributáveis, FGTS rescisório e multa a partir do saldo; levantar fontes oficiais de incidência antes.
+12. `REC-0021` — pontos `[A CONFIRMAR]` dos INSS/IRRF/FGTS rescisórios: FGTS do aviso indenizado na base da multa (decidido: incluir, mas **contestado**, sem tese no TST), natureza de "outros proventos", redutor Lei 15.270 no 13º. (`REC-0020` executada na `ACAO-0035`.)
 
 `REC-0012` foi executada na `ACAO-0026` — `scripts/test-holerite.ps1` corrigido e validado com PDF real gerado contra o banco de dev.
 

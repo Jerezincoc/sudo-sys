@@ -30,10 +30,14 @@ function emptyForm(empresaId: number): FormData {
     dias_trabalhados:     0,
     ferias_vencidas:      0,
     outros_proventos:     0,
-    inss_rescisao:        0,
-    irrf_rescisao:        0,
+    inss_rescisao:        null,
+    irrf_rescisao:        null,
+    inss_decimo_terceiro: null,
+    irrf_decimo_terceiro: null,
     outros_descontos:     0,
-    multa_fgts:           0,
+    saldo_fgts:           0,
+    fgts_rescisao:        null,
+    multa_fgts:           null,
     saldo_salario:        null,
     ferias_proporcionais: null,
     um_terco_ferias:      null,
@@ -228,10 +232,14 @@ export default function RescisaoForm({ rescisao, empresaId, funcionarios, onClos
           dias_trabalhados:     rescisao.dias_trabalhados     ?? 0,
           ferias_vencidas:      rescisao.ferias_vencidas      ?? 0,
           outros_proventos:     rescisao.outros_proventos     ?? 0,
-          inss_rescisao:        rescisao.inss_rescisao        ?? 0,
-          irrf_rescisao:        rescisao.irrf_rescisao        ?? 0,
+          inss_rescisao:        rescisao.inss_rescisao,
+          irrf_rescisao:        rescisao.irrf_rescisao,
+          inss_decimo_terceiro: rescisao.inss_decimo_terceiro,
+          irrf_decimo_terceiro: rescisao.irrf_decimo_terceiro,
           outros_descontos:     rescisao.outros_descontos     ?? 0,
-          multa_fgts:           rescisao.multa_fgts           ?? 0,
+          saldo_fgts:           rescisao.saldo_fgts           ?? 0,
+          fgts_rescisao:        rescisao.fgts_rescisao,
+          multa_fgts:           rescisao.multa_fgts,
           saldo_salario:        rescisao.saldo_salario,
           ferias_proporcionais: rescisao.ferias_proporcionais,
           um_terco_ferias:      rescisao.um_terco_ferias,
@@ -282,10 +290,14 @@ export default function RescisaoForm({ rescisao, empresaId, funcionarios, onClos
       dias_trabalhados:     form.dias_trabalhados               ?? 0,
       ferias_vencidas:      form.ferias_vencidas                ?? 0,
       outros_proventos:     form.outros_proventos               ?? 0,
-      inss_rescisao:        form.inss_rescisao                  ?? 0,
-      irrf_rescisao:        form.irrf_rescisao                  ?? 0,
+      inss_rescisao:        form.inss_rescisao                  ?? null,
+      irrf_rescisao:        form.irrf_rescisao                  ?? null,
+      inss_decimo_terceiro: form.inss_decimo_terceiro           ?? null,
+      irrf_decimo_terceiro: form.irrf_decimo_terceiro           ?? null,
       outros_descontos:     form.outros_descontos               ?? 0,
-      multa_fgts:           form.multa_fgts                     ?? 0,
+      saldo_fgts:           form.saldo_fgts                     ?? 0,
+      fgts_rescisao:        form.fgts_rescisao                  ?? null,
+      multa_fgts:           form.multa_fgts                     ?? null,
       saldo_salario:        form.saldo_salario                  ?? null,
       ferias_proporcionais: form.ferias_proporcionais           ?? null,
       um_terco_ferias:      form.um_terco_ferias                ?? null,
@@ -371,6 +383,11 @@ export default function RescisaoForm({ rescisao, empresaId, funcionarios, onClos
         um_terco_ferias:      r.um_terco_ferias,
         decimo_terceiro:      r.decimo_terceiro,
         aviso_previo_valor:   r.aviso_previo_valor,
+        inss_rescisao:        r.inss_rescisao,
+        irrf_rescisao:        r.irrf_rescisao,
+        inss_decimo_terceiro: r.inss_decimo_terceiro,
+        irrf_decimo_terceiro: r.irrf_decimo_terceiro,
+        fgts_rescisao:        r.fgts_rescisao,
         multa_fgts:           r.multa_fgts,
         total_proventos:      r.total_proventos,
         total_descontos:      r.total_descontos,
@@ -559,11 +576,11 @@ export default function RescisaoForm({ rescisao, empresaId, funcionarios, onClos
                   />
                 </div>
                 {mostraMulhaFgts && (
-                  <div style={{ width: 160 }}>
+                  <div style={{ width: 220 }}>
                     <Field
-                      label="Multa FGTS (R$)"
-                      value={form.multa_fgts}
-                      onChange={(v) => set('multa_fgts', v === '' ? 0 : parseFloat(v))}
+                      label="Saldo FGTS p/ fins rescisórios (R$)"
+                      value={form.saldo_fgts}
+                      onChange={(v) => set('saldo_fgts', v === '' ? 0 : parseFloat(v))}
                       type="number"
                       step="0.01"
                     />
@@ -629,9 +646,30 @@ export default function RescisaoForm({ rescisao, empresaId, funcionarios, onClos
               <div style={{ height: 1, background: 'var(--color-border-main)', margin: '4px 0' }} />
               <ValueRow label="TOTAL PROVENTOS"           value={form.total_proventos} bold />
               <ValueRow
-                label={`Multa FGTS ${form.motivo === 'acordo_mutuo' ? '(20%)' : '(40%)'} — informativa, depositada na conta vinculada`}
-                value={form.multa_fgts}
+                label="FGTS da rescisão (saldo, 13° e aviso indenizado) — informativo, depositado na conta vinculada"
+                value={form.fgts_rescisao}
               />
+              {mostraMulhaFgts && (
+                <ValueRow
+                  label={`Multa FGTS ${form.motivo === 'acordo_mutuo' ? '(20%)' : '(40%)'} — informativa, depositada na conta vinculada`}
+                  value={form.multa_fgts}
+                />
+              )}
+              {mostraMulhaFgts && (form.aviso_previo_valor ?? 0) > 0 && (form.multa_fgts ?? 0) > 0 && (
+                <div style={{
+                  padding: '6px 8px 0', fontSize: 11, color: 'var(--color-text-muted)', fontStyle: 'italic',
+                }}>
+                  A base da multa inclui o depósito de FGTS sobre o aviso prévio indenizado, conforme
+                  orientação operacional da CAIXA. Matéria sem tese firmada no TST (OJ 42, II, SBDI-1).
+                </div>
+              )}
+              {(form.outros_proventos ?? 0) > 0 && (
+                <div style={{
+                  padding: '6px 8px 0', fontSize: 11, color: 'var(--color-text-muted)', fontStyle: 'italic',
+                }}>
+                  "Outros Proventos" não entram nas bases de INSS, IRRF e FGTS (natureza da verba não identificada).
+                </div>
+              )}
               <div style={{
                 padding: '6px 8px', fontSize: 11, color: 'var(--color-text-muted)', fontStyle: 'italic',
               }}>
@@ -656,26 +694,12 @@ export default function RescisaoForm({ rescisao, empresaId, funcionarios, onClos
                 }}>
                   Descontos
                 </div>
+                <ValueRow label="INSS (saldo de salário) — calculado"    value={form.inss_rescisao} />
+                <ValueRow label="INSS s/ 13° Salário — calculado"        value={form.inss_decimo_terceiro} />
+                <ValueRow label="IRRF (saldo de salário) — calculado"    value={form.irrf_rescisao} />
+                <ValueRow label="IRRF s/ 13° Salário — calculado"        value={form.irrf_decimo_terceiro} />
                 <div style={{ padding: 10 }}>
                   <Row>
-                    <div style={{ width: 200 }}>
-                      <Field
-                        label="INSS Rescisão (R$)"
-                        value={form.inss_rescisao}
-                        onChange={(v) => set('inss_rescisao', v === '' ? 0 : parseFloat(v))}
-                        type="number"
-                        step="0.01"
-                      />
-                    </div>
-                    <div style={{ width: 200 }}>
-                      <Field
-                        label="IRRF Rescisão (R$)"
-                        value={form.irrf_rescisao}
-                        onChange={(v) => set('irrf_rescisao', v === '' ? 0 : parseFloat(v))}
-                        type="number"
-                        step="0.01"
-                      />
-                    </div>
                     <div style={{ width: 200 }}>
                       <Field
                         label="Outros Descontos (R$)"

@@ -1870,3 +1870,52 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 * **Próxima ação sugerida:**
 
   * Nenhuma pendente para esta tela; a melhoria de UI de Empresas já está em `main`.
+
+### ACAO-0035 — 2026-09-16 — Claude (Opus 5)
+
+* **Autor da ação:** Claude (Opus 5)
+* **Tipo de ação:** Implementação (`REC-0020`) — INSS/IRRF/FGTS rescisórios
+* **Status:** Concluído
+* **Resumo:**
+
+  * Executa o plano aprovado da `REC-0020`, registrado antes da implementação em `docs/plano-rec-0020.md` (commit isolado `393f612`, porque o plano já tinha sido perdido uma vez por limpeza de sessão).
+  * INSS e IRRF deixam de ser digitados: calculados sobre saldo de salário e sobre o 13º **em separado** (tetos independentes — Decreto 3.048/99 art. 214 §7º; IRRF do 13º deduzindo o próprio INSS e dependentes — Lei 8.134/90 art. 16). Aviso indenizado (STJ Tema 478; Lei 7.713 art. 6º V) e férias + 1/3 (Lei 8.212 art. 28 §9º d; Súmula 386/STJ) fora das bases.
+  * Novo depósito de FGTS da rescisão (8% sobre saldo + 13º + aviso indenizado; férias fora — Lei 8.036 art. 15 §6º) e multa 40%/20% **calculada** sobre "Saldo FGTS p/ fins rescisórios" (informado) + depósitos da rescisão. Ambos informativos, fora do líquido.
+* **Decisão sobre FGTS do aviso indenizado na base da multa (item 1 da `REC-0021`):**
+
+  * Checagem pedida pelo usuário antes de codificar. OJ 42 II SBDI-1 (literal, via TST): "O cálculo da multa de 40% do FGTS deverá ser feito com base no saldo da conta vinculada na data do efetivo pagamento das verbas rescisórias, desconsiderada a projeção do aviso prévio indenizado, por ausência de previsão legal." — trata da data do saldo, não de exclusão do depósito por origem.
+  * Lidos por `curl` em planalto.gov.br (o WebFetch dava `ECONNRESET`): Lei 8.036/90 art. 18 §1º ("quarenta por cento do montante de todos os depósitos realizados na conta vinculada durante a vigência do contrato de trabalho, atualizados monetariamente e acrescidos dos respectivos juros") e Decreto 99.684/90 art. 9º §1º (mesma redação + "não sendo permitida, para este fim a dedução dos saques ocorridos"; §3º inclui depósitos do mês da rescisão e anterior). Nenhum contradiz a inclusão.
+  * Decisão do usuário: **incluir**. Registrado como **contestado / sem tese firmada no TST** (RR-1001438-06.2018.5.02.0043 excluiu na prática; crítica publicada aponta conflito com a Súmula 305). Segue a prática operacional da CAIXA. Nota discreta na aba Proventos e no PDF (padrão já existente: texto itálico atenuado na UI; bloco "Informativo" no PDF), exibida só quando há multa e aviso indenizado.
+* **Conferência do plano contra o código (antes de codificar):** mapeamento confirmado (`CalculoRescisao.ts` somava saldo, férias vencidas/proporcionais, 1/3, 13º, aviso e outros; INSS/IRRF/multa digitados). Última migration era `056`. Funcionário já tinha `numero_dependentes_irrf` e `regime_irrf`. Prévias (a)/(b)/(c) do plano recalculadas à mão e confirmadas.
+* **Validações executadas:**
+
+  * `CalculoRescisao.test.ts`: 33 testes (24 → 33): INSS separado, bases sem aviso/férias, outros proventos fora das bases, dependentes, redutor 2026 sobre bruto, FGTS/multa (inclui depósito do aviso, 20% no acordo, zerada em pedido/justa causa) e cenário **(d)** (salário R$12.000, demissão 25/09/2025: INSS 951,63 no teto em cada base, IRRF 1.579,57 em cada base, FGTS 2.752,00, multa 9.100,80, líquido 40.004,27).
+  * Cenários (a)/(b)/(c) com os valores da prévia: líquidos 8.466,10 / 4.731,04 / 14.867,54; FGTS 508 / 324 / 576.
+  * App real (Vite + `electron-dev.cjs`, `--remote-debugging-port=9222`, `--user-data-dir` descartável no scratchpad — migration `057` aplicada em banco novo): `scripts/cdp-rescisao-verify.mjs` → **56/56 campos conferem** nos 4 cenários.
+  * PDFs lidos: deduções "INSS", "INSS s/ 13° Salário", "IRRF", "IRRF s/ 13° Salário" somam o total; bloco informativo de FGTS da rescisão; multa + nota em (a), (c) e (d); sem multa/nota em (b).
+  * `pnpm typecheck`: passou em todos os workspaces. `pnpm test`: **69/69** (25 `domain` + 44 `infrastructure`).
+  * Ambiente: após o `electron:dev:prepare`, `better-sqlite3` ficou na ABI do Electron; o primeiro `npx prebuild-install` falhou com `EBUSY` porque o `electron.exe` sobreviveu ao encerramento da tarefa. Processos desta ação encerrados por PID (filtro `ud-acao0035` e Vite de `packages/ui`), `prebuild-install` repetido e regressão reexecutada.
+* **O que foi mudado:**
+
+  * `packages/infrastructure/src/services/CalculoRescisao.ts`: entrada troca `inss`/`irrf`/`multaFgtsInformada` por `saldoFgts`/`dependentes`/`regimeIrrf`; resultado ganha `inss`, `inssDecimoTerceiro`, `irrf`, `irrfDecimoTerceiro`, `fgtsRescisao`; reaproveita `calcularINSS`/`calcularIRRF`/`calcularFGTS` (sem duplicar tabelas), competência = mês da demissão.
+  * `packages/infrastructure/src/services/CalculoRescisao.test.ts`: testes atualizados e novos.
+  * `app-host/src/db/database.ts`: migration `057_rescisao_inss_irrf_fgts` (`inss_decimo_terceiro`, `irrf_decimo_terceiro`, `saldo_fgts`, `fgts_rescisao`).
+  * `packages/shared/src/types/rescisao.ts` e `SqliteRescisaoRepository.ts`: novos campos.
+  * `app-host/src/ipc/handlers/rescisaoHandlers.ts`: repassa dependentes e regime de IRRF do funcionário; persiste os novos valores; envia-os ao PDF.
+  * `app-host/src/pdf/RescisaoRenderer.ts`: deduções do 13º (códigos 103/104), bloco informativo do FGTS da rescisão, nota da multa.
+  * `packages/ui/src/pages/rescisao/RescisaoForm.tsx`: "Multa FGTS" → "Saldo FGTS p/ fins rescisórios"; INSS/IRRF só leitura em 4 linhas; FGTS da rescisão e multa informativos; nota do aviso na multa; aviso sobre "outros proventos".
+  * `scripts/cdp-rescisao-verify.mjs`: novos campos esperados e cenário (d).
+  * `docs/plano-rec-0020.md` (commit próprio), `CONTEXTO_TOTAL.md` (`REC-0020` executada, `REC-0021` criada).
+* **Riscos ou observações:**
+
+  * **Mudança de valores:** rescisões já gravadas mantêm valores antigos até novo "Calcular". Nelas, `saldo_fgts` fica nulo → ao recalcular, a multa passa a ser calculada só sobre os depósitos da rescisão até o usuário informar o saldo; o valor de multa digitado antes **não** é migrado para `saldo_fgts` (são grandezas diferentes).
+  * **IRRF do 13º no regime simplificado:** o motor aplica ao 13º o mesmo regime do funcionário (desconto simplificado de R$ 607,20 se escolhido). Não verifiquei em fonte oficial se o desconto simplificado mensal vale para a tributação exclusiva do 13º — não coberto pelo plano; ver próxima ação.
+  * O IRRF do saldo considera só o saldo de salário da rescisão (não soma outros rendimentos do mesmo mês pagos em folha).
+  * O manual da CAIXA que sustenta a prática operacional não foi lido diretamente (PDF com redirecionamento em loop); só via resumo de busca.
+  * UI não conferida visualmente (validação por typecheck + IPC real + PDFs). Layout pré-existente do PDF com descrições longas cortadas continua (fora do escopo).
+* **Recomendações deixadas para próximos agentes:**
+
+  * `REC-0021` — itens `[A CONFIRMAR]` (FGTS do aviso na multa: contestado; outros proventos; redutor 15.270 no 13º).
+* **Próxima ação sugerida:**
+
+  * Decisão do usuário sobre `REC-0019` e itens 2–3 da `REC-0021`; verificar em fonte oficial o desconto simplificado no IRRF do 13º.
