@@ -1919,3 +1919,65 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 * **Próxima ação sugerida:**
 
   * Decisão do usuário sobre `REC-0019` e itens 2–3 da `REC-0021`; verificar em fonte oficial o desconto simplificado no IRRF do 13º.
+
+### ACAO-0036 — 2026-09-18 — Claude (Opus 5)
+
+* **Autor da ação:** Claude (Opus 5)
+* **Tipo de ação:** Diagnóstico + correção operacional de ambiente de desenvolvimento (credencial de teste)
+* **Status:** Concluído
+* **Resumo:**
+
+  * O login `admin@sudosys.local` / `admin123` estava sendo recusado com "Senha incorreta." no banco de desenvolvimento. Diagnosticado como **divergência real de senha**, não bug de código: a senha do admin havia sido trocada de verdade durante a validação da `ACAO-0027` e o valor novo não foi registrado em lugar nenhum (decisão consciente daquela ação, ver o ponto "Riscos ou observações" dela).
+  * Senha do admin resetada para `admin123` no banco de dev por UPDATE direto, via script novo e repetível `scripts/reset-admin-senha.cjs`. Nenhum código de produção, handler, migration ou contrato IPC foi alterado.
+* **PASSO 1 — Estado real do banco (`.dev-user-data/banco/sudosys.db`, leitura só-leitura):**
+
+  | Campo | Valor antes da correção |
+  |---|---|
+  | linhas em `usuarios` | 1 |
+  | `id` / `email` / `papel` | 1 / `admin@sudosys.local` / `admin` |
+  | `ativo` | 1 |
+  | `must_change_password` | 0 |
+  | `ultimo_login` | 2026-09-14 19:31:10 |
+  | `senha_hash` | `pbkdf2:793635c3cecf256714ec06680632ce4a:<128 hex>` — 168 caracteres, formato íntegro |
+
+* **PASSO 2 — Descarte de bug de comparação/encoding (o pedido explícito era não adivinhar o motivo antes de confirmar isso):**
+
+  * Rodado o algoritmo real do projeto (`SimplePasswordHasher`, `packages/infrastructure/src/auth/Argon2PasswordHasher.ts` — apesar do nome do arquivo, é `pbkdf2Sync(senha, salt, 100000, 64, 'sha512')`) sobre `"admin123"` com o **salt salvo no banco**: resultado **diferente** do hash salvo.
+  * O hash **não** está vazio nem corrompido: tem os 3 segmentos esperados, prefixo `pbkdf2:`, salt de 32 hex e digest de 128 hex — exatamente o que `hash()` produz. `ativo = 1`, então o login também não estava caindo no ramo "Usuário não encontrado ou inativo".
+  * Testadas 11 variantes para descartar trim/espaço/encoding e recuperar a senha real: `admin123` com espaço à esquerda e à direita, `teste12345` e `Teste12345` (usadas na `ACAO-0014`), `admin12345`, `senha12345`, `novasenha123`, `trocada123`, `admin1234`, `test12345`, `12345678`. **Nenhuma bate.** A senha real é um valor não registrado e não recuperável (pbkdf2 é one-way).
+  * `auth:login` (`authHandlers.ts`) não faz `trim` nem normalização — compara a string crua via `hasher.verify`. Não há bug de comparação a corrigir.
+* **PASSO 3 — Causa raiz:**
+
+  * `must_change_password = 0` com hash `pbkdf2:` é a assinatura de uma **troca de senha real e bem-sucedida**: só `updateSenhaEClearMustChange` (chamado exclusivamente por `auth:trocarSenha`) zera essa flag. Bate com o registrado na `ACAO-0027`, que trocou a senha do admin deste banco durante os Passos 3/4 da validação e deliberadamente não anotou o valor novo.
+  * O bootstrap de `authHandlers.ts:25-34` **não** recupera a credencial: ele só sobrescreve a senha enquanto o hash ainda começar com `$argon2id$` (o placeholder literal da migration `035b_usuario_admin_seed`). Depois da primeira troca, o hash vira `pbkdf2:...` e a condição fica permanentemente falsa — comportamento já analisado e documentado na própria `ACAO-0027`.
+  * Não existe fluxo de "esqueci minha senha" no sistema. Por isso o único caminho é UPDATE direto no banco de dev.
+* **PASSO 4 — Correção aplicada:**
+
+  * Criado `scripts/reset-admin-senha.cjs`: gera `pbkdf2:<salt novo>:<digest>` com os mesmos parâmetros do `SimplePasswordHasher`, faz `UPDATE usuarios SET senha_hash = ?, must_change_password = 0 WHERE email = 'admin@sudosys.local'` e reverifica o hash gravado antes de sair. Senha padrão `admin123`, opcionalmente outra por argumento.
+  * `must_change_password` deixado em `0` **por escolha explícita do usuário nesta sessão**, para que o login de teste vá direto ao Dashboard. Isso afeta apenas este banco de dev; o seed continua nascendo com `1` (migration `055`) e o enforcement da `REC-0002`/`ACAO-0027` permanece intacto no código.
+  * `better-sqlite3` do repo está compilado para o ABI do Electron (128) e falha no Node local (115), conforme `README_AMBIENTE.md` §11. Em vez de reconstruir a dependência nativa (que quebraria o `pnpm dev` em andamento), o script foi executado sob o runtime do Electron com `ELECTRON_RUN_AS_NODE=1` — o cabeçalho do script documenta o comando. **Nenhum rebuild nativo foi feito.**
+* **PASSO 5 — Validação via IPC real (CDP), contra o app de desenvolvimento já em execução:**
+
+  * Conexão WebSocket ao alvo `http://localhost:5173/` em `localhost:9222` via PowerShell (`System.Net.WebSockets.ClientWebSocket` + `Runtime.evaluate` com `awaitPromise`), mesmo princípio de `scripts/cdp-test.ps1`.
+  * `login({email:'admin@sudosys.local', senha:'admin123'})` → `success: true`, `papel: admin`, `must_change_password: 0`, token emitido, `ultimo_login` atualizado para `2026-09-18 17:09:08`.
+  * `login(...)` com senha errada (`senhaerrada999`) → `{success:false, error:"Senha incorreta."}` — confirma que a verificação continua rejeitando senha inválida (o reset não afrouxou a checagem).
+  * `listFuncionarios()` na mesma sessão → `{ok:true, count:1}` — o gate do `authGuard.ts` liberou canal autenticado normalmente, sem cobrança de troca de senha.
+* **O que foi mudado:**
+
+  * `scripts/reset-admin-senha.cjs` (novo, **fora do Git** — adicionado ao `.gitignore` por decisão do usuário nesta sessão: é um script que reseta senha de admin direto no banco sem pedir a senha atual, específico deste ambiente de dev, sem valor para outros agentes/máquinas e sem necessidade de ir para a nuvem).
+  * `.dev-user-data/banco/sudosys.db` (fora do Git): `senha_hash` do usuário `id=1`. `must_change_password` já era `0` e continuou `0`.
+  * `HISTORICO_AGENTES.md` e `CONTEXTO_TOTAL.md` (registro); `.gitignore` (nova entrada para `scripts/reset-admin-senha.cjs`).
+  * Nenhum arquivo de código da aplicação, migration, contrato IPC ou tipo compartilhado foi tocado.
+* **Riscos ou observações:**
+
+  * O script é **destrutivo e específico de desenvolvimento**: sobrescreve a senha do admin sem pedir a senha atual. O cabeçalho do arquivo avisa para não rodar contra banco real. Ele não valida qual banco está apontado além do caminho fixo `.dev-user-data/banco/sudosys.db`.
+  * O app Electron estava rodando durante o UPDATE. Não houve conflito porque o SQLite está em modo WAL e o `auth:login` lê o hash do banco a cada tentativa (não há cache de credencial em memória) — o login novo funcionou sem reiniciar o processo.
+  * Tokens de sessão emitidos antes do reset continuam válidos em memória (`tokenMap`), já que nada os invalida numa troca feita fora do `auth:trocarSenha`. Irrelevante em dev; seria um gap real se existisse um fluxo de reset administrativo em produção.
+  * Continua não existindo fluxo de recuperação de senha no sistema. Se a senha do admin for trocada de novo em dev e não registrada, o único caminho continua sendo este script (ou apagar `.dev-user-data` e refazer o setup).
+  * Não foi feita validação pela UI real (preenchimento de campos na `LoginPage`), só pelo canal IPC `auth:login` que a tela chama. `pnpm test` não foi executado: nenhum código testável foi alterado.
+* **Recomendações deixadas para próximos agentes:**
+
+  * Nenhuma REC nova. Fica o registro de que a credencial de dev é `admin@sudosys.local` / `admin123` novamente, e de que qualquer agente que trocar essa senha durante teste deve registrá-la aqui ou resetá-la ao final com `scripts/reset-admin-senha.cjs`.
+* **Próxima ação sugerida:**
+
+  * Retomar o que já estava pendente antes desta ação: decisão do usuário sobre `REC-0019` e itens 2–3 da `REC-0021`.

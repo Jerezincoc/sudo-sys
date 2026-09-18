@@ -39,3 +39,6 @@ coverage/
 
 # ── Claude Code ───────────────────────────────────────────
 .claude/
+
+# ── Scripts locais sensíveis de dev (reset de credenciais em banco local) ──
+scripts/reset-admin-senha.cjs
