@@ -2016,3 +2016,147 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 * **Próxima ação sugerida:**
 
   * Levar o apontamento de UI ao Codex; decidir `REC-0019` e itens 2–3 da `REC-0021`; verificar em fonte oficial o desconto simplificado no IRRF do 13º.
+
+### ACAO-0039 — 2026-09-20 — Claude (Opus 5)
+
+* **Autor da ação:** Claude (Opus 5)
+* **Tipo de ação:** Diagnóstico (sem implementação) — versionamento de tabelas tributárias por competência
+* **Status:** Concluído — **diagnóstico apenas; nenhum código alterado; nenhuma decisão de arquitetura tomada**
+* **Branch:** `logic/diagnostico-tabelas-tributarias` (worktree isolada em `../sudo-sys-tabelas`, criada a partir de `origin/main` = `ed8da11`). **Sem merge para `main`.**
+* **Escopo:** Somente leitura de lógica/backend. Nenhum arquivo de `packages/ui/` tocado. Só `HISTORICO_AGENTES.md` foi alterado, conforme instrução — `CONTEXTO_TOTAL.md` **não** foi mexido, porque a decisão de arquitetura fica para depois deste relatório.
+* **Nota de coordenação:** O diretório principal estava na branch `logic/rec-0023-saldo-fgts-null` com trabalho **não commitado** (incluindo `packages/ui/src/pages/rescisao/RescisaoForm.tsx`, a UI da `REC-0023`). Usou-se `git worktree` para não trocar a branch ativa nem carregar esse trabalho. Numeração `ACAO-0039` para não colidir com a `ACAO-0037` (Codex, UI) nem com a `ACAO-0038` (branch `logic/rec-0022-simplificado-13o`, ainda não mesclada).
+
+---
+
+#### PASSO 1 — Como o motor escolhe a tabela hoje
+
+**Resposta curta: é um meio-termo — não é banco de dados, mas também não é "uma constante com comentário". Existe uma estrutura de versionamento real, porém só no código e só para 2 dos 6 parâmetros fiscais.**
+
+* **Não existe nenhuma estrutura no banco.** As 14 tabelas criadas pelas migrations são: `_migrations`, `cbo`, `empresas`, `ferias`, `folha_competencias`, `folha_holerites`, `folha_lancamentos`, `funcionarios`, `funcionarios_new`, `registros_ponto`, `relatorios_personalizados`, `rescisoes`, `rubricas`, `usuarios`. **Não há `tabelas_irrf`, `tabelas_inss` nem qualquer tabela de vigência.** A única ocorrência de "alíquota" em `database.ts` é `aliquota_rat` (coluna de `empresas`, alíquota RAT do empregador — nada a ver com IRRF/INSS).
+* **O que existe é versionamento em código**, em `packages/infrastructure/src/services/CalculoFolha.ts`: dois arrays, `TABELAS_INSS` e `TABELAS_IRRF`, cada entrada com `vigenteDesde` no formato `"AAAA-MM"`, e um seletor:
+
+  ```ts
+  function tabelaVigente<T extends { vigenteDesde: string }>(tabelas: T[], competencia?: string): T {
+    if (!competencia) return tabelas[0]
+    return tabelas.find((t) => t.vigenteDesde <= competencia) ?? tabelas[tabelas.length - 1]
+  }
+  ```
+
+  Os arrays estão ordenados do mais recente para o mais antigo, então `find` devolve a entrada mais recente cuja vigência seja ≤ competência. Isso **é** um histórico versionado de verdade — apenas raso.
+* **O fallback é silencioso.** Quando a competência é anterior à entrada mais antiga, `find` devolve `undefined` e o `??` cai na **última** entrada do array (a mais antiga disponível) — **sem erro, sem aviso**. Comprovado executando o motor compilado (`packages/infrastructure/dist/services/CalculoFolha.js`), salário R$ 3.000:
+
+  | competência | INSS | IRRF (0 dep) |
+  |---|---|---|
+  | 2021-01 a 2024-01 | R$ 253,41 | R$ 36,55 |
+  | 2025-01 | R$ 253,41 | R$ 36,55 |
+  | 2025-05 | R$ 253,41 | R$ 23,83 |
+  | 2026-01 | R$ 248,60 | R$ 0,00 |
+
+  Ou seja, 2021, 2022, 2023 e janeiro/2024 devolvem **exatamente** os valores da tabela de INSS de 2025 e da tabela de IRRF de 2024-02. Nenhuma exceção foi lançada.
+
+**Os 6 parâmetros fiscais e seu estado de versionamento:**
+
+| Parâmetro | Onde | Versionado por competência? |
+|---|---|---|
+| Faixas de INSS | `TABELAS_INSS` (array) | **Sim** — 2 entradas |
+| Tabela progressiva IRRF | `TABELAS_IRRF` (array) | **Sim** — 2 entradas |
+| Desconto simplificado | `DESCONTO_SIMPLIFICADO = 607.20` (`:102`) | **Não** — constante fixa (`REC-0024`) |
+| Dedução por dependente | literal `189.59` inline (`:112`) | **Não** — literal solto |
+| Redutor Lei 15.270 | 5 constantes + porta `>= '2026-01'` (`:94-98`) | **Parcial** — porta única, não é array |
+| FGTS 8% | `calcularFGTS` (`:153`) | **Não** — sem parâmetro de competência |
+
+---
+
+#### PASSO 2 — Cobertura atual da estrutura que existe
+
+Alvo declarado: **5 anos** (janela de outubro/2021 a setembro/2026 = 60 competências).
+
+| Estrutura | Entradas | Cobre desde | Competências cobertas | % da janela |
+|---|---|---|---|---|
+| `TABELAS_INSS` | 2 (`2025-01`, `2026-01`) | jan/2025 | 21 de 60 | **35%** |
+| `TABELAS_IRRF` | 2 (`2024-02`, `2025-05`) | fev/2024 | 32 de 60 | **53%** |
+| Desconto simplificado | 0 (constante) | — | 17 de 60 corretas por acaso | **0% versionado** |
+
+**Não cobre todas as tabelas necessárias — cobre 2 das 6.** E o desconto simplificado tem um problema de natureza diferente do descrito na `REC-0024`: não é só que o valor está errado para competências antigas, é que **ele é aplicado em competências em que não existia**. O desconto simplificado **mensal** só passou a existir em **maio/2023** (antes disso a RFB só previa o desconto simplificado **anual**, na declaração). Para qualquer competência entre out/2021 e abr/2023 o motor deduz R$ 607,20 que a lei daquele mês não previa.
+
+**Divergência concreta**, medida com o motor real — salário R$ 5.000, competência **2022-06**, 0 dependentes:
+
+| | Oficial 2022 | Motor hoje | Diferença |
+|---|---|---|---|
+| INSS | R$ 536,18 | R$ 509,60 | −R$ 26,58 |
+| IRRF (regime dependentes) | R$ 368,23 | R$ 347,57 | −R$ 20,66 |
+| **Líquido** | **R$ 4.095,59** | **R$ 4.142,83** | **+R$ 47,24** |
+| IRRF (regime simplificado) | R$ 368,23 | R$ 210,95 | **−R$ 157,28** |
+
+---
+
+#### PASSO 3 — Conclusão sobre construir vs. estender
+
+A premissa do `PASSO 3` ("se tudo forem constantes fixas, vira construir do zero") **não se confirma inteiramente**. O que há é uma base pequena, mas correta em desenho: `vigenteDesde` + `tabelaVigente()` já resolvem a seleção por competência, e foram validados nas `ACAO-0008`/`ACAO-0033`/`ACAO-0035`. **Estender é viável**; o trabalho maior não é a estrutura, e sim (a) preencher as entradas faltantes, (b) trazer para o mesmo padrão os 4 parâmetros que hoje estão fora dele, e (c) decidir o que fazer com o fallback silencioso. **Nada disso foi implementado nesta ação**, conforme instruído.
+
+Pontos que a decisão de arquitetura precisa resolver (registrados, não decididos):
+
+1. **Código ou banco?** Tabela tributária em banco exigiria migration, seed, versionamento do seed e uma tela de manutenção (UI — fora do escopo desta linha de trabalho). Em código, continua sendo deploy a cada mudança de lei, mas sem superfície nova e com revisão por diff. O projeto está em estabilização (`DEC-0002`: evitar refatoração ampla).
+2. **O fallback silencioso deve virar erro?** Hoje uma competência fora de cobertura devolve número errado sem avisar — mesma classe de problema da `ACAO-0036` (multa FGTS silenciosa). Um `DadoObrigatorioRescisaoError`-equivalente, ou um erro próprio de "competência sem tabela", eliminaria a categoria.
+3. **Parâmetros que precisam entrar no versionamento:** desconto simplificado (obrigatório — muda de valor **e** de existência) e o redutor (hoje porta única). A dedução por dependente **não precisa**: R$ 189,59 é constante em toda a janela de 5 anos (confirmado em todas as páginas oficiais da RFB consultadas). O FGTS de 8% também é estável (Lei 8.036/90 art. 15).
+
+---
+
+#### PASSO 4 — Fontes oficiais levantadas (2021–2026), para conferência
+
+**Nada disto foi implementado.** Lista para o usuário conferir antes de qualquer código.
+
+##### 4.1 INSS — contribuição do segurado empregado (progressiva por faixa, EC 103/2019)
+
+| Vigência | Faixa 1 (7,5%) | Faixa 2 (9%) | Faixa 3 (12%) | Faixa 4 (14%) = teto | Fonte oficial |
+|---|---|---|---|---|---|
+| 2021-01 | até 1.100,00 | 2.203,48 | 3.305,22 | 6.433,57 | Portaria SEPRT nº 477/2021 |
+| 2022-01 | até 1.212,00 | 2.427,35 | 3.641,03 | 7.087,22 | Portaria Interministerial MTP/ME nº 12, de 17/01/2022 (DOU 20/01/2022) |
+| 2023-01 | até 1.302,00 | 2.571,29 | 3.856,94 | 7.507,49 | Portaria Interministerial MPS/MF nº 26, de 10/01/2023 (DOU 11/01/2023) |
+| **2023-05** | até 1.320,00 | 2.571,29 | 3.856,94 | 7.507,49 | Portaria Interministerial MPS/MF nº 27, de 04/05/2023 (salário mínimo → R$ 1.320, MP 1.172/2023) |
+| 2024-01 | até 1.412,00 | 2.666,68 | 4.000,03 | 7.786,02 | Portaria Interministerial MPS/MF nº 2, de 11/01/2024 (Anexo II) |
+| 2025-01 ✔ | até 1.518,00 | 2.793,88 | 4.190,83 | 8.157,41 | Portaria Interministerial MPS/MF nº 6, de 10/01/2025 |
+| 2026-01 ✔ | até 1.621,00 | 2.902,84 | 4.354,27 | 8.475,55 | Portaria Interministerial MPS/MF nº 13, de 09/01/2026 (Anexo II) |
+
+✔ = já presente no código. **Faltam 5 entradas.** Atenção ao ano de **2023, que teve duas tabelas** — é o caso que mais facilmente passa batido.
+
+##### 4.2 IRRF — tabela progressiva mensal, dedução por dependente e desconto simplificado
+
+| Vigência | Faixa isenta | 7,5% (ded.) | 15% (ded.) | 22,5% (ded.) | 27,5% (ded.) | Dependente | Desc. simplificado | Fonte oficial |
+|---|---|---|---|---|---|---|---|---|
+| 2016-01 a **2023-04** | até 1.903,98 | 2.826,65 (142,80) | 3.751,05 (354,80) | 4.664,68 (636,13) | acima (869,36) | 189,59 | **não existia (mensal)** | Lei nº 13.149, de 21/07/2015 |
+| **2023-05** a 2024-01 | até 2.112,00 | 2.826,65 (158,40) | 3.751,05 (370,40) | 4.664,68 (651,73) | acima (884,96) | 189,59 | **528,00** | Lei nº 14.663, de 28/08/2023 |
+| 2024-02 a 2025-04 ✔ | até 2.259,20 | 2.826,65 (169,44) | 3.751,05 (381,44) | 4.664,68 (662,77) | acima (896,00) | 189,59 | **564,80** | Lei nº 14.848, de 01/05/2024 |
+| 2025-05 a 2025-12 ✔ | até 2.428,80 | 2.826,65 (182,16) | 3.751,05 (394,16) | 4.664,68 (675,49) | acima (908,73) | 189,59 | **607,20** | Lei nº 15.191, de 11/08/2025 |
+| 2026-01 → ✔ | idem 2025-05 | idem | idem | idem | idem | 189,59 | **607,20** | Lei nº 15.191/2025 + redutor da Lei nº 15.270, de 26/11/2025 |
+
+✔ = já presente no código. **Faltam 2 entradas de tabela** (a congelada 2016→2023-04 e a de 2023-05) e **as 3 versões do desconto simplificado**.
+
+Observações que saíram da conferência:
+
+* Os tetos das faixas superiores (**2.826,65 / 3.751,05 / 4.664,68**) **não mudaram nenhuma vez** entre 2016 e 2026. Só a faixa isenta e as parcelas a deduzir se movem — o que simplifica bastante o preenchimento.
+* A **dedução por dependente é R$ 189,59 em todas as competências** da janela (confirmado em cada página anual da RFB). Não precisa de versionamento hoje, mas convém sair de literal solto.
+* O desconto simplificado **mensal** nasce em **maio/2023**; de 2016 a 2022 a RFB só publica o **limite anual** de desconto simplificado (R$ 16.754,34), aplicável à declaração, não à retenção mensal. Confirmado literalmente na página "Tributação de 2016 a 2022".
+* Pequena inconsistência na própria RFB: a página de 2024 atribui a tabela de maio/2023 à "Lei nº 14.848, de 1º de maio de 2024", enquanto a página de 2023 a atribui corretamente à **Lei nº 14.663/2023**. Vale usar a atribuição da página de 2023.
+* O valor **R$ 564,80** para 2024 está **oficialmente confirmado**, o que valida a `REC-0024` levantada na `ACAO-0038`.
+
+##### 4.3 Fontes consultadas
+
+Oficiais (`.gov.br`), acessadas diretamente:
+
+* INSS — Tabela de contribuição mensal (2026) e Tabela de contribuição – histórico (2021).
+* Receita Federal — "Tributação de 2016 a 2022", "Tributação de 2023", "Tributação de 2024", "Tributação de 2025", "Tributação de 2026".
+
+Secundárias, usadas só para identificar **número e data das Portarias** cujo texto oficial não abriu (`normaslegais.com.br`, `legisweb.com.br`) — os **valores** de todas as faixas vieram das páginas oficiais acima, exceto as faixas intermediárias de 2022 e de maio/2023, que vieram das reproduções das Portarias e **devem ser reconferidas** no DOU antes de virarem código.
+
+**Limitação de ambiente:** `planalto.gov.br` continuou dando `ECONNRESET` e o `curl` segue bloqueado pela sandbox (timeout com 0 bytes), então os textos de lei não puderam ser lidos na fonte primária; as páginas da RFB e do INSS, porém, abriram normalmente e são fonte oficial suficiente para os valores. Um resumo de busca inicial sobre tetos do INSS veio **deslocado em um ano** e foi descartado — os valores da tabela 4.1 não vêm dele.
+
+---
+
+* **O que foi mudado:** apenas `HISTORICO_AGENTES.md` (este registro). Nenhum código, nenhuma migration, `CONTEXTO_TOTAL.md` intocado por instrução.
+* **Riscos ou observações:**
+
+  * O achado mais relevante é o do desconto simplificado aplicado **antes de existir** (out/2021–abr/2023): é mais grave que o descrito na `REC-0024` e deve entrar na mesma decisão.
+  * O fallback silencioso afeta qualquer recálculo retroativo — folha e rescisão — e hoje não há nada que sinalize ao usuário que a competência pedida está fora de cobertura.
+  * As worktrees `../sudo-sys-rec0022` e `../sudo-sys-tabelas` seguem montadas; remover com `git worktree remove` depois de decididos os merges.
+* **Próxima ação sugerida:** decisão do usuário sobre (1) código vs. banco, (2) transformar o fallback silencioso em erro explícito, (3) quais parâmetros entram no versionamento — antes de qualquer implementação.
