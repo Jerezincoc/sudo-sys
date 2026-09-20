@@ -5,7 +5,7 @@ import { getDb } from '../../db/database'
 import { SqliteRescisaoRepository } from '@sudo-sys/infrastructure'
 import { SqliteFuncionarioRepository } from '@sudo-sys/infrastructure'
 import { SqliteEmpresaRepository } from '@sudo-sys/infrastructure'
-import { calcularRescisao } from '@sudo-sys/infrastructure'
+import { calcularRescisao, DadoObrigatorioRescisaoError } from '@sudo-sys/infrastructure'
 import type { CreateRescisaoPayload, UpdateRescisaoPayload } from '@sudo-sys/shared'
 import { RescisaoRenderer } from '../../pdf/RescisaoRenderer'
 
@@ -75,6 +75,39 @@ export function registerRescisaoHandlers(): void {
       const funcionario = funcRepo.getById(rescisao.funcionario_id)
       if (!funcionario) return { success: false, error: 'Funcionário não encontrado.' }
 
+      // ── Trava de recalculo de rescisao legada (ACAO-0036) ──────────────
+      // Rescisoes gravadas antes da migration 057 (REC-0020, commit 8e4770e) tinham a multa
+      // FGTS DIGITADA a mao e nao possuem `saldo_fgts`. Recalcular sem informar o saldo faz a
+      // multa cair para a base parcial (so os depositos desta rescisao) — silenciosamente menor
+      // que o saldo real da conta vinculada.
+      //
+      // `fgts_rescisao IS NULL` e o marcador confiavel de "nunca calculada pelo motor pos-057":
+      // o formulario nunca escreve esse campo (envia null ate um calculo bem-sucedido grava-lo),
+      // entao ele sobrevive ao fato de a tela gravar `saldo_fgts = 0` para campo vazio.
+      // Enquanto a tela coagir null -> 0, esta e a unica trava que dispara no caminho da UI
+      // (ver apontamento de UI da ACAO-0036).
+      const multaSeAplica =
+        rescisao.motivo === 'sem_justa_causa' || rescisao.motivo === 'acordo_mutuo'
+      const nuncaCalculadaPeloMotorNovo = rescisao.fgts_rescisao == null
+      const temMultaLegadaDigitada = (rescisao.multa_fgts ?? 0) > 0
+      const saldoFgtsNaoInformado = rescisao.saldo_fgts == null || rescisao.saldo_fgts === 0
+
+      if (
+        multaSeAplica &&
+        nuncaCalculadaPeloMotorNovo &&
+        temMultaLegadaDigitada &&
+        saldoFgtsNaoInformado
+      ) {
+        throw new DadoObrigatorioRescisaoError(
+          'saldo_fgts',
+          `Esta rescisao foi calculada antes da atualizacao do calculo de FGTS e tem multa ` +
+            `digitada manualmente (R$ ${(rescisao.multa_fgts ?? 0).toFixed(2)}). ` +
+            `Informe o "Saldo FGTS p/ fins rescisorios" (saldo da conta vinculada) antes de ` +
+            `recalcular: sem ele a multa seria recalculada apenas sobre os depositos desta ` +
+            `rescisao e sairia menor que o devido.`,
+        )
+      }
+
       const c = calcularRescisao({
         dataAdmissao:       funcionario.data_admissao,
         dataDemissao:       rescisao.data_demissao,
@@ -85,7 +118,7 @@ export function registerRescisaoHandlers(): void {
         feriasVencidas:     rescisao.ferias_vencidas  ?? 0,
         outrosProventos:    rescisao.outros_proventos ?? 0,
         outrosDescontos:    rescisao.outros_descontos ?? 0,
-        saldoFgts:          rescisao.saldo_fgts       ?? 0,
+        saldoFgts:          rescisao.saldo_fgts       ?? null,
         dependentes:        funcionario.numero_dependentes_irrf ?? 0,
         regimeIrrf:         funcionario.regime_irrf   ?? 'dependentes',
       })

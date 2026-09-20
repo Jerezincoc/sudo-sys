@@ -7,6 +7,26 @@ import { calcularFGTS, calcularINSS, calcularIRRF } from './CalculoFolha'
 // comportamento original de propósito — ver REC-0019 e REC-0021 em CONTEXTO_TOTAL.md.
 // INSS/IRRF/FGTS rescisórios (ACAO-0035): plano e fontes em docs/plano-rec-0020.md.
 
+/**
+ * Dado obrigatorio ausente na entrada da rescisao. Segue o mesmo padrao de
+ * `FormulaEvaluationError` (packages/domain/src/formula/FormulaEvaluator.ts): interromper
+ * o calculo com erro claro e melhor do que produzir um valor errado em silencio.
+ *
+ * Nao importa a classe de `@sudo-sys/domain` de proposito: `infrastructure` e CommonJS e
+ * `domain` e ESM (DEC-0004/DEC-0005), e criar esse consumidor exigiria a validacao de
+ * interoperabilidade que a DEC-0005 deixou registrada como pendente. Reaproveita-se o
+ * padrao, nao o modulo.
+ */
+export class DadoObrigatorioRescisaoError extends Error {
+  constructor(
+    readonly campo: string,
+    mensagem: string,
+  ) {
+    super(mensagem)
+    this.name = 'DadoObrigatorioRescisaoError'
+  }
+}
+
 export interface EntradaRescisao {
   dataAdmissao: string // AAAA-MM-DD
   dataDemissao: string // AAAA-MM-DD (último dia trabalhado)
@@ -17,9 +37,12 @@ export interface EntradaRescisao {
   feriasVencidas: number // valor simples, sem o 1/3
   outrosProventos: number
   outrosDescontos: number
-  /** Saldo da conta vinculada informado pelo usuário (o sistema não acessa a conta CAIXA),
-   *  sem os depósitos gerados por esta rescisão. */
-  saldoFgts: number
+  /** Saldo da conta vinculada informado pelo usuario (o sistema nao acessa a conta CAIXA),
+   *  sem os depositos gerados por esta rescisao.
+   *  `null` significa NAO INFORMADO e e diferente de `0` (saldo informado como zero):
+   *  com multa aplicavel e saldo nao informado o calculo falha, em vez de usar base parcial
+   *  (ACAO-0036). */
+  saldoFgts: number | null
   dependentes: number
   regimeIrrf: 'dependentes' | 'simplificado'
 }
@@ -181,7 +204,19 @@ export function calcularRescisao(e: EntradaRescisao): ResultadoRescisao {
   const fgtsRescisao = calcularFGTS(saldoSalario + decimoTerceiro + avisoPrevioValor)
   const percentualMulta =
     e.motivo === 'sem_justa_causa' ? 0.4 : e.motivo === 'acordo_mutuo' ? 0.2 : 0
-  const multaFgts = round2((e.saldoFgts + fgtsRescisao) * percentualMulta)
+
+  // Trava da ACAO-0036: `saldoFgts` nulo significa NAO INFORMADO, nao zero. Sem ele a multa
+  // sairia apenas sobre os depositos desta rescisao — base parcial e silenciosamente menor
+  // que o saldo real da conta vinculada. Falha explicita, no padrao de FormulaEvaluationError.
+  if (percentualMulta > 0 && e.saldoFgts == null) {
+    throw new DadoObrigatorioRescisaoError(
+      'saldoFgts',
+      'Saldo FGTS p/ fins rescisorios nao informado. Sem esse saldo a multa do FGTS sairia ' +
+        'calculada somente sobre os depositos desta rescisao, resultando em valor menor que o ' +
+        'devido. Informe o saldo da conta vinculada (use 0 apenas se o saldo for realmente zero).',
+    )
+  }
+  const multaFgts = round2(((e.saldoFgts ?? 0) + fgtsRescisao) * percentualMulta)
 
   const totalProventos = round2(
     saldoSalario + e.feriasVencidas + feriasProporcionais + umTercoFerias +

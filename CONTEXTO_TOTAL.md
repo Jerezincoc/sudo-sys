@@ -52,9 +52,9 @@ Depois da leitura, o agente deve identificar a fase atual, verificar recomendaç
 - **Stack principal:** Electron, React, TypeScript, Vite, SQLite e pnpm monorepo.
 - **Estado atual:** Protótipo funcional com baixa confiabilidade operacional e fiscal.
 - **Fase atual:** Estabilização do build e da distribuição Electron.
-- **Última ação registrada:** `ACAO-0035` — `REC-0020` executada: INSS e IRRF rescisórios calculados (saldo de salário e 13º em linhas separadas, tetos independentes, aviso indenizado e férias fora das bases), depósito de FGTS da rescisão e multa 40%/20% calculada sobre o saldo FGTS informado + depósitos da rescisão (incluindo o do aviso indenizado — tema **contestado**, sem tese firmada no TST, sinalizado na tela e no PDF). Migration `057`. Validado com 4 cenários à mão (novo cenário (d) com IRRF > 0 e teto do INSS), via IPC real/CDP (56/56 campos) e nos PDFs. `pnpm test` 69/69. Plano em `docs/plano-rec-0020.md`; pontos `[A CONFIRMAR]` em `REC-0021`.
+- **Última ação registrada:** `ACAO-0036` — corrigida a **regressão silenciosa** deixada pela `ACAO-0035`: rescisões gravadas antes do commit `8e4770e` têm a multa FGTS digitada à mão e não têm `saldo_fgts`; ao recalcular, o handler convertia "não informado" em zero (`?? 0`) e a multa saía recalculada só sobre os depósitos daquela rescisão, **sem aviso**. Levantamento nos 3 bancos locais: **0 rescisões em risco** (correção preventiva; o defeito vale para instalações de cliente). Adotada a abordagem de **erro explícito** (`DadoObrigatorioRescisaoError`, no padrão de `FormulaEvaluationError`), mais uma trava de rescisão legada no `rescisao:calcular`. Validado com caso real reconstituído sobre o handler compilado (6 cenários) — no caso testado a multa sairia R$ 249,60 no lugar de R$ 12.032,00. `pnpm test` **76/76**. Apontamento de UI em `REC-0023` (não implementado: `packages/ui` é do Jeremias/Codex).
 - **Ação anterior sobre rescisão:** `ACAO-0033` — diagnóstico do cálculo de Rescisão (TRCT) contra o texto literal da CLT, Lei 12.506/2011, Lei 4.090/62 e Lei 8.036/90. Motor extraído para `CalculoRescisao.ts` (com testes). Corrigidos: aviso prévio proporcional; aviso zerado em justa causa/pedido de demissão e pela metade no acordo; 1/3 sobre férias vencidas no total; fração de dias em férias/13º; projeção do aviso indenizado; multa FGTS fora do líquido. Validado com 3 cenários à mão, via IPC real (CDP) e nos PDFs (27/27 campos). `pnpm test` 60/60. Pontos em dúvida em `REC-0019`; INSS/IRRF/FGTS rescisórios não implementados em `REC-0020`.
-- **Próxima ação recomendada:** decisão do usuário sobre os itens `[A CONFIRMAR]` da `REC-0019` (principalmente justa causa × IRR Tema 96 do TST) e da `REC-0021` (outros proventos; redutor Lei 15.270 no 13º). Continuam pendentes: confirmar com o Codex o envio de `EmpresasPage.tsx` (`ACAO-0031`), `REC-0018`, `REC-0011` e `REC-0016`.
+- **Próxima ação recomendada:** levar o **apontamento de UI da `REC-0023`** ao Codex (o formulário de rescisão coage `saldo_fgts` nulo para 0, o que mantém a trava do motor inerte no caminho da tela). Em paralelo: decisão do usuário sobre os itens `[A CONFIRMAR]` da `REC-0019` (principalmente justa causa × IRR Tema 96 do TST) e da `REC-0021` (outros proventos; redutor Lei 15.270 no 13º). Continuam pendentes: confirmar com o Codex o envio de `EmpresasPage.tsx` (`ACAO-0031`), `REC-0018`, `REC-0011` e `REC-0016`.
 - **Uso em produção:** Não recomendado antes das correções críticas e dos testes de cálculo.
 
 ## 2. Objetivo do projeto
@@ -117,11 +117,11 @@ O processo principal executa operações síncronas de SQLite, hash de senha, fi
 
 ### Testes
 
-Desde a `ACAO-0015` existe um framework de testes (`vitest`) e uma suíte funcional (`pnpm test`, raiz), hoje cobrindo: motor de cálculo IRRF/INSS/FGTS (`packages/infrastructure/src/services/CalculoFolha.test.ts`, 7 testes), transação/idempotência do recálculo de folha (`packages/infrastructure/src/repositories/SqliteFolhaRepository.test.ts`, 4 testes) o motor de fórmulas (`packages/domain/src/formula/Formula.test.ts`, 25 testes) e, desde a `ACAO-0033`, o cálculo de rescisão (`packages/infrastructure/src/services/CalculoRescisao.test.ts`, 24 testes) — **60 testes no total**. Férias (módulo próprio), ponto e os demais cálculos trabalhistas continuam sem teste automatizado (`REC-0003` parcialmente executada).
+Desde a `ACAO-0015` existe um framework de testes (`vitest`) e uma suíte funcional (`pnpm test`, raiz), hoje cobrindo: motor de cálculo IRRF/INSS/FGTS (`packages/infrastructure/src/services/CalculoFolha.test.ts`, 7 testes), transação/idempotência do recálculo de folha (`packages/infrastructure/src/repositories/SqliteFolhaRepository.test.ts`, 4 testes) o motor de fórmulas (`packages/domain/src/formula/Formula.test.ts`, 25 testes) e, desde a `ACAO-0033`, o cálculo de rescisão (`packages/infrastructure/src/services/CalculoRescisao.test.ts`, 40 testes desde a `ACAO-0036`) — **76 testes no total**. Férias (módulo próprio), ponto e os demais cálculos trabalhistas continuam sem teste automatizado (`REC-0003` parcialmente executada).
 
 ### Motor de cálculo (Rescisão/TRCT)
 
-Desde a `ACAO-0033`, `rescisao:calcular` usa `calcularRescisao()` (`packages/infrastructure/src/services/CalculoRescisao.ts`), validado contra o texto legal. Saldo de salário, aviso prévio (proporcional, por motivo), férias proporcionais + 1/3 (inclusive sobre vencidas) e 13º proporcional são calculados. Desde a `ACAO-0035`, INSS e IRRF (saldo de salário e 13º separados), depósito de FGTS da rescisão e multa FGTS (sobre o saldo FGTS informado pelo usuário) também são calculados, reaproveitando `calcularINSS`/`calcularIRRF`/`calcularFGTS` de `CalculoFolha.ts` com a tabela da competência da demissão. Férias vencidas, saldo FGTS e outros proventos/descontos continuam **informados manualmente**. Regras em dúvida mantidas como no código original — ver `REC-0019` e `REC-0021`.
+Desde a `ACAO-0033`, `rescisao:calcular` usa `calcularRescisao()` (`packages/infrastructure/src/services/CalculoRescisao.ts`), validado contra o texto legal. Saldo de salário, aviso prévio (proporcional, por motivo), férias proporcionais + 1/3 (inclusive sobre vencidas) e 13º proporcional são calculados. Desde a `ACAO-0035`, INSS e IRRF (saldo de salário e 13º separados), depósito de FGTS da rescisão e multa FGTS (sobre o saldo FGTS informado pelo usuário) também são calculados, reaproveitando `calcularINSS`/`calcularIRRF`/`calcularFGTS` de `CalculoFolha.ts` com a tabela da competência da demissão. Férias vencidas, saldo FGTS e outros proventos/descontos continuam **informados manualmente**. Desde a `ACAO-0036`, o saldo FGTS **não informado** (`null`) deixou de ser tratado como zero: com multa devida, o cálculo falha com `DadoObrigatorioRescisaoError` em vez de usar base parcial, e `rescisao:calcular` bloqueia o recálculo de rescisões legadas (multa digitada à mão, `fgts_rescisao IS NULL`) até o saldo ser informado. Regras em dúvida mantidas como no código original — ver `REC-0019` e `REC-0021`.
 
 ### Motor de cálculo (IRRF) e schema de funcionários
 
@@ -221,7 +221,7 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Origem:** Codex
 - **Data:** 2026-09-11
 - **Execução:** Parcialmente concluída na `ACAO-0015` — introduzido `vitest` (primeiro framework de testes do projeto, instalado em `packages/infrastructure`) e criada suíte para `calcularIRRF`/`calcularINSS`/`calcularFGTS` (`CalculoFolha.test.ts`), cobrindo os 4 cenários de IRRF e a guarda de competência do redutor da Lei 15.270/2025 validados manualmente nesta sessão. Rodável via `pnpm test` (raiz) ou `pnpm --filter @sudo-sys/infrastructure test`. **Escopo restante pendente:** Rescisão, Férias, Ponto e demais cálculos trabalhistas continuam sem nenhum teste automatizado — restrição de escopo foi instrução explícita do usuário, não limitação técnica.
-- **Extensão (`ACAO-0033`):** Rescisão passou a ter suíte própria (`CalculoRescisao.test.ts`, 24 testes, com caracterização prévia do código original). Restam Férias (módulo) e Ponto. Na `ACAO-0035` a suíte de rescisão passou a 33 testes (INSS/IRRF/FGTS rescisórios e cenário (d)).
+- **Extensão (`ACAO-0033`):** Rescisão passou a ter suíte própria (`CalculoRescisao.test.ts`, 24 testes, com caracterização prévia do código original). Restam Férias (módulo) e Ponto. Na `ACAO-0035` a suíte de rescisão passou a 33 testes (INSS/IRRF/FGTS rescisórios e cenário (d)) e na `ACAO-0036` a 40 (trava de saldo FGTS não informado).
 
 ### REC-0004
 
@@ -413,6 +413,30 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Data:** 2026-09-16
 - **Referência:** `ACAO-0035`; `docs/plano-rec-0020.md`.
 
+### REC-0022
+
+- **Status:** Pendente — **não** executada na `ACAO-0036` (fora do escopo, por guardrail explícito do usuário).
+- **Recomendação:** Verificar em fonte oficial se o **desconto simplificado** do IRRF (regime `simplificado`, R$ 607,20) se aplica à tributação **exclusiva do 13º salário**. Hoje o motor aplica ao 13º o mesmo regime do funcionário.
+- **Motivo:** Levantado como dúvida na `ACAO-0035`; não coberto pelo plano da `REC-0020` e sem confirmação em fonte oficial.
+- **Prioridade:** Média (risco fiscal restrito a funcionários no regime simplificado com 13º na rescisão).
+- **Origem:** Claude
+- **Data:** 2026-09-16
+- **Referência:** `ACAO-0035`.
+
+### REC-0023
+
+- **Status:** A confirmar — apontamento de UI deixado pela `ACAO-0036`, **a decidir entre Jeremias e o Codex**.
+- **Recomendação:** Em `packages/ui/src/pages/rescisao/RescisaoForm.tsx`, deixar `saldo_fgts` ser `null` de ponta a ponta e torná-lo obrigatório quando há multa devida:
+  1. **Parar de coagir `null → 0`** nos 4 pontos atuais: estado inicial (`saldo_fgts: 0`), carga da rescisão (`rescisao.saldo_fgts ?? 0`), envio (`form.saldo_fgts ?? 0`) e o input (`v === '' ? 0 : parseFloat(v)`). Campo vazio deve virar `null`.
+  2. Marcar "Saldo FGTS p/ fins rescisórios" como **obrigatório** quando o motivo é `sem_justa_causa` ou `acordo_mutuo`, validando antes de habilitar "Calcular".
+  3. Exibir com destaque, na aba Dados, o erro que o handler já devolve pronto (hoje cai no `_global`).
+  4. Para rescisões legadas, aviso de contexto: *"Esta rescisão foi calculada numa versão anterior, em que a multa do FGTS era digitada manualmente. Informe o saldo da conta vinculada para recalcular com o cálculo atual."*
+- **Motivo:** `handleCalcular` salva o formulário **antes** de chamar `rescisao:calcular`, então a coerção `null → 0` destrói o "não informado" antes de o motor ver. Enquanto isso não mudar: (a) a trava do motor (que dispara em `null`) fica **inerte no caminho da tela** — quem protege é a trava de legado do handler; e (b) o usuário **não tem como dizer que o saldo é realmente zero** numa rescisão legada, caso raro que ficaria travado.
+- **Prioridade:** Alta (é o que torna a trava da `ACAO-0036` efetiva no caminho real do usuário).
+- **Origem:** Claude
+- **Data:** 2026-09-20
+- **Referência:** `ACAO-0036`.
+
 ## 8. Ambiente padrão do projeto
 
 - **Estratégia de ambiente:** Documentada em `README_AMBIENTE.md`; instalação e desenvolvimento validados; versões fixadas provisoriamente na `ACAO-0005`.
@@ -429,7 +453,7 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Comando de typecheck:** `pnpm typecheck`; passou na `ACAO-0006` e compila os pacotes internos antes da verificação.
 - **Comando de lint:** `pnpm lint`. Atualmente não executa lint real.
 - **Comando de build:** `pnpm build`; compila `shared`, `domain`, `application` e `infrastructure` antes da UI e do `app-host`.
-- **Comando de teste:** `pnpm test` (raiz) roda `packages/domain` e `packages/infrastructure` em sequência (69 testes no total desde a `ACAO-0035`); `pnpm --filter @sudo-sys/domain test` ou `pnpm --filter @sudo-sys/infrastructure test` isoladamente. Cobertura: IRRF/INSS/FGTS, transação de folha, motor de fórmulas e cálculo de rescisão; Férias (módulo) e Ponto continuam sem teste automatizado. Validação de rescisão via IPC real: `scripts/cdp-rescisao-verify.mjs` (usar `--user-data-dir` descartável).
+- **Comando de teste:** `pnpm test` (raiz) roda `packages/domain` e `packages/infrastructure` em sequência (76 testes no total desde a `ACAO-0036`); `pnpm --filter @sudo-sys/domain test` ou `pnpm --filter @sudo-sys/infrastructure test` isoladamente. Cobertura: IRRF/INSS/FGTS, transação de folha, motor de fórmulas e cálculo de rescisão; Férias (módulo) e Ponto continuam sem teste automatizado. Validação de rescisão via IPC real: `scripts/cdp-rescisao-verify.mjs` (usar `--user-data-dir` descartável).
 - **Desenvolvimento limpo:** Validado. `pnpm dev` gera preload e reconstrói `better-sqlite3` automaticamente antes de iniciar Electron.
 - **Isolamento do banco de desenvolvimento:** Confirmado em `<raiz>/.dev-user-data`, via `--user-data-dir` explícito; Linux e macOS continuam **A confirmar**.
 
@@ -465,6 +489,8 @@ Nenhum agente deve corrigir erro de execução antes de verificar se o ambiente 
 10. `REC-0018` — avaliar remoção ou migração de `auth:register` para o gate central; prioridade baixa, sem consumidor de UI hoje.
 11. `REC-0019` — decidir as regras de rescisão `[A CONFIRMAR]` (justa causa × IRR Tema 96/TST, projeção no acordo, aposentadoria, dias adicionais com aviso trabalhado, desconto do aviso no pedido de demissão). **Não alterar sem decisão do usuário.**
 12. `REC-0021` — pontos `[A CONFIRMAR]` dos INSS/IRRF/FGTS rescisórios: FGTS do aviso indenizado na base da multa (decidido: incluir, mas **contestado**, sem tese no TST), natureza de "outros proventos", redutor Lei 15.270 no 13º. (`REC-0020` executada na `ACAO-0035`.)
+13. `REC-0022` — confirmar em fonte oficial se o desconto simplificado do IRRF vale para a tributação exclusiva do 13º. Não executada na `ACAO-0036` (fora do escopo por guardrail).
+14. `REC-0023` — apontamento de UI da `ACAO-0036`: o formulário de rescisão precisa deixar `saldo_fgts` ser `null` e torná-lo obrigatório quando há multa devida; sem isso a trava do motor não dispara no caminho da tela. **A decidir entre Jeremias e o Codex.**
 
 `REC-0012` foi executada na `ACAO-0026` — `scripts/test-holerite.ps1` corrigido e validado com PDF real gerado contra o banco de dev.
 

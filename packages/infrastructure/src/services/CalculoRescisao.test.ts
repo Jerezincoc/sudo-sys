@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { calcularRescisao, diasAvisoPrevio, type EntradaRescisao } from './CalculoRescisao'
+import {
+  calcularRescisao,
+  diasAvisoPrevio,
+  DadoObrigatorioRescisaoError,
+  type EntradaRescisao,
+} from './CalculoRescisao'
 
 // Validação verba a verba contra o texto legal (ACAO-0033). Valores esperados calculados à
 // mão a partir de: CLT arts. 64, 146, 484-A, 487; Lei 12.506/2011 + NT 184/2012/MTE;
@@ -173,6 +178,52 @@ describe('7. FGTS e multa — Lei 8.036/90 arts. 15 e 18, Decreto 99.684/90 art.
 function round2(v: number): number {
   return Math.round(v * 100) / 100
 }
+
+describe('8. Saldo FGTS não informado — trava da ACAO-0036', () => {
+  it('lança DadoObrigatorioRescisaoError em vez de calcular sobre base parcial', () => {
+    expect(() => calcularRescisao(entrada({ saldoFgts: null }))).toThrow(DadoObrigatorioRescisaoError)
+  })
+
+  it('a mensagem identifica o campo e explica o risco de valor menor', () => {
+    try {
+      calcularRescisao(entrada({ saldoFgts: null }))
+      throw new Error('deveria ter lançado')
+    } catch (err) {
+      expect(err).toBeInstanceOf(DadoObrigatorioRescisaoError)
+      const e = err as DadoObrigatorioRescisaoError
+      expect(e.campo).toBe('saldoFgts')
+      expect(e.message).toMatch(/menor que o devido/)
+    }
+  })
+
+  it('também trava no acordo mútuo (multa de 20%)', () => {
+    expect(() => calcularRescisao(entrada({ motivo: 'acordo_mutuo', saldoFgts: null })))
+      .toThrow(DadoObrigatorioRescisaoError)
+  })
+
+  it('NÃO trava quando não há multa devida (pedido de demissão e justa causa)', () => {
+    expect(calcularRescisao(entrada({ motivo: 'pedido_demissao', saldoFgts: null })).multaFgts).toBe(0)
+    expect(calcularRescisao(entrada({ motivo: 'com_justa_causa', saldoFgts: null })).multaFgts).toBe(0)
+  })
+
+  it('saldo 0 é valor INFORMADO, não ausente: calcula normalmente', () => {
+    const r = calcularRescisao(entrada({ saldoFgts: 0 }))
+    expect(r.multaFgts).toBe(80) // (0 + 200) × 40%
+  })
+
+  it('o caminho normal (saldo informado) continua com o valor validado na ACAO-0035', () => {
+    const r = calcularRescisao(entrada({ avisoPrevio: 'indenizado', saldoFgts: 5492 }))
+    expect(r.multaFgts).toBe(2400) // (5.492 + 508) × 40% — mesmo valor da ACAO-0035
+  })
+
+  it('demonstra a regressão evitada: base parcial sairia muito menor que a real', () => {
+    const comSaldoReal = calcularRescisao(entrada({ saldoFgts: 20000 }))
+    expect(comSaldoReal.multaFgts).toBe(8080) // (20.000 + 200) × 40%
+    // Sem o saldo, o motor antigo calcularia só sobre os depósitos da rescisão: R$ 80.
+    // Agora isso é impossível — falha em vez de exibir 80 no lugar de 8.080.
+    expect(() => calcularRescisao(entrada({ saldoFgts: null }))).toThrow(DadoObrigatorioRescisaoError)
+  })
+})
 
 describe('Cenários completos (PASSO 3)', () => {
   it('(a) sem justa causa, 2 anos e meio, aviso indenizado', () => {

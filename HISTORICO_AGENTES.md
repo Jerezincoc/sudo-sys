@@ -1919,3 +1919,100 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 * **Próxima ação sugerida:**
 
   * Decisão do usuário sobre `REC-0019` e itens 2–3 da `REC-0021`; verificar em fonte oficial o desconto simplificado no IRRF do 13º.
+
+### ACAO-0036 — 2026-09-20 — Claude (Opus 5)
+
+* **Autor da ação:** Claude (Opus 5)
+* **Tipo de ação:** Correção de regressão silenciosa (`REC-0020`/`ACAO-0035`) — trava de recálculo de rescisão legada
+* **Status:** Concluído
+* **Escopo:** Somente lógica (domain/infrastructure/handlers). Nenhum arquivo de `packages/ui/` foi alterado — Jeremias está trabalhando UI/UX em paralelo com o Codex. O que exigiria mudança de tela foi apenas **descrito** (ver "Apontamento de UI").
+* **Problema corrigido:**
+
+  * Rescisões gravadas **antes** do commit `8e4770e` (`REC-0020`, 2026-09-16 12:37:03) tinham a multa FGTS **digitada à mão** e não possuem `saldo_fgts` (coluna criada só na migration `057`).
+  * Ao reabrir e recalcular uma dessas rescisões com o motor novo, `rescisaoHandlers.ts` passava `saldoFgts: rescisao.saldo_fgts ?? 0` — o `?? 0` **apagava a diferença entre "não informado" e "zero"**. A multa era então recalculada só sobre os depósitos daquela rescisão, **sem aviso nenhum**, podendo sair muito menor que o saldo real da conta vinculada. Risco já registrado como observação na `ACAO-0035`, agora tratado.
+
+* **PASSO 1 — Dano real levantado (quantas rescisões em risco):**
+
+  * Bancos conferidos (todos os `sudosys.db` do perfil do usuário, lidos em **cópia read-only**, sem escrita no original):
+
+    1. `.dev-user-data/banco/sudosys.db` (dev, `pnpm dev`) — **0 tabelas** (nunca inicializado; a `ACAO-0035` validou em `--user-data-dir` descartável no scratchpad).
+    2. `%APPDATA%/Electron/banco/sudosys.db` (dev/Electron não empacotado) — 14 tabelas, `rescisoes` no schema **pré-057** (sem `saldo_fgts`, `fgts_rescisao`, `inss_decimo_terceiro`, `irrf_decimo_terceiro`), **0 rescisões**.
+    3. `%APPDATA%/br.com.sudosys.app/sudosys.db` (app empacotado) — **0 tabelas**.
+  * **Resultado: 0 (zero) rescisões em risco** em qualquer banco local. Nenhum dado precisou ser migrado ou corrigido.
+  * **Consequência:** a correção é **preventiva**, não corretiva. O defeito continua real para qualquer instalação de cliente que já tenha rescisões gravadas antes de `8e4770e` — por isso a trava foi implementada mesmo sem dano local.
+  * Ferramenta: como `better-sqlite3` do projeto está compilado para a ABI do Electron, foi montada uma cópia isolada no scratchpad com o prebuild de ABI do Node (`node-v115`) do cache do npm. **O `better-sqlite3` do projeto não foi reconstruído** — `pnpm dev` continua pronto para uso.
+
+* **PASSO 2 — Abordagem escolhida: (b) estado explícito de "dado obrigatório ausente".**
+
+  * **Por quê (b) e não (a) "preservar a multa antiga":**
+
+    * (a) exigiria **mais** mudança de contrato, não menos: `EntradaRescisao` precisaria receber a multa anterior **e** um sinal de "é recálculo, não cálculo novo" (o motor é uma função pura e não sabe distinguir os dois).
+    * (a) continuaria **silenciosa**: o TRCT sairia com todas as verbas recalculadas pelo motor novo e a multa congelada do motor antigo, sem o usuário saber que aquele número tem outra origem e outra base.
+    * (b) **reaproveita o padrão que já existe no projeto** — `FormulaEvaluationError` (`packages/domain/src/formula/FormulaEvaluator.ts`), cuja justificativa documentada é exatamente esta: "lança em vez de tratar como 0 silenciosamente".
+    * (b) **não muda contrato de handler nenhum**: o `try/catch` de `rescisao:calcular` já converte erro em `{ success: false, error }`, que a tela já exibe. Zero mudança de canal IPC, de tipo compartilhado ou de schema.
+  * **Sobre a classe de erro:** criada `DadoObrigatorioRescisaoError` **dentro de `packages/infrastructure`**, e não importada de `@sudo-sys/domain`. Motivo: `infrastructure` é CommonJS e `domain` é ESM (`DEC-0004`/`DEC-0005`); criar esse primeiro consumidor CommonJS de `domain` dispararia exatamente a validação de interoperabilidade que a `DEC-0005` deixou registrada como pendente. **Reaproveitou-se o padrão, não o módulo** — e isso está comentado no código.
+
+* **O que foi mudado (3 arquivos, todos de lógica):**
+
+  * `packages/infrastructure/src/services/CalculoRescisao.ts`:
+
+    * nova classe exportada `DadoObrigatorioRescisaoError` (com o campo `campo`), no padrão de `FormulaEvaluationError`;
+    * `EntradaRescisao.saldoFgts` passa de `number` para `number | null`, com `null` significando **NÃO INFORMADO** (documentado no tipo);
+    * na seção 7, se a multa é devida (`percentualMulta > 0`) e `saldoFgts == null`, **lança** em vez de calcular sobre base parcial.
+  * `app-host/src/ipc/handlers/rescisaoHandlers.ts`:
+
+    * `saldoFgts: rescisao.saldo_fgts ?? 0` → `?? null` (para de transformar "não informado" em "zero");
+    * **trava de rescisão legada** em `rescisao:calcular`, antes de calcular: bloqueia quando a multa é devida **e** `fgts_rescisao IS NULL` **e** há `multa_fgts > 0` gravada **e** o saldo não foi informado. O marcador usado é `fgts_rescisao IS NULL` = "nunca calculada pelo motor pós-057"; ele é confiável porque o formulário nunca escreve esse campo (envia `null` até um cálculo bem-sucedido gravá-lo) — ou seja, **sobrevive à coerção `null → 0` que a tela faz hoje** (ver apontamento de UI).
+  * `packages/infrastructure/src/services/CalculoRescisao.test.ts`: novo bloco `8. Saldo FGTS não informado — trava da ACAO-0036` (7 testes).
+
+* **PASSO 3 — Teste com caso real reconstituído:**
+
+  * Harness em scratchpad que carrega o **handler compilado de verdade** (`app-host/dist/main/ipc/handlers/rescisaoHandlers.js`), com `electron` e o módulo de banco stubados, sobre um SQLite em memória criado no **schema pré-057** e depois submetido à migration `057` — reproduzindo fielmente o banco de quem atualizou o sistema.
+  * Caso: funcionário admitido 11/02/2019, demissão 05/09/2025, salário R$ 3.000, aviso indenizado, sem justa causa; rescisão gravada em 15/09/2026 (antes do corte) com **multa FGTS R$ 12.000,00 digitada à mão**; saldo real da conta vinculada R$ 29.456.
+  * Resultados (todas as verificações passaram):
+
+    | # | Cenário | Resultado |
+    |---|---|---|
+    | 3.1 | Recalcular a rescisão legada sem informar o saldo | **BLOQUEADO**; erro explica o risco e cita a multa antiga; `multa_fgts = 12.000` **preservada** no banco |
+    | 3.2 | Caminho real da tela (grava `saldo_fgts = 0` e só então chama Calcular) | **AINDA BLOQUEADO**; multa antiga preservada |
+    | 3.3 | Usuário informa o saldo real (R$ 29.456) | destrava; depósito R$ 624,00; multa **R$ 12.032,00** (base completa) |
+    | 3.4 | Recalcular de novo depois de informado | segue funcionando (não volta a travar) |
+    | 3.5 | Rescisão **nova** com saldo informado (o que a `ACAO-0035` validou) | calcula normalmente; multa (5.492 + 624) × 40% = **R$ 2.446,40** |
+    | 3.6 | Pedido de demissão sem saldo informado (não há multa) | calcula normalmente; multa 0 — a trava não atrapalha quem não tem multa |
+  * **Valor da regressão evitada neste caso:** sem a trava, a multa sairia **R$ 249,60** ((0 + 624) × 40%) no lugar de **R$ 12.032,00** — **R$ 11.782,40 a menos, silenciosamente**.
+  * Conferência à mão dos números do cenário: 6 anos completos → aviso 48 dias (Lei 12.506/2011) = R$ 4.800; projeção até 23/10 → 13º = 10/12 = R$ 2.500; depósito = (500 + 2.500 + 4.800) × 8% = R$ 624.
+
+* **PASSO 4 — Suíte de regressão:**
+
+  * `pnpm test`: **76/76** (25 `domain` + 51 `infrastructure`), contra 69/69 na `ACAO-0035`. Os 7 novos são os da trava; nenhum teste anterior precisou ser alterado.
+  * `pnpm typecheck`: passou em todos os 6 workspaces, **incluindo `packages/ui` e `app-host`** — ou seja, a mudança de `saldoFgts` para `number | null` não quebrou a tela.
+
+* **PASSO 5 — Apontamento de UI (NÃO implementado; para decidir com o Codex):**
+
+  * **Onde:** `packages/ui/src/pages/rescisao/RescisaoForm.tsx`.
+  * **Problema:** a tela trata `saldo_fgts` como número com default 0, em 4 pontos — estado inicial (`saldo_fgts: 0`), carga de rescisão existente (`rescisao.saldo_fgts ?? 0`), envio (`form.saldo_fgts ?? 0`) e o input (`v === '' ? 0 : parseFloat(v)`). Resultado: **o campo vazio é gravado como 0**, e como `handleCalcular` salva o formulário **antes** de chamar `rescisao:calcular`, o `NULL` de uma rescisão legada é destruído antes de o motor ver.
+  * **Efeito prático:** a trava do motor (que dispara em `null`) fica inerte no caminho da tela; hoje quem protege esse caminho é a trava de legado do handler. Enquanto a tela coagir `null → 0`, também **não existe forma de o usuário dizer "o saldo é realmente zero"** numa rescisão legada — esse caso raro ficaria travado.
+  * **O que seria necessário:**
+
+    1. deixar `saldo_fgts` ser `null` de ponta a ponta (não trocar por 0 na carga, no envio nem no input; campo vazio → `null`);
+    2. marcar "Saldo FGTS p/ fins rescisórios" como **obrigatório quando há multa devida** (motivo `sem_justa_causa` ou `acordo_mutuo`), com validação antes de habilitar "Calcular";
+    3. exibir o erro do handler como aviso claro na aba Dados (o texto já vem pronto do backend, a tela só precisa mostrá-lo com destaque — hoje cai no `_global`);
+    4. para rescisões legadas, um aviso de contexto do tipo: *"Esta rescisão foi calculada numa versão anterior, em que a multa do FGTS era digitada manualmente. Informe o saldo da conta vinculada para recalcular com o cálculo atual."*
+  * **Texto de erro já implementado no backend** (é lógica, não visual — a tela só o repassa): *"Esta rescisao foi calculada antes da atualizacao do calculo de FGTS e tem multa digitada manualmente (R$ X). Informe o 'Saldo FGTS p/ fins rescisorios' (saldo da conta vinculada) antes de recalcular: sem ele a multa seria recalculada apenas sobre os depositos desta rescisao e sairia menor que o devido."*
+
+* **Riscos ou observações:**
+
+  * A trava do handler dispara **uma vez por rescisão legada**: assim que um cálculo com saldo informado grava `fgts_rescisao`, o marcador some e ela nunca mais trava.
+  * Caso raro não coberto enquanto a tela não mudar: rescisão legada cujo saldo real da conta seja **de fato zero** — o usuário não tem como expressar isso hoje. Item 1 do apontamento de UI resolve.
+  * A trava do motor (em `null`) protege hoje quem chama o IPC direto e qualquer consumidor futuro; ela só passa a proteger o caminho da tela depois do item 1 do apontamento de UI.
+  * `REC-0022` (desconto simplificado no IRRF do 13º) **não** foi tocada — fora do escopo desta ação, conforme o guardrail. O número fica **reservado** para esse item; por isso o apontamento de UI desta ação recebeu `REC-0023`.
+  * `app-host/dist/` foi gerado para permitir o teste do handler real; está no `.gitignore` e não entra no commit.
+
+* **Recomendações deixadas para próximos agentes:**
+
+  * `REC-0023` — apontamento de UI do `saldo_fgts` (4 itens acima), a decidir entre Jeremias e Codex.
+  * `REC-0021` e `REC-0019` continuam abertas, sem mudança.
+
+* **Próxima ação sugerida:**
+
+  * Levar o apontamento de UI ao Codex; decidir `REC-0019` e itens 2–3 da `REC-0021`; verificar em fonte oficial o desconto simplificado no IRRF do 13º.
