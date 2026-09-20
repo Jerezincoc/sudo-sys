@@ -2016,3 +2016,72 @@ Quando a mesma ação, recomendação ou decisão aparecer no `CONTEXTO_TOTAL.md
 * **Próxima ação sugerida:**
 
   * Levar o apontamento de UI ao Codex; decidir `REC-0019` e itens 2–3 da `REC-0021`; verificar em fonte oficial o desconto simplificado no IRRF do 13º.
+
+### ACAO-0038 — 2026-09-20 — Claude (Opus 5)
+
+* **Autor da ação:** Claude (Opus 5)
+* **Tipo de ação:** Validação de regra fiscal (`REC-0022`) — desconto simplificado de IRRF no 13º da rescisão
+* **Status:** Concluído — **`REC-0022` CONFIRMADA; comportamento atual está correto; nenhum código alterado**
+* **Branch:** `logic/rec-0022-simplificado-13o` (worktree isolada). **Não foi feito merge para `main`** — aguarda decisão do usuário.
+* **Escopo:** Somente lógica. Nenhum arquivo de `packages/ui/` foi lido para alteração nem tocado.
+* **Nota de coordenação:** No momento da tarefa o diretório principal estava na branch `feat/acao-0037-ambientes-clt-quick` (Codex, ACAO-0037), com ~137 linhas de UI **não commitadas** (`EnvironmentSwitcher.tsx`, `AppShell.tsx`, `Router.tsx`, `routes.ts`, `Sidebar.tsx`, `guards.tsx`). Para não trocar a branch ativa nem carregar o trabalho dele, esta ação usou **`git worktree`** em `../sudo-sys-rec0022`, a partir de `origin/main`. O diretório do Codex ficou **intocado** (mesma branch, mesmos arquivos). Numeração `ACAO-0038` escolhida para não colidir com a `ACAO-0037` em andamento.
+
+* **PASSO 1 — Onde o desconto simplificado é aplicado:**
+
+  * Constante `DESCONTO_SIMPLIFICADO = 607.20` em `packages/infrastructure/src/services/CalculoFolha.ts:102` — **privada do módulo** (não exportada).
+  * Aplicada num único ponto, `calcularIRRF` (`CalculoFolha.ts:112`): `const deducao = regimeIrrf === 'simplificado' ? DESCONTO_SIMPLIFICADO : 189.59 * dependentes`.
+  * **Existem exatamente 3 chamadas de `calcularIRRF` no projeto**, todas na mesma função, **sem nenhuma diferenciação**:
+
+    1. `app-host/src/ipc/handlers/folhaHandlers.ts:143` — folha mensal;
+    2. `packages/infrastructure/src/services/CalculoRescisao.ts:192` — saldo de salário da rescisão;
+    3. `packages/infrastructure/src/services/CalculoRescisao.ts:193` — **13º da rescisão**.
+  * `calcularIRRF` **não tem parâmetro** que distinga "rendimento mensal" de "13º/tributação exclusiva". Confirmado: **não há diferenciação prévia** que a `ACAO-0035` tivesse deixado de mencionar.
+  * **Precisão que faltava no relato anterior:** no regime `simplificado`, os R$ 607,20 são deduzidos **duas vezes na mesma rescisão** — uma no saldo de salário e outra no 13º —, porque são dois cálculos separados.
+  * **Escopo real da dúvida:** a folha mensal **não tem** caminho de 13º (nenhuma referência a décimo terceiro em `folhaHandlers.ts`). O IRRF sobre 13º só existe na rescisão, em `CalculoRescisao.ts:193`.
+  * Confirmado também que `607,20 = 25% × R$ 2.428,80`, o teto da faixa de alíquota zero da tabela de IRRF vigente desde 2025-05 (Lei 15.191/2025) usada no arquivo.
+
+* **PASSO 2 — Fonte oficial encontrada (decisiva e específica do 13º):**
+
+  * **`Instrução Normativa RFB nº 1.500/2014`, art. 13** trata especificamente da **Gratificação Natalina** (13º), e o inciso II fixa o regime separado:
+
+    > "O rendimento pago a título de Gratificação Natalina, para efeitos de apuração do IRRF, tem o seguinte tratamento: I - é integralmente tributado, com base na tabela mensal vigente no mês de quitação; II - a tributação ocorre exclusivamente na fonte e separadamente dos demais rendimentos recebidos no mês pelo beneficiário; III - não há retenção na fonte pelo pagamento de sua antecipação; IV - na apuração de sua base de cálculo deve ser considerado o valor total desse rendimento, inclusive antecipações, sendo permitidas as deduções previstas no art. 52, desde que a ele correspondente; V - deve ser observado o disposto no art. 65-A."
+  * **`IN RFB nº 1.500/2014`, art. 13, § 8º** (incluído pela **`IN RFB nº 2.141, de 22/5/2023`**, que regulamentou o desconto simplificado) — **é o dispositivo que responde a `REC-0022`**:
+
+    > "Alternativamente às deduções a que se refere o inciso IV do caput, a fonte pagadora utilizará desconto simplificado mensal, correspondente a 25% (vinte e cinco por cento) do valor máximo da faixa com alíquota de 0% (zero por cento) da tabela progressiva mensal, caso seja mais benéfico ao contribuinte."
+  * **Leitura:** o desconto simplificado **se aplica ao 13º**, com o **mesmo valor mensal integral** (25% da faixa zero), **sem proporcionalização e sem exclusão**, dentro do cálculo próprio e separado do 13º (inciso II). É exatamente o mesmo raciocínio de "cálculo em separado" já validado para o teto de INSS na `REC-0020`.
+  * **`Lei 14.663/2023`** (que instituiu o desconto simplificado, art. 6º, inserindo o §2º no art. 4º da `Lei 9.250/1995`) **não menciona** 13º, gratificação natalina nem tributação exclusiva — a regra específica do 13º está na IN, não na lei.
+  * **Fontes verificadas que NÃO resolveram:** a página da Receita "Exemplos de Aplicação da Lei 15.270/2025" (já citada no código para o redutor) foi lida e **não trata de 13º em nenhum dos 5 exemplos** — todos usam salário mensal. Isso também significa que o item 3 da `REC-0021` (redutor da Lei 15.270 sobre o 13º) **continua sem confirmação** por essa fonte.
+
+* **Limitação de evidência (registrada por honestidade):**
+
+  * **Não foi possível abrir nenhuma página `.gov.br` diretamente** nesta sessão: `planalto.gov.br` devolveu `ECONNRESET` (mesmo sintoma da `ACAO-0035`), o SIJUT (`normas.receita.fazenda.gov.br`, `idAto=57670`) responde só com um "Redirecionando..." via JavaScript, `in.gov.br` e `gov.br` deram `socket hang up`, e **o `curl` está bloqueado pela sandbox** (timeout com 0 bytes), então o contorno usado na `ACAO-0035` não estava disponível.
+  * O texto literal do art. 13 e do §8º vem de **duas reproduções independentes que coincidem palavra por palavra** (`normaslegais.com.br` e `legisweb.com.br`), **corroboradas** por um resumo de busca da **página oficial do SIJUT** da própria IN 1500/2014, que descreve a mesma regra com a mesma estrutura ("alternativamente às deduções do inciso IV do caput, a fonte pagadora poderá usar desconto simplificado mensal de 25% do valor máximo da faixa com alíquota zero, caso seja mais benéfico ao contribuinte").
+  * **Avaliação:** a convergência é forte, específica do 13º e literal, e o dispositivo é inequívoco — suficiente para confirmar a regra e **não alterar o código**. Ainda assim, quem tiver acesso desimpedido ao SIJUT deve conferir o art. 13 §8º na fonte oficial para fechar o ponto formalmente.
+
+* **PASSO 3 — Decisão: confirmar, sem alterar código.**
+
+  * A fonte confirma a primeira hipótese do `PASSO 3`: o desconto simplificado se aplica ao 13º **normalmente**, com os mesmos R$ 607,20 mensais, sem proporcionalização nem exclusão.
+  * Portanto o comportamento de `CalculoRescisao.ts:193` **está correto** e **nenhuma linha de código foi alterada**. `REC-0022` passa de "A confirmar" para **Confirmada/Correta**.
+
+* **PASSO 4 — Suíte de regressão:**
+
+  * `pnpm test` na worktree: **76/76** (25 `domain` + 51 `infrastructure`) — igual à base, como esperado por não haver mudança de código. Nada regrediu.
+
+* **Dois achados colaterais (NÃO corrigidos; registrados para decisão do usuário):**
+
+  1. **`REC-0024` — `DESCONTO_SIMPLIFICADO` está fixo em 607,20 e não é versionado por competência.** As tabelas de IRRF em `CalculoFolha.ts` são versionadas (`vigenteDesde`), mas a constante não é. Pela IN, o desconto é **25% da faixa zero da tabela progressiva vigente**, ou seja, varia com a competência: na tabela de 2024-02 a 2025-04 a faixa zero é R$ 2.259,20, logo o desconto correto é **R$ 564,80** — e o motor aplicaria 607,20. Afeta **recálculo retroativo** de folha e de rescisão com competência entre 2024-02 e 2025-04, no regime simplificado. O único teste que exercita `simplificado` (`CalculoFolha.test.ts`, Cenário D) usa competência `2026-01`, onde 607,20 está certo — por isso o caso retroativo passa despercebido.
+  2. **`REC-0025` — a condição "caso seja mais benéfico ao contribuinte" não é avaliada.** A IN (e a `Lei 9.250/1995` art. 4º §2º) condicionam o desconto simplificado a ser mais benéfico que as deduções legais. O sistema trata `regime_irrf` como **configuração fixa do funcionário** e aplica os R$ 607,20 incondicionalmente, sem comparar com as deduções legais. Para um funcionário com muitos dependentes marcado como `simplificado`, isso pode **reter mais IRRF do que o devido**. Vale igualmente para a folha mensal e para o 13º — por isso está **fora** do escopo da `REC-0022`.
+
+* **Riscos ou observações:**
+
+  * Os dois achados acima foram deliberadamente **não corrigidos**: o guardrail desta tarefa era não alterar comportamento no escuro, e ambos extrapolam a pergunta da `REC-0022`. A `REC-0024` em particular parece um defeito real e de correção simples, mas mexe no IRRF de folha e rescisão e merece decisão + cenários próprios.
+  * `REC-0021` item 3 (redutor da Lei 15.270 no 13º) **continua `[A CONFIRMAR]`** — a página oficial de exemplos da Receita não cobre 13º.
+  * A worktree `../sudo-sys-rec0022` permanece criada; remover com `git worktree remove ../sudo-sys-rec0022` depois de decidido o merge.
+
+* **Recomendações deixadas para próximos agentes:**
+
+  * `REC-0024` (desconto simplificado não versionado por competência) e `REC-0025` (condição "mais benéfico" não avaliada).
+
+* **Próxima ação sugerida:**
+
+  * Decisão do usuário sobre o merge desta branch e sobre `REC-0024`/`REC-0025`; `REC-0023` (UI do `saldo_fgts`) segue pendente com o Codex.

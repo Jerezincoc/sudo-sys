@@ -52,9 +52,9 @@ Depois da leitura, o agente deve identificar a fase atual, verificar recomendaç
 - **Stack principal:** Electron, React, TypeScript, Vite, SQLite e pnpm monorepo.
 - **Estado atual:** Protótipo funcional com baixa confiabilidade operacional e fiscal.
 - **Fase atual:** Estabilização do build e da distribuição Electron.
-- **Última ação registrada:** `ACAO-0036` — corrigida a **regressão silenciosa** deixada pela `ACAO-0035`: rescisões gravadas antes do commit `8e4770e` têm a multa FGTS digitada à mão e não têm `saldo_fgts`; ao recalcular, o handler convertia "não informado" em zero (`?? 0`) e a multa saía recalculada só sobre os depósitos daquela rescisão, **sem aviso**. Levantamento nos 3 bancos locais: **0 rescisões em risco** (correção preventiva; o defeito vale para instalações de cliente). Adotada a abordagem de **erro explícito** (`DadoObrigatorioRescisaoError`, no padrão de `FormulaEvaluationError`), mais uma trava de rescisão legada no `rescisao:calcular`. Validado com caso real reconstituído sobre o handler compilado (6 cenários) — no caso testado a multa sairia R$ 249,60 no lugar de R$ 12.032,00. `pnpm test` **76/76**. Apontamento de UI em `REC-0023` (não implementado: `packages/ui` é do Jeremias/Codex).
+- **Última ação registrada:** `ACAO-0038` — `REC-0022` **confirmada**: o desconto simplificado de IRRF (R$ 607,20) **se aplica** à tributação exclusiva do 13º, com o mesmo valor mensal integral, sem proporcionalização (`IN RFB 1.500/2014`, art. 13 §8º, incluído pela `IN RFB 2.141/2023`). O comportamento do motor já estava correto — **nenhum código alterado**; `pnpm test` segue **76/76**. Feita em branch própria (`logic/rec-0022-simplificado-13o`, via `git worktree`), **sem merge para main**, para não atravessar a `ACAO-0037` do Codex. Dois achados colaterais registrados e **não** corrigidos: `REC-0024` (desconto simplificado não versionado por competência — 564,80 vs 607,20 em recálculo retroativo) e `REC-0025` (condição legal "caso seja mais benéfico ao contribuinte" não é avaliada).
 - **Ação anterior sobre rescisão:** `ACAO-0033` — diagnóstico do cálculo de Rescisão (TRCT) contra o texto literal da CLT, Lei 12.506/2011, Lei 4.090/62 e Lei 8.036/90. Motor extraído para `CalculoRescisao.ts` (com testes). Corrigidos: aviso prévio proporcional; aviso zerado em justa causa/pedido de demissão e pela metade no acordo; 1/3 sobre férias vencidas no total; fração de dias em férias/13º; projeção do aviso indenizado; multa FGTS fora do líquido. Validado com 3 cenários à mão, via IPC real (CDP) e nos PDFs (27/27 campos). `pnpm test` 60/60. Pontos em dúvida em `REC-0019`; INSS/IRRF/FGTS rescisórios não implementados em `REC-0020`.
-- **Próxima ação recomendada:** levar o **apontamento de UI da `REC-0023`** ao Codex (o formulário de rescisão coage `saldo_fgts` nulo para 0, o que mantém a trava do motor inerte no caminho da tela). Em paralelo: decisão do usuário sobre os itens `[A CONFIRMAR]` da `REC-0019` (principalmente justa causa × IRR Tema 96 do TST) e da `REC-0021` (outros proventos; redutor Lei 15.270 no 13º). Continuam pendentes: confirmar com o Codex o envio de `EmpresasPage.tsx` (`ACAO-0031`), `REC-0018`, `REC-0011` e `REC-0016`.
+- **Próxima ação recomendada:** decidir o **merge da branch `logic/rec-0022-simplificado-13o`** (só documentação; pode esperar a `ACAO-0037` do Codex). Em seguida, decidir `REC-0024` (correção do desconto simplificado por competência, que parece defeito real) e `REC-0025`. Segue pendente o apontamento de UI da `REC-0023` com o Codex, e a decisão do usuário sobre `REC-0019` e itens 2–3 da `REC-0021` (o item 3, redutor da Lei 15.270 no 13º, continua sem confirmação: a página oficial de exemplos da Receita não trata de 13º). Continuam pendentes `REC-0018`, `REC-0011` e `REC-0016`.
 - **Uso em produção:** Não recomendado antes das correções críticas e dos testes de cálculo.
 
 ## 2. Objetivo do projeto
@@ -415,13 +415,14 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 
 ### REC-0022
 
-- **Status:** Pendente — **não** executada na `ACAO-0036` (fora do escopo, por guardrail explícito do usuário).
-- **Recomendação:** Verificar em fonte oficial se o **desconto simplificado** do IRRF (regime `simplificado`, R$ 607,20) se aplica à tributação **exclusiva do 13º salário**. Hoje o motor aplica ao 13º o mesmo regime do funcionário.
-- **Motivo:** Levantado como dúvida na `ACAO-0035`; não coberto pelo plano da `REC-0020` e sem confirmação em fonte oficial.
-- **Prioridade:** Média (risco fiscal restrito a funcionários no regime simplificado com 13º na rescisão).
+- **Status:** **Confirmada / comportamento correto** — validada na `ACAO-0038` (2026-09-20). **Nenhum código alterado.**
+- **Recomendação original:** Verificar em fonte oficial se o **desconto simplificado** do IRRF (regime `simplificado`, R$ 607,20) se aplica à tributação **exclusiva do 13º salário**.
+- **Resultado:** **Aplica-se normalmente ao 13º**, com o mesmo valor mensal integral, sem proporcionalização e sem exclusão. Fonte: `IN RFB nº 1.500/2014`, **art. 13, § 8º** (incluído pela `IN RFB nº 2.141/2023`), que trata especificamente da Gratificação Natalina: *"Alternativamente às deduções a que se refere o inciso IV do caput, a fonte pagadora utilizará desconto simplificado mensal, correspondente a 25% (vinte e cinco por cento) do valor máximo da faixa com alíquota de 0% (zero por cento) da tabela progressiva mensal, caso seja mais benéfico ao contribuinte."* O art. 13, II fixa que a tributação do 13º "ocorre exclusivamente na fonte e separadamente dos demais rendimentos" — mesmo raciocínio de cálculo em separado já validado na `REC-0020` para o teto de INSS. A `Lei 14.663/2023`, que instituiu o desconto, nada diz sobre 13º.
+- **Ressalva de evidência:** nenhuma página `.gov.br` pôde ser aberta na sessão (Planalto `ECONNRESET`, SIJUT só com redirect JS, `in.gov.br`/`gov.br` `socket hang up`, `curl` bloqueado pela sandbox). O texto literal veio de duas reproduções independentes idênticas, corroboradas por resumo de busca da página oficial do SIJUT. Conferir no SIJUT quando houver acesso desimpedido.
+- **Prioridade:** Encerrada (era média).
 - **Origem:** Claude
-- **Data:** 2026-09-16
-- **Referência:** `ACAO-0035`.
+- **Data:** 2026-09-16 (aberta) / 2026-09-20 (confirmada)
+- **Referência:** `ACAO-0035`, `ACAO-0038`.
 
 ### REC-0023
 
@@ -436,6 +437,26 @@ A `ACAO-0006` integrou o build dos pacotes internos ao `pnpm build`, `pnpm typec
 - **Origem:** Claude
 - **Data:** 2026-09-20
 - **Referência:** `ACAO-0036`.
+
+### REC-0024
+
+- **Status:** Aberta — achado colateral da `ACAO-0038`, **não corrigido** (fora do escopo daquela tarefa).
+- **Recomendação:** Versionar `DESCONTO_SIMPLIFICADO` por competência, como já são as tabelas de INSS/IRRF em `CalculoFolha.ts`.
+- **Motivo:** A constante está fixa em `607.20` (`CalculoFolha.ts:102`), mas a `IN RFB 1.500/2014` define o desconto como **25% da faixa de alíquota zero da tabela progressiva vigente** — que muda com a competência. Na tabela vigente de 2024-02 a 2025-04 a faixa zero é R$ 2.259,20, logo o desconto devido é **R$ 564,80**, e o motor aplicaria R$ 607,20. Afeta **recálculo retroativo** de folha e de rescisão no regime `simplificado`. O único teste que exercita `simplificado` usa competência `2026-01`, onde 607,20 está correto — por isso o caso passa despercebido.
+- **Prioridade:** Média-alta (erro de IRRF em recálculo retroativo; correção simples, mas toca folha e rescisão).
+- **Origem:** Claude
+- **Data:** 2026-09-20
+- **Referência:** `ACAO-0038`.
+
+### REC-0025
+
+- **Status:** Aberta — achado colateral da `ACAO-0038`, **não corrigido**.
+- **Recomendação:** Decidir se o motor deve comparar o desconto simplificado com as deduções legais e usar o mais benéfico, em vez de seguir cegamente o `regime_irrf` gravado no funcionário.
+- **Motivo:** A `IN RFB 1.500/2014` (art. 13 §8º) e a `Lei 9.250/1995` (art. 4º §2º) condicionam o desconto simplificado a **"caso seja mais benéfico ao contribuinte"**. O sistema trata `regime_irrf` como configuração fixa e aplica os R$ 607,20 incondicionalmente (`CalculoFolha.ts:112`), sem comparar. Para funcionário com muitos dependentes marcado como `simplificado`, pode **reter mais IRRF do que o devido**. Vale para a folha mensal e para o 13º.
+- **Prioridade:** Média (depende de quantos funcionários usam `simplificado` com dependentes; envolve também pensão alimentícia, hoje não modelada).
+- **Origem:** Claude
+- **Data:** 2026-09-20
+- **Referência:** `ACAO-0038`.
 
 ## 8. Ambiente padrão do projeto
 
@@ -489,8 +510,10 @@ Nenhum agente deve corrigir erro de execução antes de verificar se o ambiente 
 10. `REC-0018` — avaliar remoção ou migração de `auth:register` para o gate central; prioridade baixa, sem consumidor de UI hoje.
 11. `REC-0019` — decidir as regras de rescisão `[A CONFIRMAR]` (justa causa × IRR Tema 96/TST, projeção no acordo, aposentadoria, dias adicionais com aviso trabalhado, desconto do aviso no pedido de demissão). **Não alterar sem decisão do usuário.**
 12. `REC-0021` — pontos `[A CONFIRMAR]` dos INSS/IRRF/FGTS rescisórios: FGTS do aviso indenizado na base da multa (decidido: incluir, mas **contestado**, sem tese no TST), natureza de "outros proventos", redutor Lei 15.270 no 13º. (`REC-0020` executada na `ACAO-0035`.)
-13. `REC-0022` — confirmar em fonte oficial se o desconto simplificado do IRRF vale para a tributação exclusiva do 13º. Não executada na `ACAO-0036` (fora do escopo por guardrail).
+13. ~~`REC-0022`~~ — **encerrada** na `ACAO-0038`: o desconto simplificado **se aplica** ao 13º (IN RFB 1.500/2014, art. 13 §8º). Comportamento do motor já estava correto; nada foi alterado.
 14. `REC-0023` — apontamento de UI da `ACAO-0036`: o formulário de rescisão precisa deixar `saldo_fgts` ser `null` e torná-lo obrigatório quando há multa devida; sem isso a trava do motor não dispara no caminho da tela. **A decidir entre Jeremias e o Codex.**
+15. `REC-0024` — `DESCONTO_SIMPLIFICADO` fixo em 607,20 não acompanha a competência; recálculo retroativo entre 2024-02 e 2025-04 no regime simplificado usa 607,20 onde o devido é 564,80. Achado da `ACAO-0038`, não corrigido.
+16. `REC-0025` — a condição legal "caso seja mais benéfico ao contribuinte" não é avaliada: o regime simplificado é aplicado incondicionalmente. Achado da `ACAO-0038`, não corrigido.
 
 `REC-0012` foi executada na `ACAO-0026` — `scripts/test-holerite.ps1` corrigido e validado com PDF real gerado contra o banco de dev.
 
