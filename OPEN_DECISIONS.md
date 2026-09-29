@@ -6,90 +6,88 @@ Nenhum agente pode resolver estes itens silenciosamente. Propostas devem apresen
 
 ### OD-001 — Comunicação UI ↔ Core
 
-**[ABERTO]** Definir protocolo único para local, servidor próprio e cloud; contratos, versionamento, descoberta, erros, cancelamento e progresso.
-
-**[HIPÓTESE — NÃO IMPLEMENTAR SEM DECISÃO]** ASP.NET Core REST para comandos/consultas e SignalR para progresso/eventos foi sugerido. Comparar também SSE/WebSocket/IPC onde pertinente, sem criar protocolos divergentes por topologia.
+**[FECHADO]** REST (ASP.NET Core) para comandos/consultas e SignalR para progresso/eventos, único protocolo para as três topologias.
 
 ### OD-002 — Jobs e concorrência
 
-**[ABERTO]** Definir execução de folha, PDFs, relatórios e eSocial sem bloquear a UI; filas, prioridades, cancelamento, retomada, idempotência, locks e prevenção de cálculos conflitantes.
+**[FECHADO]** Jobs persistentes. Cálculo integral é exclusivo por Empresa + Competência + Tipo, com lock do escopo. Acompanhamento via SignalR. Sem takeover normal do lock. Jobs precisam de idempotência e recuperação.
 
 ### OD-003 — Autenticação, sessão, autorização e licença
 
-**[ABERTO]** Definir login local/cloud, sessões, credenciais, vínculo Escritório↔licença, ativação, indisponibilidade do serviço de licença, perfis, escopo por empresa e recuperação do MASTER.
+**[FECHADO]** ASP.NET Core Identity com autenticação por tokens e refresh controlado. RBAC pelos perfis SUDO (LOW/MEDIUM/HIGH/MASTER) com escopo de empresas. Licença separada da identidade, com tolerância temporária à indisponibilidade do servidor de licenças. Recuperação do MASTER fortemente protegida.
 
 ### OD-004 — Storage concreto
 
-**[ABERTO]** Definir provedores local/rede/cloud, layout, metadados, atomicidade com PostgreSQL, retenção, criptografia, antivírus e tratamento de arquivos grandes.
+**[FECHADO]** Abstração única de storage. Filesystem local/rede e object storage cloud como providers intercambiáveis. Banco guarda metadados/referências, nunca caminhos espalhados pelo domínio. Escrita atômica e hash dos arquivos.
 
 ### OD-005 — Backup e restauração
 
-**[ABERTO]** Garantir consistência entre PostgreSQL e arquivos; formatos, criptografia, agendamento, retenção, verificação, restauração granular/total e teste obrigatório de recuperação.
+**[FECHADO]** Backup consistente de PostgreSQL + storage, com manifesto versionado, criptografia, verificação automática e rotina real de teste de restauração.
 
 ### OD-006 — Atualização, migrations e rollback
 
-**[ABERTO]** Compatibilidade entre Desktop/Core/banco/módulos, ordem de atualização, migrations transacionais, interrupção, rollback, canais e assinatura de artefatos.
+**[FECHADO]** Migrations versionadas. Compatibilidade verificada antes de cada atualização. Backup obrigatório antes de mudanças destrutivas. Artefatos assinados. Atualização interrompível com recuperação segura. Rollback de banco não depende cegamente de "down migration".
 
 ### OD-007 — Segurança, segredos e certificados
 
-**[ABERTO]** Threat model, TLS, exposição do Core na LAN/cloud, secret stores, certificado A1, criptografia em trânsito/repouso, rotação, rate limiting, hardening e resposta a incidentes.
+**[FECHADO]** TLS obrigatório fora de localhost. Secret stores do SO/cloud. Certificado A1 protegido, nunca em texto puro. Princípio de menor privilégio. Proteção de endpoints, auditoria de operações sensíveis e threat model formal.
 
 ### OD-008 — Estratégia de testes
 
-**[ABERTO]** Pirâmide/portfólio de testes, cenários dourados do motor trabalhista, propriedades/invariantes, contratos, integração PostgreSQL, E2E desktop/web, regressão visual, performance e dados de teste.
+**[FECHADO]** Unitários + testes de arquitetura + integração real com PostgreSQL + testes de contrato + E2E. Golden tests obrigatórios para os cálculos trabalhistas.
 
 ### OD-009 — Estrutura do repositório e CI/CD
 
-**[ABERTO]** Monorepo ou separação, layout .NET/React/Tauri, ownership, checks obrigatórios, plataformas de build, releases, artefatos, assinatura e política de branches/PRs.
+**[FECHADO]** Monorepo.
 
 ### OD-010 — Versões baseline
 
-**[ABERTO]** Versões suportadas de .NET, PostgreSQL, Node, package manager, React, TypeScript, Tauri/Rust e sistemas operacionais.
+**[FECHADO]** Versões estáveis fixadas, priorizando LTS onde aplicável. Windows Tier 1 no lançamento inicial; macOS/Linux Tier 2, sem dependência arquitetural de Windows em nenhum caso.
 
 ## Prioridade P1 — antes dos módulos de negócio
 
 ### OD-011 — Observabilidade e suporte
 
-**[ABERTO]** Logs estruturados, métricas, traces, health checks, correlação de jobs, pacote diagnóstico, retenção e proteção de dados pessoais.
+**[FECHADO]** OpenTelemetry + logs estruturados + correlação + health checks. Pacote de diagnóstico com sanitização de dados pessoais.
 
 ### OD-012 — Modelo físico de Escritório
 
-**[ABERTO]** Banco/schema/tenant_id/instalação por Escritório, isolamento, administração, restauração e consolidação.
+**[FECHADO]** Isolamento lógico por `office_id`/tenant_id, com uma fonte autoritativa por Escritório. PostgreSQL central por instalação. Arquitetura preparada para isolamento físico futuro, sem obrigá-lo agora.
 
 ### OD-013 — Transações e integração entre módulos
 
-**[ABERTO]** Fronteiras transacionais, eventos internos, consistência, outbox, leitura entre módulos e contratos versionados.
+**[FECHADO]** Transação dentro do módulo. Contratos explícitos entre módulos. Eventos internos. Outbox para efeitos externos/confiabilidade. Um módulo nunca consulta tabela privada de outro módulo.
 
 ### OD-014 — Precisão monetária e temporal
 
-**[ABERTO]** Tipos decimais, escalas, arredondamento, datas civis, timezone, competência, instante de auditoria e calendários.
+**[FECHADO]** `decimal` para dinheiro, nunca `float`/`double`. Política central de arredondamento. Competência/data civil separada de timestamp. Auditoria em UTC, com timezone apresentado ao usuário.
 
 ### OD-015 — Privacidade, LGPD e retenção
 
-**[ABERTO]** Papéis de tratamento, minimização, bases legais, retenção, anonimização, exportação, descarte e auditoria de acesso.
+**[FECHADO]** Privacy-by-design, minimização de dados, retenção configurável quando legalmente possível, trilha de acesso a dados sensíveis, exportação e descarte controlado. Regras jurídicas específicas continuam parametrizáveis/documentadas, nunca hardcoded por suposição.
 
 ### OD-016 — Pessoa e compartilhamento entre empresas
 
-**[ABERTO]** Escopo do cadastro, deduplicação, visibilidade, consentimento, transferência e separação de históricos em grupos/filiais.
+**[FECHADO]** Pessoa separada de Vínculo. Dados pessoais podem ser reutilizados dentro do Escritório conforme as relações autorizadas. Histórico trabalhista continua pertencendo ao vínculo/empresa. Transferência não mistura históricos.
 
 ### OD-017 — Migração e convivência com o legado
 
-**[ABERTO]** Se haverá importação, leitura, convivência paralela, corte ou arquivamento; mapeamento, reconciliação, validação e rollback. Até decisão, preservar tudo e não migrar.
+**[FECHADO]** Legado preservado. SUDO 2.0 nasce independente. Migração será feita por importadores explícitos com validação/reconciliação, nunca por leitura acoplada ao banco legado.
 
 ### OD-018 — Integrações externas
 
-**[ABERTO]** eSocial, certificados, serviços governamentais, bancos, relógios de ponto, e-mail e demais integrações; responsabilidade, resiliência e versionamento.
+**[FECHADO]** Integrações externas atrás de adapters, com contratos/versionamento próprios, retry controlado, idempotência e circuit breaker onde aplicável. eSocial não contamina o domínio da folha.
 
 ## Prioridade P2 — detalhamento de produto/UX
 
-- **[ABERTO] OD-019:** gramática e runtime do motor de fórmulas.
-- **[ABERTO] OD-020:** modelo de acumuladores, médias e precedência de regras.
-- **[ABERTO] OD-021:** estados/fechamentos de folha, férias, rescisão e 13º.
-- **[ABERTO] OD-022:** governança de tabelas legais, CCTs, rubricas e vigências.
-- **[ABERTO] OD-023:** formato e runtime do TecnoFormas.
-- **[ABERTO] OD-024:** arquitetura de informação, comportamento do workspace e Design System.
-- **[ABERTO] OD-025:** acessibilidade, internacionalização e formatos regionais.
-- **[ABERTO] OD-026:** metas de desempenho, capacidade e dimensionamento por topologia.
+- **[FECHADO] OD-019:** DSL própria e segura para fórmulas — parser/AST, funções controladas, `V(código)`, `R(código)` e catálogo de variáveis. Nada de executar SQL/C#/JavaScript arbitrário.
+- **[FECHADO] OD-020:** Acumuladores versionados por vigência. Médias legais obrigatórias e não removíveis; adicionais permitidos. Memória de cálculo explicável.
+- **[FECHADO] OD-021:** Máquina de estados explícita para cada processo (folha, férias, rescisão, 13º). Movimento separado do cálculo. Recálculo substitui o resultado vigente preservando auditoria.
+- **[FECHADO] OD-022:** Tabelas legais/rubricas/CCT com vigência e versionamento. Padrões SUDO copiáveis quando aplicável. Mudanças nunca reescrevem competência histórica.
+- **[FECHADO] OD-023:** TecnoFormas com modelo declarativo versionado — variáveis tipadas, blocos repetidores, condições e layout. Sem código arbitrário no template.
+- **[FECHADO] OD-024:** Proposta 2 como base visual. Design System próprio, tokens. Abas + janelas contextuais + painéis. Densidade configurável e persistência do workspace.
+- **[FECHADO] OD-025:** Acessibilidade desde os componentes-base — teclado completo, contraste, escala. pt-BR inicial, mas textos/formatos não hardcoded, para permitir i18n futura.
+- **[FECHADO] OD-026:** Metas mensuráveis e testes de carga por topologia. Processamento pesado fora da thread da UI. Paginação/virtualização obrigatória para grandes conjuntos. Dimensionamento documentado por benchmark, não por chute.
 
 ## Template de encerramento
 
