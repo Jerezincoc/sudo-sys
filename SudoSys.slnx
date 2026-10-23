@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/api/">
+    <Project Path="src/api/SudoSys.Api/SudoSys.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/core/">
+    <Project Path="src/core/SudoSys.SharedKernel/SudoSys.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SudoSys.ArchitectureTests/SudoSys.ArchitectureTests.csproj" />
+  </Folder>
+</Solution>

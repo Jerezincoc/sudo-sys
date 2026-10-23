@@ -71,3 +71,12 @@ Regras:
 - Commit: HEAD desta entrada
 - Decisões/pendências: CI/CD, versão do pnpm do 2.0 e solução .NET inicial ainda abertas
 - Próximo passo: definir solução .NET inicial e CI (WS-01/WS-02)
+## 2026-10-23T00:00:00-03:00 — Claude — WS-02: solução .NET inicial
+
+- Branch: `feat/ws02-solucao-dotnet-inicial`
+- Ação/tarefa: criada `SudoSys.slnx` com `SudoSys.SharedKernel` (src/core), `SudoSys.Api` (src/api, host ASP.NET Core com `/health`) e `SudoSys.ArchitectureTests` (tests); `Directory.Build.props` com net10.0, nullable e warnings como erro; um teste de arquitetura garante que o SharedKernel não referencia ASP.NET Core, Npgsql, EF Core nem a Api
+- Arquivos afetados: `SudoSys.slnx`, `Directory.Build.props`, `src/core/SudoSys.SharedKernel`, `src/api/SudoSys.Api`, `tests/SudoSys.ArchitectureTests`
+- Testes/validações: `dotnet build` 0 avisos/0 erros; `dotnet test` 1/1 aprovado; `GET /health` retornou Healthy
+- Commit: HEAD desta entrada
+- Decisões/pendências: nenhum módulo de negócio criado, pois o mapa de módulos (AD-004) segue [ABERTO]; REST de negócio, SignalR, EF/acesso a dados e conteúdo do SharedKernel (dinheiro, competência — OD-014) ainda não implementados
+- Próximo passo: fechar o mapa de módulos e o padrão de camadas por módulo (Domain/Application/Infrastructure + Contracts), depois criar o primeiro módulo
