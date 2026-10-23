@@ -84,6 +84,19 @@ Observação em `2026-09-29T13:49:31-03:00`, apenas para diagnóstico do host e 
 
 Essas ausências não são falhas do produto ainda; a implementação do 2.0 não começou.
 
+## 5.1 Ambiente de desenvolvimento de Jeremias (2026-10-23)
+
+Instalados por Claude em aplicação de OD-010 (estável/LTS). **Proposta de baseline** — confirmação de Jeremias pendente antes de virar manifesto.
+
+| Item | Instalado | Observação |
+|---|---|---|
+| .NET SDK | 10.0.402 (LTS) | winget `Microsoft.DotNet.SDK.10` |
+| PostgreSQL | 18.6, serviço `postgresql-x64-18`, porta 5432 | senha do superusuário de dev fora do repositório |
+| Rust/Cargo | 1.96.0 | já presente |
+| Node.js | 20.20.0 | mantido por causa do legado; Node 20 já está fora de suporte, baseline do 2.0 (sugerido: 24 LTS) pendente |
+| pnpm | 10.30.3 | já presente; versão do 2.0 pendente |
+| Docker | não instalado | aplicabilidade ainda aberta |
+
 ## 6. Baseline do legado — não reutilizar como decisão
 
 O `main` inspecionado contém Electron + TypeScript + SQLite, Node `20.20.2` e pnpm `9.15.9`. Há documentação operacional do legado em `README_AMBIENTE.md`.

@@ -44,3 +44,12 @@ Regras:
 - Commit: HEAD desta entrada
 - Decisões/pendências: versões exatas (.NET, PostgreSQL, Node, Rust), estrutura do monorepo e CI/CD continuam abertos
 - Próximo passo: Jeremias priorizar WS-00/WS-01 (ADRs de detalhe e ambiente reproduzível)
+## 2026-10-23T00:00:00-03:00 — Claude — WS-01: instala .NET 10 e PostgreSQL 18 na máquina de Jeremias
+
+- Branch: `docs/ws01-baseline-ambiente`
+- Ação/tarefa: instalou via winget .NET SDK 10.0.402 e PostgreSQL 18.6 (serviço local, porta 5432); registrou a proposta de baseline em `ENVIRONMENT.md` §5.1
+- Arquivos afetados: `ENVIRONMENT.md`, `AGENT_TIMELINE.md`
+- Testes/validações: `dotnet --list-sdks` = 10.0.402; `psql` conecta e retorna PostgreSQL 18.6; serviço Running
+- Commit: HEAD desta entrada
+- Decisões/pendências: confirmar baseline; Node 24 LTS e Docker não instalados; senha do superusuário de dev está em arquivo local fora do repositório
+- Próximo passo: Jeremias confirmar versões; depois definir estrutura do monorepo (WS-01/WS-02)
