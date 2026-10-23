@@ -15,17 +15,17 @@ Documento central e vivo do ambiente. Atualize-o sempre que versão, requisito, 
 | Rust toolchain | [ABERTO] | TBD |
 | Banco | [FECHADO] | PostgreSQL |
 | PostgreSQL versão | [ABERTO] | TBD |
-| Git | [FECHADO] | Controle de versão e branches por tarefa |
+| Git | [FECHADO] | Controle de versão e branches por tarefa; repositório em monorepo (OD-009) |
 | Docker/containers | [ABERTO] | Aplicabilidade e versões TBD |
-| CI/CD | [ABERTO] | TBD |
+| CI/CD | [ABERTO] | TBD (estrutura do monorepo fechada em OD-009; pipeline pendente) |
 | IDE | [ABERTO] | Opcional; nenhuma IDE obrigatória definida |
 
 ## 2. Sistemas operacionais
 
 - **[FECHADO]** O Core deve ser multiplataforma e não depender diretamente de APIs exclusivas do Windows.
-- **[PARCIALMENTE FECHADO]** Windows, Linux e macOS fazem parte da intenção arquitetural.
-- **[ABERTO]** Matriz oficial de versões suportadas para Desktop, Core e servidor.
-- **[ABERTO]** Prioridade de lançamento por sistema operacional. Windows primeiro foi cogitado, não aprovado como compromisso de release.
+- **[FECHADO]** (OD-010) Windows é Tier 1 no lançamento inicial; macOS e Linux são Tier 2, sem dependência arquitetural de Windows em nenhum caso.
+- **[FECHADO]** (OD-010) Versões estáveis fixadas, priorizando LTS onde aplicável.
+- **[ABERTO]** Versões exatas suportadas de cada sistema operacional para Desktop, Core e servidor.
 
 ## 3. Topologias e requisitos
 
@@ -39,7 +39,9 @@ Documento central e vivo do ambiente. Atualize-o sempre que versão, requisito, 
 
 **[FECHADO]** Vários clientes podem usar uma fonte autoritativa hospedada no escritório/rede.
 
-**[ABERTO]** Sistemas suportados, TLS, DNS/descoberta, firewall, certificados, storage de rede, disponibilidade, backup e dimensionamento.
+**[FECHADO]** (OD-007) TLS obrigatório fora de localhost.
+
+**[ABERTO]** Sistemas suportados, DNS/descoberta, firewall, certificados, storage de rede, disponibilidade, backup e dimensionamento.
 
 ### Cloud
 

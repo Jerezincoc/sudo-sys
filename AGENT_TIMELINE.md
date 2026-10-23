@@ -35,3 +35,12 @@ Regras:
 - Commit: HEAD desta entrada
 - Decisões/pendências: pendente atualizar `ARCHITECTURE_DECISIONS.md` e `ENVIRONMENT.md` com OD-001 a OD-026
 - Próximo passo: Claude propor e delegar a atualização dos documentos de arquitetura e ambiente
+## 2026-10-23T00:00:00-03:00 — Claude — ARCHITECTURE_DECISIONS e ENVIRONMENT refletem OD-001 a OD-026
+
+- Branch: `docs/atualiza-arquitetura-ambiente`
+- Ação/tarefa: incorporou as decisões fechadas ao `ARCHITECTURE_DECISIONS.md` (AD-001 a AD-009 anotados, novo AD-010, "Não decisões" reduzida) e ao `ENVIRONMENT.md` (Tier 1/2, TLS, monorepo); sem criar decisão nova
+- Arquivos afetados: `ARCHITECTURE_DECISIONS.md`, `ENVIRONMENT.md`, `AGENT_TIMELINE.md`
+- Testes/validações: revisão do diff; sem validação automatizada de links
+- Commit: HEAD desta entrada
+- Decisões/pendências: versões exatas (.NET, PostgreSQL, Node, Rust), estrutura do monorepo e CI/CD continuam abertos
+- Próximo passo: Jeremias priorizar WS-00/WS-01 (ADRs de detalhe e ambiente reproduzível)
