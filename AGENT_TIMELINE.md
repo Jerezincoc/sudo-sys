@@ -53,3 +53,12 @@ Regras:
 - Commit: HEAD desta entrada
 - Decisões/pendências: confirmar baseline; Node 24 LTS e Docker não instalados; senha do superusuário de dev está em arquivo local fora do repositório
 - Próximo passo: Jeremias confirmar versões; depois definir estrutura do monorepo (WS-01/WS-02)
+## 2026-10-23T00:00:00-03:00 — Claude — baseline aprovado e Node 24 instalado
+
+- Branch: `docs/confirma-baseline`
+- Ação/tarefa: Jeremias aprovou .NET 10 LTS, PostgreSQL 18 e Node 24 LTS; instalou fnm + Node 24.22.1 sem alterar o Node 20 do legado; `ENVIRONMENT.md` atualizado
+- Arquivos afetados: `ENVIRONMENT.md`, `AGENT_TIMELINE.md`
+- Testes/validações: `fnm exec --using=24 node --version` = v24.22.1; `node --version` do sistema = v20.20.0
+- Commit: HEAD desta entrada
+- Decisões/pendências: estrutura do monorepo e CI/CD abertas; versão do pnpm 2.0 pendente
+- Próximo passo: aprovar proposta de estrutura do monorepo

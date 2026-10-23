@@ -7,14 +7,14 @@ Documento central e vivo do ambiente. Atualize-o sempre que versão, requisito, 
 | Área | Estado | Decisão/versão |
 |---|---|---|
 | Core | [FECHADO] | C#/.NET multiplataforma |
-| .NET SDK | [ABERTO] | TBD |
+| .NET SDK | [FECHADO] | 10 LTS (10.0.402), aprovado por Jeremias em 2026-10-23 |
 | UI | [FECHADO] | React + TypeScript |
-| Node.js | [ABERTO] | TBD para o 2.0 |
+| Node.js | [FECHADO] | 24 LTS (24.22.1), via fnm ao lado do Node 20 do legado |
 | Package manager | [ABERTO] | TBD para o 2.0 |
 | Desktop | [FECHADO] | Tauri, sem regra de negócio |
 | Rust toolchain | [ABERTO] | TBD |
 | Banco | [FECHADO] | PostgreSQL |
-| PostgreSQL versão | [ABERTO] | TBD |
+| PostgreSQL versão | [FECHADO] | 18 (18.6), aprovado por Jeremias em 2026-10-23 |
 | Git | [FECHADO] | Controle de versão e branches por tarefa; repositório em monorepo (OD-009) |
 | Docker/containers | [ABERTO] | Aplicabilidade e versões TBD |
 | CI/CD | [ABERTO] | TBD (estrutura do monorepo fechada em OD-009; pipeline pendente) |
@@ -86,14 +86,14 @@ Essas ausências não são falhas do produto ainda; a implementação do 2.0 nã
 
 ## 5.1 Ambiente de desenvolvimento de Jeremias (2026-10-23)
 
-Instalados por Claude em aplicação de OD-010 (estável/LTS). **Proposta de baseline** — confirmação de Jeremias pendente antes de virar manifesto.
+Instalados por Claude em aplicação de OD-010 (estável/LTS). **Baseline aprovado por Jeremias em 2026-10-23**; falta fixar em manifestos (`global.json`, `.node-version`).
 
 | Item | Instalado | Observação |
 |---|---|---|
 | .NET SDK | 10.0.402 (LTS) | winget `Microsoft.DotNet.SDK.10` |
 | PostgreSQL | 18.6, serviço `postgresql-x64-18`, porta 5432 | senha do superusuário de dev fora do repositório |
 | Rust/Cargo | 1.96.0 | já presente |
-| Node.js | 20.20.0 | mantido por causa do legado; Node 20 já está fora de suporte, baseline do 2.0 (sugerido: 24 LTS) pendente |
+| Node.js | 20.20.0 (sistema) e 24.22.1 (fnm) | 20 mantido só para o legado; 2.0 usa 24 via `fnm` |
 | pnpm | 10.30.3 | já presente; versão do 2.0 pendente |
 | Docker | não instalado | aplicabilidade ainda aberta |
 
