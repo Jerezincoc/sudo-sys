@@ -4,7 +4,7 @@ Estas regras são obrigatórias para agentes humanos e de IA que atuem no reiní
 
 ## 1. Fonte de verdade
 
-1. Os Markdown em `docs/sudo-sys-2/` são a fonte de verdade do 2.0.
+1. Os Markdown em `docs/` são a fonte de verdade do 2.0.
 2. Conversas, prompts, memórias, protótipos e documentos do legado não substituem esta base.
 3. Em conflito, interromper a parte afetada, registrar a divergência e solicitar decisão de Jeremias.
 4. Não reinterpretar item **[FECHADO]**. Mudança arquitetural ou funcional exige discussão e registro explícito.

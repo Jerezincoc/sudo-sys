@@ -62,3 +62,12 @@ Regras:
 - Commit: HEAD desta entrada
 - Decisões/pendências: estrutura do monorepo e CI/CD abertas; versão do pnpm 2.0 pendente
 - Próximo passo: aprovar proposta de estrutura do monorepo
+## 2026-10-23T00:00:00-03:00 — Claude — estrutura do monorepo e documentos movidos para docs/
+
+- Branch: `chore/estrutura-monorepo`
+- Ação/tarefa: Jeremias aprovou a estrutura do monorepo e a mudança dos `.md` para `docs/`; criado o esqueleto vazio (`src/{core,api,ui,desktop}`, `tests`, `tools`), `global.json` (.NET 10.0.402), `.node-version` (24.22.1), `pnpm-workspace.yaml`, `.gitignore` e README raiz
+- Arquivos afetados: `docs/*.md` (movidos com `git mv`; só `AGENT_PROTOCOL.md` teve o caminho `docs/` corrigido), arquivos de manifesto na raiz
+- Testes/validações: links relativos entre os `.md` mantidos por mudarem juntos; nenhum projeto .NET ou pacote criado ainda
+- Commit: HEAD desta entrada
+- Decisões/pendências: CI/CD, versão do pnpm do 2.0 e solução .NET inicial ainda abertas
+- Próximo passo: definir solução .NET inicial e CI (WS-01/WS-02)
