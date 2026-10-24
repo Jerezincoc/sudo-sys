@@ -134,3 +134,12 @@ Regras:
 - Commit: HEAD desta entrada
 - Decisões/pendências: duas supressões locais de CA1716 (`Error`) e CA1711 (`Permission`) com justificativa; matriz de permissões por perfil, regra do último MASTER (Application), mensagens localizadas (OD-025) e `CompletePasswordChange` retornando `Result` sempre de sucesso seguem para revisão futura
 - Próximo passo: fatia 2 (persistência EF Core + PostgreSQL), depende de WS-04 e das portas da Application
+## 2026-10-24T00:00:00-03:00 — Claude — PROP-002: persistência da Identidade
+
+- Branch: `docs/prop-002-persistencia`
+- Ação/tarefa: registradas as decisões técnicas da persistência do módulo Identidade (schema por módulo, EF Core no Infrastructure, filtro por `office_id`, migrations, testes de integração com PostgreSQL real); sem alterar item [FECHADO]
+- Arquivos afetados: `docs/proposals/PROP-002-persistencia-identidade.md`, `docs/AGENT_TIMELINE.md`
+- Testes/validações: revisão de consistência com OD-006/008/012/013 e PROP-001
+- Commit: HEAD desta entrada
+- Decisões/pendências: acesso a dados dos demais módulos segue [ABERTO]
+- Próximo passo: delegar a fatia 2 ao Codex
