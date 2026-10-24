@@ -125,3 +125,12 @@ Regras:
 - Commit: HEAD desta entrada
 - Decisões/pendências: matriz de permissões por módulo e segregação de funções seguem [ABERTO]; ORM dos demais módulos segue [ABERTO]
 - Próximo passo: delegar a fatia 1 (Domain/Application da Identidade) ao Codex
+## 2026-10-23T00:00:00-03:00 — Claude (coordenador) / Codex (executor) — Identidade, fatia 1: domínio
+
+- Branch: `feat/identity-dominio`
+- Ação/tarefa: Codex implementou em TDD o domínio puro da Identidade (Permission, PermissionCatalog com 6 permissões, Role, CompanyScope, LockoutPolicy, User) e `Result`/`Error`/`OfficeId`/`CompanyId` no SharedKernel, mais o projeto `SudoSys.Identity.Domain.Tests`; Claude revisou User, Role, Permission e Result e verificou build/testes por conta própria
+- Arquivos afetados: `src/core/SudoSys.SharedKernel/*`, `src/core/Identity/SudoSys.Identity.Domain/*`, `tests/SudoSys.Identity.Domain.Tests/*`, `SudoSys.slnx`
+- Testes/validações: build 0 avisos/0 erros; 43 testes de domínio e 9 de arquitetura aprovados; sem uso de `DateTime.Now/UtcNow` no domínio
+- Commit: HEAD desta entrada
+- Decisões/pendências: duas supressões locais de CA1716 (`Error`) e CA1711 (`Permission`) com justificativa; matriz de permissões por perfil, regra do último MASTER (Application), mensagens localizadas (OD-025) e `CompletePasswordChange` retornando `Result` sempre de sucesso seguem para revisão futura
+- Próximo passo: fatia 2 (persistência EF Core + PostgreSQL), depende de WS-04 e das portas da Application
