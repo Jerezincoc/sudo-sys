@@ -116,3 +116,12 @@ Regras:
 - Commit: HEAD desta entrada
 - Decisões/pendências: aguardam Jeremias D1–D7
 - Próximo passo: após as decisões, delegar a fatia 1 ao Codex
+## 2026-10-23T00:00:00-03:00 — Claude — PROP-001 aprovada (D1–D7)
+
+- Branch: `docs/fecha-prop-001`
+- Ação/tarefa: Jeremias aprovou todas as recomendações da PROP-001; registrado em `PROP-001`, `OPEN_DECISIONS` (OD-003), `PRODUCT_DECISIONS` (PD-018) e `ARCHITECTURE_DECISIONS`
+- Arquivos afetados: `docs/proposals/PROP-001-identidade.md`, `docs/OPEN_DECISIONS.md`, `docs/PRODUCT_DECISIONS.md`, `docs/ARCHITECTURE_DECISIONS.md`, `docs/AGENT_TIMELINE.md`
+- Testes/validações: revisão do diff
+- Commit: HEAD desta entrada
+- Decisões/pendências: matriz de permissões por módulo e segregação de funções seguem [ABERTO]; ORM dos demais módulos segue [ABERTO]
+- Próximo passo: delegar a fatia 1 (Domain/Application da Identidade) ao Codex

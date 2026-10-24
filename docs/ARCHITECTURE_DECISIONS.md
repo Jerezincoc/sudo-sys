@@ -110,6 +110,8 @@ Somente decisões aprovadas aparecem como fechadas. Sugestões tecnicamente plau
 - **OD-015 LGPD:** privacy-by-design, minimização, retenção configurável, trilha de acesso a dados sensíveis.
 - **OD-017/OD-018 Legado e integrações:** legado preservado, migração só por importadores explícitos; integrações atrás de adapters com retry, idempotência e circuit breaker.
 
+**[FECHADO]** (PROP-001) O módulo Identidade usa EF Core; a escolha de acesso a dados dos demais módulos segue **[ABERTO]**.
+
 **[ABERTO]** Detalhamento técnico de cada item (formato de tokens, política de lock, manifesto de backup, estrutura do monorepo, pipeline de CI/CD).
 
 ## AD-011 — Mapa inicial de módulos

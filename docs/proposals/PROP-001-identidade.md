@@ -1,6 +1,6 @@
 # PROP-001 — Módulo Identidade
 
-**Status:** proposta para decisão de Jeremias. Nada aqui é decisão até ser aprovado. Detalha OD-003 e PD-018; não altera nenhum item **[FECHADO]**.
+**Status:** **[FECHADO]** — D1 a D7 aprovadas por Jeremias em 2026-10-23 conforme as recomendações abaixo. Detalha OD-003 e PD-018; não altera nenhum item fechado anterior.
 
 ## 1. Escopo da primeira entrega
 

@@ -131,7 +131,8 @@ Este documento consolida somente decisões funcionais reconstruídas do zero. De
 - **[FECHADO]** Perfis podem ser copiados e personalizados; os níveis são pontos de partida, não o único mecanismo de autorização.
 - **[FECHADO]** Ações sensíveis e prosseguimentos após alertas relevantes exigem autorização e auditoria.
 - **[PARCIALMENTE FECHADO]** Permissões devem alcançar módulos, ações e contextos de dados.
-- **[ABERTO]** Matriz completa, herança, negações, escopo por empresa, segregação de funções e recuperação do MASTER.
+- **[FECHADO]** (PROP-001) Na v1 não há herança nem negação: permissão efetiva é a união das permissões do perfil; escopo por empresa é por usuário (todas as empresas do Escritório ou lista); recuperação do MASTER por código único guardado como hash e auditado.
+- **[ABERTO]** Matriz completa de permissões por módulo de negócio e segregação de funções.
 
 ## PD-019 — Histórico, vigências, auditoria e logs
 

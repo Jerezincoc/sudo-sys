@@ -16,6 +16,8 @@ Nenhum agente pode resolver estes itens silenciosamente. Propostas devem apresen
 
 **[FECHADO]** ASP.NET Core Identity com autenticação por tokens e refresh controlado. RBAC pelos perfis SUDO (LOW/MEDIUM/HIGH/MASTER) com escopo de empresas. Licença separada da identidade, com tolerância temporária à indisponibilidade do servidor de licenças. Recuperação do MASTER fortemente protegida.
 
+**[FECHADO]** Detalhamento aprovado em 2026-10-23 ([PROP-001](proposals/PROP-001-identidade.md)): EF Core no módulo Identidade; hasher padrão do ASP.NET Core Identity (PBKDF2); permissão efetiva = união das permissões do perfil, sem herança nem negação na v1; um usuário pertence a um único Escritório; código de recuperação do MASTER exibido uma vez, guardado como hash e auditado; bloqueio após 5 falhas por 15 min; access token 15 min, refresh 8 h de inatividade e 30 dias absolutos, tudo configurável.
+
 ### OD-004 — Storage concreto
 
 **[FECHADO]** Abstração única de storage. Filesystem local/rede e object storage cloud como providers intercambiáveis. Banco guarda metadados/referências, nunca caminhos espalhados pelo domínio. Escrita atômica e hash dos arquivos.
