@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\SudoSys.Identity.Application\SudoSys.Identity.Application.csproj" />
+    <ProjectReference Include="..\SudoSys.Identity.Domain\SudoSys.Identity.Domain.csproj" />
+    <ProjectReference Include="..\SudoSys.Identity.Contracts\SudoSys.Identity.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

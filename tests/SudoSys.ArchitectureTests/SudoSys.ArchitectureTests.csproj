@@ -16,6 +16,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\core\Identity\SudoSys.Identity.Application\SudoSys.Identity.Application.csproj" />
+    <ProjectReference Include="..\..\src\core\Identity\SudoSys.Identity.Contracts\SudoSys.Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\core\Identity\SudoSys.Identity.Domain\SudoSys.Identity.Domain.csproj" />
+    <ProjectReference Include="..\..\src\core\Identity\SudoSys.Identity.Infrastructure\SudoSys.Identity.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\core\SudoSys.SharedKernel\SudoSys.SharedKernel.csproj" />
   </ItemGroup>
 

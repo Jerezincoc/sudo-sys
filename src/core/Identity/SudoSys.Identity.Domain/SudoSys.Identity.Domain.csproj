@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\SudoSys.SharedKernel\SudoSys.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>

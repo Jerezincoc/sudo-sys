@@ -98,3 +98,12 @@ Regras:
 - Commit: HEAD desta entrada
 - Decisões/pendências: dependências permitidas entre módulos serão definidas ao criar cada um
 - Próximo passo: Codex cria o esqueleto do módulo Identidade (4 projetos, sem regra de negócio)
+## 2026-10-23T00:00:00-03:00 — Claude (coordenador) / Codex (executor) — esqueleto do módulo Identidade
+
+- Branch: `feat/identity-esqueleto`
+- Ação/tarefa: Codex (CLI, sandbox workspace-write, sem commit) criou os 4 projetos `SudoSys.Identity.{Domain,Application,Infrastructure,Contracts}` e testes de arquitetura; Claude revisou e substituiu as checagens por reflexão (que passavam sem validar nada, pois o compilador omite referências não usadas) por leitura das `ProjectReference` dos `.csproj`; removido `PropertyGroup` vazio do Contracts
+- Arquivos afetados: `src/core/Identity/*`, `SudoSys.slnx`, `tests/SudoSys.ArchitectureTests/*`
+- Testes/validações: build 0 avisos/0 erros; 9 testes aprovados; adicionando temporariamente Domain→Infrastructure, 1 teste falhou como esperado (revertido)
+- Commit: HEAD desta entrada
+- Decisões/pendências: nenhuma regra de negócio criada; modelo de usuário/papéis, tokens, ORM e hash de senha seguem [ABERTO] a detalhar (OD-003)
+- Próximo passo: detalhar OD-003 em proposta (usuário, papéis, sessão) antes de implementar Identidade

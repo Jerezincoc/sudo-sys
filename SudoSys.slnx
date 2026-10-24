@@ -6,6 +6,12 @@
   <Folder Name="/src/core/">
     <Project Path="src/core/SudoSys.SharedKernel/SudoSys.SharedKernel.csproj" />
   </Folder>
+  <Folder Name="/src/core/Identity/">
+    <Project Path="src/core/Identity/SudoSys.Identity.Application/SudoSys.Identity.Application.csproj" />
+    <Project Path="src/core/Identity/SudoSys.Identity.Contracts/SudoSys.Identity.Contracts.csproj" />
+    <Project Path="src/core/Identity/SudoSys.Identity.Domain/SudoSys.Identity.Domain.csproj" />
+    <Project Path="src/core/Identity/SudoSys.Identity.Infrastructure/SudoSys.Identity.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SudoSys.ArchitectureTests/SudoSys.ArchitectureTests.csproj" />
   </Folder>
