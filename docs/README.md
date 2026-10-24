@@ -16,6 +16,7 @@ Esta pasta é a fonte de entrada do reinício do SUDO SYS 2.0. Ela registra o qu
 8. [WORKSTREAMS.md](WORKSTREAMS.md) — decomposição futura, dependências e bloqueios.
 9. [AGENT_TIMELINE.md](AGENT_TIMELINE.md) — registro append-only do trabalho dos agentes.
 10. [CONVENTIONS.md](CONVENTIONS.md) — convenções de código, estrutura e revisão.
+11. [AGENT_WORKFLOWS.md](AGENT_WORKFLOWS.md) — delegação, ondas paralelas, revisão e segurança.
 
 ## Vocabulário de status
 

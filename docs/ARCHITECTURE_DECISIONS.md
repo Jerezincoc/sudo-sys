@@ -112,6 +112,18 @@ Somente decisões aprovadas aparecem como fechadas. Sugestões tecnicamente plau
 
 **[ABERTO]** Detalhamento técnico de cada item (formato de tokens, política de lock, manifesto de backup, estrutura do monorepo, pipeline de CI/CD).
 
+## AD-011 — Mapa inicial de módulos
+
+**[FECHADO]** (Jeremias, 2026-10-23) Ordem de criação dos primeiros módulos do Core:
+
+1. **Identidade** (OD-003): usuários, autenticação, sessão, papéis LOW/MEDIUM/HIGH/MASTER e escopo de empresas.
+2. **Escritórios/Empresas** (OD-012): Escritório como tenant (`office_id`) e Empresa.
+3. **Pessoas/Vínculos** (OD-016): Pessoa separada de Vínculo.
+
+**[FECHADO]** Cada módulo tem quatro projetos — `Domain`, `Application`, `Infrastructure` e `Contracts` — com dependência apontando para dentro; módulos conversam só por `Contracts`, eventos internos e outbox (OD-013). Ver [CONVENTIONS.md](CONVENTIONS.md).
+
+**[ABERTO]** Folha, Férias, Rescisão, 13º, Benefícios, Jornada/Ponto, Sindicato/CCT, eSocial, Documentos/TecnoFormas e Auditoria seguem como domínios candidatos (AD-004) até decisão. Dependências permitidas entre os três módulos acima serão definidas ao criar cada um.
+
 ## Não decisões
 
 Os itens abaixo **continuam não aprovados** em nível de detalhe:

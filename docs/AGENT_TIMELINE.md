@@ -89,3 +89,12 @@ Regras:
 - Commit: HEAD desta entrada
 - Decisões/pendências: `.mcp.json`, `.claude/` e `skills-lock.json` ficam fora do repositório (excluídos localmente) por conterem caminhos da máquina; estrutura de 4 projetos por módulo é convenção proposta, a confirmar com o mapa de módulos
 - Próximo passo: fechar o mapa de módulos
+## 2026-10-23T00:00:00-03:00 — Claude — AD-011 (mapa inicial de módulos) e fluxos de agentes
+
+- Branch: `docs/ad-011-modulos-e-fluxos`
+- Ação/tarefa: Jeremias aprovou a ordem Identidade → Escritórios/Empresas → Pessoas/Vínculos; registrado AD-011; criado `docs/AGENT_WORKFLOWS.md` com ideias genéricas (contrato de tarefa, ondas paralelas, revisão, segurança, tamanho de arquivo) lidas do `vibe-coding-toolkit`, sem instalar nada dele
+- Arquivos afetados: `docs/ARCHITECTURE_DECISIONS.md`, `docs/AGENT_WORKFLOWS.md`, `docs/README.md`, `docs/AGENT_TIMELINE.md`
+- Testes/validações: revisão do diff
+- Commit: HEAD desta entrada
+- Decisões/pendências: dependências permitidas entre módulos serão definidas ao criar cada um
+- Próximo passo: Codex cria o esqueleto do módulo Identidade (4 projetos, sem regra de negócio)
