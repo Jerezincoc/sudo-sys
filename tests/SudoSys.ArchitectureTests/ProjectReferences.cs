@@ -10,15 +10,23 @@ internal static class ProjectReferences
 {
     public static IReadOnlyList<string> Of(string projectName)
     {
-        var csproj = Directory
-            .EnumerateFiles(RepositoryRoot(), projectName + ".csproj", SearchOption.AllDirectories)
-            .Single(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
-
-        return XDocument.Load(csproj)
+        return XDocument.Load(ProjectFile(projectName))
             .Descendants("ProjectReference")
             .Select(e => Path.GetFileNameWithoutExtension(((string?)e.Attribute("Include") ?? string.Empty).Replace((char)92, '/')))
             .ToList();
     }
+
+    public static IReadOnlyList<string> PackagesOf(string projectName) =>
+        XDocument.Load(ProjectFile(projectName))
+            .Descendants("PackageReference")
+            .Select(element => (string?)element.Attribute("Include") ?? string.Empty)
+            .ToList();
+
+    private static string ProjectFile(string projectName) => Directory
+        .EnumerateFiles(RepositoryRoot(), projectName + ".csproj", SearchOption.AllDirectories)
+        .Single(path => !path.Contains(
+            $"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
+            StringComparison.Ordinal));
 
     private static string RepositoryRoot()
     {

@@ -1,6 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+    <!-- Versões mínimas corrigidas: o pacote de design do EF traz estas dependências 9.0.0 com vulnerabilidades conhecidas (NU1902/NU1903). -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\SudoSys.Identity.Application\SudoSys.Identity.Application.csproj" />
     <ProjectReference Include="..\SudoSys.Identity.Domain\SudoSys.Identity.Domain.csproj" />
     <ProjectReference Include="..\SudoSys.Identity.Contracts\SudoSys.Identity.Contracts.csproj" />

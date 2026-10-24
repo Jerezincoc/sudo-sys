@@ -4,6 +4,13 @@ namespace SudoSys.Identity.Domain;
 
 public sealed class User
 {
+    private User()
+    {
+        UserName = null!;
+        DisplayName = null!;
+        CompanyScope = null!;
+    }
+
     private User(
         UserId id,
         OfficeId officeId,
@@ -226,4 +233,6 @@ public sealed class User
 
     private static Result ActiveLock() =>
         Result.Failure(new Error("user.locked", "User lockout is still active."));
+
+    internal void RestoreCompanyScope(CompanyScope companyScope) => CompanyScope = companyScope;
 }

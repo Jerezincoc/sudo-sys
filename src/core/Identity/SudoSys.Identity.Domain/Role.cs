@@ -7,6 +7,12 @@ public sealed class Role
 {
     private ImmutableHashSet<Permission> _permissions;
 
+    private Role()
+    {
+        Name = null!;
+        _permissions = ImmutableHashSet<Permission>.Empty;
+    }
+
     private Role(RoleId id, OfficeId? officeId, string name, bool isSystem, ImmutableHashSet<Permission> permissions)
     {
         Id = id;
@@ -130,4 +136,7 @@ public sealed class Role
 
     private static Result UnknownPermission() => Result.Failure(
         new Error("role.permission.unknown", "Permission is outside the catalog."));
+
+    internal void RestorePermissions(IEnumerable<Permission> permissions) =>
+        _permissions = permissions.ToImmutableHashSet();
 }

@@ -15,5 +15,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/SudoSys.ArchitectureTests/SudoSys.ArchitectureTests.csproj" />
     <Project Path="tests/SudoSys.Identity.Domain.Tests/SudoSys.Identity.Domain.Tests.csproj" />
+    <Project Path="tests/SudoSys.Identity.IntegrationTests/SudoSys.Identity.IntegrationTests.csproj" />
   </Folder>
 </Solution>

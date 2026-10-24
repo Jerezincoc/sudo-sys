@@ -143,3 +143,12 @@ Regras:
 - Commit: HEAD desta entrada
 - Decisões/pendências: acesso a dados dos demais módulos segue [ABERTO]
 - Próximo passo: delegar a fatia 2 ao Codex
+## 2026-10-24T00:00:00-03:00 — Claude (coordenador) / Codex (executor) — Identidade, fatia 2: persistência
+
+- Branch: `feat/identity-persistencia`
+- Ação/tarefa: Codex implementou portas (Application), `IdentityDbContext` (schema `identity`), mapeamentos, repositórios, migration inicial e 10 testes de integração com PostgreSQL real. Na revisão, Claude achou que `ChangeScope` e `Grant/Revoke` em agregados já carregados não eram persistidos nas tabelas auxiliares; o Codex corrigiu em TDD (sincronização no `SaveChangesAsync`). Claude também corrigiu o build limpo: o pacote de design do EF trazia `System.Security.Cryptography.Pkcs/Xml` 9.0.0 com vulnerabilidades (NU1902/NU1903, como erro); fixadas as versões 10.0.13. O Codex havia reportado 0 erros porque o NuGet dele falhou ao consultar o banco de vulnerabilidades (Schannel)
+- Arquivos afetados: `src/core/Identity/*`, `tests/SudoSys.Identity.IntegrationTests`, `tests/SudoSys.ArchitectureTests`, `SudoSys.slnx`
+- Testes/validações: build limpo 0 avisos/0 erros; 65 testes aprovados (43 domínio, 12 arquitetura, 10 integração PostgreSQL real)
+- Commit: HEAD desta entrada
+- Decisões/pendências: falha Schannel do NuGet no ambiente de Jeremias; perfis de sistema LOW/MEDIUM/HIGH/MASTER e regra do último MASTER seguem pendentes; `IdentityDbContextFactory` usa um Escritório fixo apenas em design-time
+- Próximo passo: fatia 3 (autenticação: ASP.NET Core Identity, login, refresh, auditoria)

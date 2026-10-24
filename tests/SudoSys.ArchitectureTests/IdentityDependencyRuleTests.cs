@@ -23,4 +23,24 @@ public class IdentityDependencyRuleTests
     {
         Assert.DoesNotContain("SudoSys.Api", ProjectReferences.Of(projeto));
     }
+
+    [Theory]
+    [InlineData("SudoSys.Identity.Domain")]
+    [InlineData("SudoSys.Identity.Application")]
+    public void DomainEApplicationNaoReferenciamPersistencia(string projeto)
+    {
+        var packages = ProjectReferences.PackagesOf(projeto);
+
+        Assert.DoesNotContain(packages, package => package.Contains("EntityFrameworkCore", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(packages, package => package.Contains("Npgsql", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void InfrastructurePodeReferenciarPersistencia()
+    {
+        var packages = ProjectReferences.PackagesOf("SudoSys.Identity.Infrastructure");
+
+        Assert.Contains("Microsoft.EntityFrameworkCore.Design", packages);
+        Assert.Contains("Npgsql.EntityFrameworkCore.PostgreSQL", packages);
+    }
 }
