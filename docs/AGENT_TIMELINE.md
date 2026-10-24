@@ -80,3 +80,12 @@ Regras:
 - Commit: HEAD desta entrada
 - Decisões/pendências: nenhum módulo de negócio criado, pois o mapa de módulos (AD-004) segue [ABERTO]; REST de negócio, SignalR, EF/acesso a dados e conteúdo do SharedKernel (dinheiro, competência — OD-014) ainda não implementados
 - Próximo passo: fechar o mapa de módulos e o padrão de camadas por módulo (Domain/Application/Infrastructure + Contracts), depois criar o primeiro módulo
+## 2026-10-23T00:00:00-03:00 — Claude — guia de convenções e code-review-graph
+
+- Branch: `docs/guia-convencoes`
+- Ação/tarefa: criado `docs/CONVENTIONS.md`; instalado `code-review-graph` 2.3.9 (pip) configurado para Claude Code, com grafo da solução construído (6 nós, 17 arestas, C#); `.gitignore` ignora `.code-review-graph/`
+- Arquivos afetados: `docs/CONVENTIONS.md`, `docs/README.md`, `.gitignore`, `docs/AGENT_TIMELINE.md`
+- Testes/validações: `code-review-graph build` e `status` executados com sucesso
+- Commit: HEAD desta entrada
+- Decisões/pendências: `.mcp.json`, `.claude/` e `skills-lock.json` ficam fora do repositório (excluídos localmente) por conterem caminhos da máquina; estrutura de 4 projetos por módulo é convenção proposta, a confirmar com o mapa de módulos
+- Próximo passo: fechar o mapa de módulos
