@@ -107,3 +107,12 @@ Regras:
 - Commit: HEAD desta entrada
 - Decisões/pendências: nenhuma regra de negócio criada; modelo de usuário/papéis, tokens, ORM e hash de senha seguem [ABERTO] a detalhar (OD-003)
 - Próximo passo: detalhar OD-003 em proposta (usuário, papéis, sessão) antes de implementar Identidade
+## 2026-10-23T00:00:00-03:00 — Claude — PROP-001: proposta do módulo Identidade
+
+- Branch: `docs/prop-001-identidade`
+- Ação/tarefa: escrita a proposta `docs/proposals/PROP-001-identidade.md` (escopo, modelo, decisões D1–D7, fatias, riscos); sem alterar item [FECHADO] nem decidir item [ABERTO]
+- Arquivos afetados: `docs/proposals/PROP-001-identidade.md`, `docs/AGENT_TIMELINE.md`
+- Testes/validações: revisão de consistência com OD-003, OD-007, OD-014, PD-001 e PD-018
+- Commit: HEAD desta entrada
+- Decisões/pendências: aguardam Jeremias D1–D7
+- Próximo passo: após as decisões, delegar a fatia 1 ao Codex
